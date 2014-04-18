@@ -1,0 +1,99 @@
+<HTML>
+
+<HEAD>
+  <TITLE>title</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="progdesc.css">
+</HEAD>
+
+<BODY>
+
+<H2 STYLE="background: rgb(220,220,220); padding: 0.5em;">Module <SPAN CLASS="modtitle">SPAM.pm</SPAN></SPAN></H2>
+
+<H3 CLASS="subtitle">Description</H3>
+
+<P>This is library of some functions used by SPAM.</P>
+
+<!---------------------------------------------------------------->
+
+<A NAME="func">
+<H3 CLASS="subtitle">Functions Overview</H3>
+</A>
+
+<TABLE BORDER=1>
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_fill_up" CLASS="proc">html_fill_up</A>
+( <SPAN CLASS="arg">string</SPAN>, 
+<SPAN CLASS="arg">length</SPAN> )</TD>
+<TD>This function pads a string to given length while disregarding
+HTML mark-ups, so they are not counted into string's length.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_begin" CLASS="proc">html_begin</A>
+( <SPAN CLASS="arg">fd</SPAN>, <SPAN CLASS="arg">title</SPAN>,
+<SPAN CLASS="arg">css</SPAN>)</TD>
+<TD>This function writes HTML header to a file descriptor.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_dbconn" CLASS="proc">dbconn</A>
+( <SPAN CLASS="arg">conn_id</SPAN> )</TD>
+<TD>This function returns valid PostgreSQL connection object reference
+for given "conn_id". When the given connection is not yet established
+(ie. on first use), it will automatically open it.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_dbinit" CLASS="proc">dbinit</A>
+( 
+<SPAN CLASS="arg">conn_id</SPAN>,
+<SPAN CLASS="arg">dbname</SPAN>,
+<SPAN CLASS="arg">username</SPAN>,
+<SPAN CLASS="arg">password</SPAN> [,
+<SPAN CLASS="arg">host</SPAN>] 
+)</TD>
+<TD>This function creates backend database binding "conn_id" with
+supplied parameters. These porameters are stored locally to SPAM.pm module.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_end" CLASS="proc">html_end</A>
+( <SPAN CLASS="arg">fd</SPAN>, <SPAN CLASS="arg">title</SPAN>,
+<SPAN CLASS="arg">css</SPAN>)</TD>
+<TD>This function writes HTML ending to a file descriptor.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_load_config" CLASS="proc">load_config</A>
+( <SPAN CLASS="arg">file</SPAN> )</TD>
+<TD>This function reads configuration from file, parses it and stores into
+hash.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_load_outlet_table" CLASS="proc">load_outlet_table</A>
+()</TD>
+<TD>This function loads outlet to consolidation point database into memory.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_load_port_table" CLASS="proc">load_port_table</A>
+()</TD>
+<TD>This function loads port to consolidation point database into memory.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_period" CLASS="proc">period</A>
+( <SPAN CLASS="arg">seconds</SPAN> )</TD>
+<TD>This function converts duration expressed as number of seconds into
+days/hours/minutes form.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_speed_fmt" CLASS="proc">speed_fmt</A>
+( <SPAN CLASS="arg">bps</SPAN> )</TD>
+<TD>This function takes speed in bps and returns string in suffixed form
+(using K/M/G suffixes).</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_str_maxlen" CLASS="proc">str_maxlen</A>
+( <SPAN CLASS="arg">string</SPAN>,
+<SPAN CLASS="arg">length</SPAN> )</TD>
+<TD>Strips string to given maximum length and adds ellipsis.</TD>
+
+</TABLE>
+
+</BODY>
+
+</HTML>

@@ -1,0 +1,603 @@
+<HTML>
+
+<HEAD>
+  <TITLE>title</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="progdesc.css">
+</HEAD>
+
+
+<BODY>
+
+<H2 STYLE="background: rgb(220,220,220); padding: 0.5em;">Module <SPAN CLASS="modtitle">spam.cgi</SPAN></SPAN></H2>
+
+
+<H3 CLASS="subtitle">Description</H3>
+
+<P>This is the administrative WWW front-end to SPAM. It allows maintaining of the
+<SPAN CLASS="dbtable">porttable</SPAN> table in backend database, that holds
+information about which switch port is connected to which outlet.</P>
+
+
+<A NAME="gvar">
+<H3 CLASS="subtitle">Global variables</H3>
+</A>
+
+<TABLE BORDER=1>
+  <TR>
+    <TD><SPAN CLASS="gvar">@valid_users</SPAN>
+    <TD>@
+    <TD>This array contains list of userids that are allowed to modify
+    <SPAN CLASS="dbtable">porttable</SPAN>. Content of this variable
+    is statically defined in source code itself.</TD>
+  </TR>
+
+  <TR>
+    <TD><SPAN CLASS="gvar">@priv_users</SPAN>
+    <TD>@
+    <TD>This array contains list of privileged userids that can query
+    <SPAN CLASS="dbtable">mactable</SPAN> and <SPAN CLASS="dbtable">arptable</SPAN>.
+    Content of this variable is statically defined in source code itself.</TD>
+  </TR>
+</TABLE>
+
+<A NAME="func">
+<H3 CLASS="subtitle">Functions Overview</H3>
+</A>
+
+<TABLE BORDER=1>
+
+<TR><TD CLASS="arglist"><A HREF="#p_auth" CLASS="proc">auth</A>
+()<TD>This function validates current user (as defined by environment
+variable REMOTE_USER).
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_auth_err" CLASS="proc">auth_err</A>
+()</TD>
+<TD>This function prints "Access Denied" message (HTML formatted).<TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_BEGIN" CLASS="proc">BEGIN</A>
+()<TD>Special function that is executed by Perl interpreter when the CGI
+script starts.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_END" CLASS="proc">END</A>
+()<TD>Special function that is executed by Perl interpreter when the CGI
+script finishes.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_find_cp_by_outlet" CLASS="proc">find_cp_by_outlet</A>
+( <SPAN CLASS="arg">outlet</SPAN>, <SPAN CLASS="arg">site</A> )</TD>
+<TD>For given outlet/site pair returns matching consolidation point name.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_find_host_by_cp" CLASS="proc">find_host_by_cp</A>
+( <SPAN CLASS="arg">cp</SPAN>, <SPAN CLASS="arg">site</A> )</TD>
+<TD>For given cp/site pair returns associated switch name.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_find_outlet_by_cp" CLASS="proc">find_outlet_by_cp</A>
+( <SPAN CLASS="arg">cp</SPAN>, <SPAN CLASS="arg">site</A> )</TD>
+<TD>For given cp/site pair returns matching outlet name.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_form_add" CLASS="proc">form_add</A>
+( <SPAN CLASS="arg">cgi</SPAN> )</TD>
+<TD>This function outputs "Add Patches" HTML form and does its processing.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_form_find" CLASS="proc">form_find</A>
+( <SPAN CLASS="arg">cgi</SPAN> )</TD>
+<TD>This function outputs Search Tool HTML form and does its processing.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_form_menu" CLASS="proc">form_menu</A>
+( <SPAN CLASS="arg">self URL</SPAN> )</TD>
+<TD>This function outputs "Main Menu" HTML page.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_form_mmenu" CLASS="proc">form_mmenu</A>
+( <SPAN CLASS="arg">cgi</SPAN> )</TD>
+<TD>This function outputs "Modify Menu" HTML page.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_form_remove" CLASS="proc">form_remove</A>
+( <SPAN CLASS="arg">cgi</SPAN> )</TD>
+<TD>This function displays and processes "Remove Patches" form.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_form_reset" CLASS="proc">form_reset</A>
+( <SPAN CLASS="arg">cgi</SPAN> )</TD>
+<TD>This function deletes from variables including those imported into Perl namespace.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_header" CLASS="proc">html_header</A>
+( <SPAN CLASS="arg">title</SPAN> )</TD>
+<TD>Prints HTML page header.</TD>
+</TR>
+
+<TR><TD CLASS="arglist">html_qdyn_hdr
+()</TD>
+<TD>Prints heading for Search Tool query results table (MAC/IP, currently
+unimplemented.</TD>
+</TR>
+
+<TR><TD CLASS="arglist">html_qdyn_row
+()</TD>
+<TD>Prints one row of Search Tool query results table (MAC/IP).</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_qstat_hdr" CLASS="proc">html_qstat_hdr</A>
+()</TD>
+<TD>Prints heading for Search Tool query results table.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_qstat_row" CLASS="proc">html_qstat_row</A>
+()</TD>
+<TD>Prints one row of Search Tool query results table.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_modlog" CLASS="proc">modlog</A>
+( <SPAN CLASS="arg">string</SPAN> )<TD>This function logs specified string to logfile</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_modlog_finish" CLASS="proc">modlog_finish</A>
+()<TD>This function logs summary information about modifications made by
+users</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_normalize_mac" CLASS="proc">normalize_mac</A>
+( <SPAN CLASS="arg">mac</SPAN>,
+<SPAN CLASS="arg">flag</SPAN>
+)<TD>This function turns MAC address
+into basic (normal) format.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_normalize_outlet" CLASS="proc">normalize_outlet</A>
+( <SPAN CLASS="arg">outlet</SPAN> )<TD>Attempt to normalize (ie. put into
+some basic format) outlet name.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_porttable_cp_num" CLASS="proc">porttable_cp_num</A>
+( <SPAN CLASS="arg">cp</SPAN>, <SPAN CLASS="arg">site</A> )</TD>
+<TD>For given cp/site pair returns number of matching rows.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_pgres_err" CLASS="proc">pgres_err</A>
+( <SPAN CLASS="arg">string</SPAN> )<TD>This function turns PostgreSQL
+error message to slightly more readable format</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_priv" CLASS="proc">priv</A>
+( )</TD>
+<TD>This function returns true/false depending whether current HTTP user is
+privileged or not</TD>
+</TR>
+
+<TR><TD CLASS="arglist">query_find_dynamic
+( <SPAN CLASS="arg">mac</SPAN>, <SPAN CLASS="arg">ip</SPAN> )</TD>
+<TD>Processes "Search Tool" query (only search by IP/MAC)</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_query_find_static" CLASS="proc">query_find_static</A>
+( <SPAN CLASS="arg">outlet</SPAN>, <SPAN CLASS="arg">cp</SPAN>,
+<SPAN CLASS="arg">host</SPAN>, <SPAN CLASS="arg">portname</SPAN>,
+<SPAN CLASS="arg">site</SPAN> )</TD>
+<TD>Processes "Search Tool" query (static tables only).</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_outlet_sites" CLASS="proc">sql_outlet_sites</A>
+()</TD>
+<TD>This function returns lists of valid site codes in which network outlets
+exist.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_substitue_asterisk" CLASS="proc">substitute_asterisk</A>
+()</TD>
+<TD>This function replaces * in string with .*</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_validate_port" CLASS="proc">validate_port</A>
+( <SPAN CLASS="arg">port</SPAN> )<TD>This function validate switch port name
+for proper syntax.</TD>
+</TR>
+
+<TR><TD CLASS="arglist">validate_cp
+( <SPAN CLASS="arg">cp</SPAN> )<TD>Validate consolidation point for proper
+syntax. Currently this is only a dummy function always returning "true".</TD>
+</TR>
+
+</TABLE>
+
+
+<A NAME="fdsc">
+<H3 CLASS="subtitle">Functions Description</H3>
+</A>
+
+<TABLE BORDER=1 CELLPADDING=10>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_auth"><SPAN CLASS="func">auth</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      This function checks, whether the current HTTP user (ie. the value
+      of REMOTE_USER environment variable) is valid user (ie. contained in
+      <SPAN CLASS="perlvar">@valid_users</SPAN>).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_auth_err"><SPAN CLASS="func">auth_err</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      This function sends HTML formatted authentification error message.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_BEGIN"><SPAN CLASS="func">BEGIN</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      Special function that is executed by Perl interpreter when the CGI
+      script starts. This fact is especially important when using some kind of
+      script persistence (such as speedycgi etc.) - then this part is executed
+      only once per script lifetime. In spam.cgi this function binds database
+      connection and opens logfile.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_END"><SPAN CLASS="func">END</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      Special function that is executed by Perl interpreter when the CGI
+      script finishes. This fact is especially important when using some kind of
+      script persistence (such as speedycgi etc.) - then this part is executed
+      only once per script lifetime. In this case this function closes logfile.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_find_cp_by_outlet"><SPAN CLASS="func">find_cp_by_outlet</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>outlet
+        <LI>site
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>outlet name
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function finds consolidation point for given outlet name (only one;
+      multiple results are not supported).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_find_host_by_cp"><SPAN CLASS="func">find_host_by_cp</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>consolidation point
+        <LI>site
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>host
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function finds host name associated with given outlet through
+      <SPAN CLASS="dbtable">cpranges</SPAN> table.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_find_outlet_by_cp"><SPAN CLASS="func">find_outlet_by_cp</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>consolidation point
+        <LI>site
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>outlet
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function finds outlet name for given consolidation point/site.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_form_add"><SPAN CLASS="func">form_add</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>cgi
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function handles displaying and processing of "Add Patches" form.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_form_find"><SPAN CLASS="func">form_find</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>cgi
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function handles displaying and processing of "Search Tool" form.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_form_menu"><SPAN CLASS="func">form_menu</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>self URL
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function display "Main Menu" -- a rather unnecessary feature.]
+      It takes URL to the CGI script itself as its argument.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_form_mmenu"><SPAN CLASS="func">form_mmenu</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>cgi
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function display "Modification Menu" -- a rather unnecessary feature.]
+      CGI object reference as its argument.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_form_remove"><SPAN CLASS="func">form_remove</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>cgi
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function handles displaying and processing of "Patch Remove" form.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_form_reset"><SPAN CLASS="func">form_reset</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>cgi
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function removes all form variables from current script instance:
+      it deletes all variables in <SPAN CLASS="perlvar">cgi</SPAN> object
+      and deletes all variables from <SPAN CLASS="perlvar">Form</SPAN>
+      namespace (where they are imported to).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_html_header"><SPAN CLASS="func">html_header</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>title
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      Simple header for all forms -- only single
+      <SPAN CLASS="htmltag">&lt;H1&gt;</SPAN> tag for now.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_html_qstat_hdr"><SPAN CLASS="func">html_qstat_hdr</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      This function sends out heading for "Search Tool" results table.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_html_qstat_row"><SPAN CLASS="func">html_qstat_row</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>row
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function sends out one row of "Search Tool" query result; it takes
+      reference to array of results for a given row as an argument.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_modlog"><SPAN CLASS="func">modlog</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>string
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function writes given string into log file with a timestamp; and
+      it also pushes it into internal memory log (for mailing purposes).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_modlog_finish"><SPAN CLASS="func">modlog_finish</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      This function closes logfile and mails entries from memory log
+      (that is new entries from this current script instance) to
+      administrator.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_normalize_mac"><SPAN CLASS="func">normalize_mac</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>mac
+        <LI>flag
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>normalized MAC
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function puts MAC addres from several recognized formats into basic,
+      colon delimited or pure numeric, format . Flag value of '1' means
+      colon delimited format, '0' means undelimited hexadecimal number, '2'
+      is same as '1', but '*' wildcard is considered valid character.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_normalize_outlet"><SPAN CLASS="func">normalize_outlet</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>outlet
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>normalized outlet
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function does few basic transforms on outlet name in order to
+      put it into some basic form. Currently it only removes unnecessary
+      spaces.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_porttable_cp_num"><SPAN CLASS="func">porttable_cp_num</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>consolidation point
+        <LI>site
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>number of instances
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function returns number of existing instances of given consolidation
+      point in backend database. This is used mainly to avoid inserting more
+      than one same cp's into database.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_pgres_err"><SPAN CLASS="func">pgres_err</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>PostgreSQL connection object reference
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>transformed error message
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function formats Postgres error messages into slightly more
+      readable form.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_priv"><SPAN CLASS="func">priv</SPAN></A>
+    </TD>
+    <TD WIDTH="50%">
+      This function checks, whether the current HTTP user (ie. the value
+      of REMOTE_USER environment variable) is privileged user (ie. contained in
+      <SPAN CLASS="perlvar">@priv_users</SPAN>).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_query_find_static"><SPAN CLASS="func">query_find_static</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>outlet
+        <LI>cp
+        <LI>host
+        <LI>portname
+        <LI>site
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>reference to array of query result rows
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function performs query for "Search Tool" form. Not all arguments
+      need to be defined -- undefined arguments will not be used during
+      the query.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_sql_outlet_sites"><SPAN CLASS="func">sql_outlet_sites</SPAN></A>
+      <OL CLASS="fargsolr">
+        <LI>reference to array of site codes or error message
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function does SELECT DISTINCT on <SPAN CLASS="dbtable">out2cp</SPAN>
+      and collates list of all sites in which know outlets are located. This
+      used for giving user list-box with available sites.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_substitue_asterisk"><SPAN CLASS="func">substitue_asterisk</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>string to be processed
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>processed string
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+       This function replaces all single asterisks with '.*'; used for turning
+       * wildcard to regexp.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_validate_port"><SPAN CLASS="func">validate_port</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>port name
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>validity flag
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function is used to validate port name. Values 0 or 1 are returned 
+      meaning 'invalid' or 'valid' respectively.
+    </TD>
+  </TR>
+
+
+</TABLE>
+
+</BODY>
+
+</HTML>

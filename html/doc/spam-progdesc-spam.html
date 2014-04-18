@@ -1,0 +1,608 @@
+<HTML>
+
+<HEAD>
+  <TITLE>title</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="progdesc.css">
+</HEAD>
+
+
+<BODY>
+
+<H2 STYLE="background: rgb(220,220,220); padding: 0.5em;">Module <SPAN CLASS="modtitle">spam.pl</SPAN></SPAN></H2>
+
+
+<H3 CLASS="subtitle">Description</H3>
+
+<P>This is the collector component of SPAM. It requires SPAM_SNMP.pm and
+SPAM.pm modules. Its task is to gather information from managed ethernet
+switches by means of SNMP protocol, store this information into backend
+SQL database and generate set of HTML pages with switches list and
+ports list. Upon execution, the collector performs following actions:</P>
+
+<OL>
+  <LI>Loads master configuration file
+  <LI>Connects to native backend database
+  <LI>Optionally runs maintenance function and finishes
+  <LI>Connects to Oskar Network (oskarnet) external database to get list of
+  switches that are to be managed
+  <LI>Loads port and outlet tables into memory
+  <LI>Iterates through the switches list and gathers information from each one
+  and updates status table in database
+  <LI>Retrieves ARP cache from configured hosts and updates ARP table in database
+  <LI>Generates HTML for each switch with list of ports and associated detailed status
+  <LI>Generates HTML list of switches with some overall statistics for each
+</OL>
+
+
+<A NAME="gvar">
+<H3 CLASS="subtitle">Global Variables</H3>
+</A>
+
+<TABLE BORDER=1>
+  <TR>
+    <TD><SPAN CLASS="gvar">$cfg</SPAN>
+    <TD>\%
+    <TD>hash reference containing entire configuration read from master
+    configuration file
+  <TR>
+    <TD><SPAN CLASS="gvar">$ret</SPAN>
+    <TD>$
+    <TD>auxiliary variable used for holding return values
+  <TR>
+    <TD><SPAN CLASS="gvar">$port2cp</SPAN>
+    <TD>\%
+    <TD>switch port to consolidation point map
+  <TR>
+    <TD><SPAN CLASS="gvar">$cp2port</SPAN>
+    <TD>\%
+    <TD>consolidation point to switch port map
+  <TR>
+    <TD><SPAN CLASS="gvar">$outlet2cp</SPAN>
+    <TD>\%
+    <TD>outlet to consolidation port map
+  <TR>
+    <TD><SPAN CLASS="gvar">$cp2outlet</SPAN>
+    <TD>\%
+    <TD>consolidation point to outlet map
+  <TR>
+    <TD><SPAN CLASS="gvar">$out2desc</SPAN>
+    <TD>\%
+    <TD>outlet to description map
+  <TR>
+    <TD><SPAN CLASS="gvar">$out2flag</SPAN>
+    <TD>\%
+    <TD>outlet to additional flag map
+  <TR>
+    <TD><SPAN CLASS="gvar">$selective_run</SPAN>
+    <TD>$
+    <TD>flag indicating that only selected host are to be polled
+  <TR>
+    <TD><SPAN CLASS="gvar">%swdata</SPAN>
+    <TD>%
+    <TD>holder for all data retrieved from switches via SNMP
+  <TR>
+    <TD><SPAN CLASS="gvar">$arptable</SPAN>
+    <TD>\%
+    <TD>ARP table retrieved from configured hosts
+  <TR>
+    <TD><SPAN CLASS="gvar">%mac_current</SPAN>
+    <TD>%
+    <TD>MAC addresses from backend database
+  <TR>
+    <TD><SPAN CLASS="gvar">%widths</SPAN>
+    <TD>%
+    <TD>hash that determines default width of individual fields in port listings
+</TABLE>
+
+
+<A NAME="func">
+<H3 CLASS="subtitle">Functions Overview</H3>
+</A>
+
+<TABLE BORDER=1>
+
+<TR><TD CLASS="arglist"><A HREF="#p_addoperinfo" CLASS="proc">addoperinfo</A>
+( <SPAN CLASS="arg">s</SPAN>,
+  <SPAN CLASS="arg">n</SPAN>
+)<TD>Performs logical AND between <SPAN CLASS="snmpvar">additionalOperStatus</SPAN>
+variable and given number
+
+<TR><TD CLASS="arglist"><A HREF="#p_compute_page_width" CLASS="proc">compute_page_width</A>
+( <SPAN CLASS="arg">config</SPAN>
+)<TD>Computes width of port listings (from known column sizes)
+
+<TR><TD CLASS="arglist"><A HREF="#p_compare_ports" CLASS="proc">compare_ports</A>
+( <SPAN CLASS="arg">port1</SPAN>,
+  <SPAN CLASS="arg">port2</SPAN>
+)<TD>Compare two ports designation for sorting purposes
+
+<TR><TD CLASS="arglist"><A HREF="#p_find_changes" CLASS="proc">find_changes</A>
+( <SPAN CLASS="arg">host</SPAN>,
+  <SPAN CLASS="arg">index</SPAN>
+)<TD>Compares old status from database to current state retrieved via SNMP and returns update plan to be fed into SQL database
+
+<TR><TD CLASS="arglist"><A HREF="#p_flag_out" CLASS="proc">flag_out</A>
+( <SPAN CLASS="arg">width</SPAN>,
+  <SPAN CLASS="arg">cdp_flag</SPAN>,
+  <SPAN CLASS="arg">portfast_flag</SPAN>,
+  <SPAN CLASS="arg">stp_root_flag</SPAN>
+)<TD>Formats "flags" field in port listings
+
+<TR><TD CLASS="arglist"><A HREF="#p_get_platform" CLASS="proc">get_platform</A>
+( <SPAN CLASS="arg">host</SPAN>,
+  <SPAN CLASS="arg">community</SPAN>
+)<TD>Discovers host platform via SNMP
+
+<TR><TD CLASS="arglist"><A HREF="#p_cfg_switch_list_load" CLASS="proc">cfg_switch_list_load</A>
+()<TD>Loads switches list from external database
+
+<TR><TD CLASS="arglist"><A HREF="#p_help" CLASS="proc">help</A>
+()<TD>Displays recognized command-line parameters
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_patchmap" CLASS="proc">html_patchamp</A>
+( <SPAN CLASS="arg">html_fd</SPAN>,
+  <SPAN CLASS="arg">host</SPAN>
+)<TD>Generates patch panel map for a host
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_port" CLASS="proc">html_port</A>
+( <SPAN CLASS="arg">host</SPAN>,
+  <SPAN CLASS="arg">port</SPAN>,
+  <SPAN CLASS="arg">knownport_flag</SPAN>
+)<TD>Formats one line of ports listings
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_portlist_by_host" CLASS="proc">html_portlist_by_host</A>
+( <SPAN CLASS="arg">html_fd</SPAN>,
+  <SPAN CLASS="arg">host</SPAN>
+)<TD>Generates port listing for given host
+
+<TR><TD CLASS="arglist"><A HREF="#p_html_switch_list" CLASS="proc">html_switch_list</A>
+()<TD>Generates switches listing
+
+<TR><TD CLASS="arglist"><A HREF="#p_maintenance" CLASS="proc">maintenance</A>
+()<TD>Performs database maintenance (mainly deleting aged out rows)
+
+<TR><TD CLASS="arglist"><A HREF="#p_name_to_ifindex_hash" CLASS="proc">name_to_ifindex_hash</A>
+( <SPAN CLASS="arg">host</SPAN>
+)<TD>Creates index for ifDescr field to ifIndex
+
+<TR><TD CLASS="arglist"><A HREF="#p_poll_host" CLASS="proc">poll_host</A>
+( <SPAN CLASS="arg">host</SPAN>,
+  <SPAN CLASS="arg">get_mac_table_flag</SPAN>
+)<TD>Performs complete poll for given host
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_arptable_update" CLASS="proc">sql_arptable_update</A>
+()<TD>Updates arptable table in database
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_load_status" CLASS="proc">sql_load_status</A>
+( <SPAN CLASS="arg">host</SPAN>
+)<TD>For given host retrieves content of status table from database to memory
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_mactable_update" CLASS="proc">sql_mactable_update</A>
+( <SPAN CLASS="arg">host</SPAN>
+)<TD>Updates mactable table in database
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_status_update" CLASS="proc">sql_status_update</A>
+( <SPAN CLASS="arg">host</SPAN>,
+  <SPAN CLASS="arg">update_plan</SPAN>,
+  <SPAN CLASS="arg">index</SPAN>
+)<TD>Updates status table in backend database
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_transactions" CLASS="proc">sql_transaction</A>
+( <SPAN CLASS="arg">sql_batch</SPAN>
+)<TD>Performs SQL transaction and either rolls it back in case of error or commits it
+
+<TR><TD CLASS="arglist"><A HREF="#p_switch_info_retrieve" CLASS="proc">sql_switch_info_retrieve</A>
+( <SPAN CLASS="arg">host</SPAN>
+)<TD>Retrieves switch statistics from database
+
+<TR><TD CLASS="arglist"><A HREF="#p_sql_switch_info_update" CLASS="proc">sql_switch_info_update</A>
+( <SPAN CLASS="arg">host</SPAN>
+)<TD>Updates switch statistics in database
+
+<TR><TD CLASS="arglist"><A HREF="#p_switch_info" CLASS="proc">switch_info</A>
+( <SPAN CLASS="arg">host</SPAN>
+)<TD>Generates some statistics information about a switch
+
+</TABLE>
+
+
+<A NAME="fdsc">
+<H3 CLASS="subtitle">Functions Description</H3>
+</A>
+
+<TABLE BORDER=1 CELLPADDING=10>
+  
+  <TR>
+    <TD WIDTH="50%">
+      <A NAME="p_addoperinfo"><SPAN CLASS="func">addoperinfo</SPAN></A>
+      <OL CLASS="fargsola">
+      <LI><SPAN CLASS="snmpvar">additionalOperStatus</SPAN> variable value (string)
+      <LI>decimal number that is to be logical and'ed with the previous argument
+      </OL>
+      <OL CLASS="fargsolr">
+      <LI>result of logical AND between the two arguments
+      </OL>
+    </TD>
+    <TD WIDTH="50%">
+      This function takes <SPAN CLASS="snmpvar">additionalOperStatus</SPAN>
+      SNMP variable value in the form
+      it is returned by SNMP (that is two hexadecimal numbers) and a decimal
+      value and does a logical AND between them. This is useful for checking
+      what bits are set.
+    </TD>
+  </TR>
+  
+  <TR>
+    <TD>
+      <A NAME="p_compute_page_width"><SPAN CLASS="func">compute_page_width</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>reference to <SPAN CLASS="perlvar">$cfg</SPAN> global configuration variable
+      </OL>
+    </TD>
+    <TD>
+      This function computes total width of switches ports listings and stores it
+      into <SPAN CLASS="perlvar">$widths{_page}</SPAN>. This function must be
+      called prior to <A CLASS="proc" HREF="#p_html_portlist_by_host">html_portlist_by_host</A>().
+    </TD>
+  </TR>
+  
+  <TR>
+    <TD>
+      <A NAME="p_compare_ports"><SPAN CLASS="func">compare_ports</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>first port name
+        <LI>second port name
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>The same result as from <SPAN CLASS="perlkwd">&lt;=&gt;</SPAN> operator
+      </OL>
+    </TD>
+    <TD>
+      This function compares two port names and decides which one should be put
+      first for sorting purposes.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_find_changes"><SPAN CLASS="func">find_changes</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host name
+        <LI>name-to-ifindex hash generated by <A CLASS="proc" HREF="#p_name_to_ifindex_hash">name_to_ifindex_hash</A>()
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>update plan (array reference)
+        <LI>update statistics
+      </OL>
+    </TD>
+    <TD>
+      This function compares old data (retrieved from backend database
+      into dbStatus subtree of <SPAN CLASS="perlvar">%swdata</SPAN>) and the new data retrieved
+      via SNMP from given host. It prepares update plan.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_flag_out"><SPAN CLASS="func">flag_out</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>width
+        <LI>CDP flag
+        <LI>STP portfast flag
+        <LI>STP root port flag
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>formatted string with HTML tags
+      </OL>
+    </TD>
+    <TD>
+      This function formats the flags field in switch ports listing with HTML
+      mark-ups and CSS styles (classes flag-none, flag-cdp, flag-pfast, flag-str
+      for <SPAN CLASS="htmltag">&lt;SPAN&gt;</SPAN> must exist).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_get_platform"><SPAN CLASS="func">get_platform</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+        <LI>community
+        <LI>STP portfast flag
+        <LI>STP root port flag
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>one of "c6500", "c2900", "c3500" or <SPAN CLASS="perlkwd">undef</SPAN>.
+      </OL>
+    </TD>
+    <TD>
+      This function gets <SPAN CLASS="snmpvar">sysObjId</SPAN> SNMP variable and returns switch type or
+      <SPAN CLASS="perlkwd">undef</SPAN> when it's unknown device.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_cfg_switch_list_load"><SPAN CLASS="func">cfg_switch_list_load</SPAN></A>
+      <OL CLASS="fargsolr">
+        <LI>error message or <SPAN CLASS="perlkwd">undef</SPAN> upon success
+      </OL>
+    </TD>
+    <TD>
+      This function retrieves list of switches that are to be processed from
+      external Oskar Network database. This database connection must already
+      be initialized (bound) under identifier 'ondb'.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_help"><SPAN CLASS="func">help</SPAN></A>
+    </TD>
+    <TD>
+      This function displays usage summary (ie. command-line parameters).
+    </TD>
+  </TR>
+  
+  <TR>
+    <TD>
+      <A NAME="p_html_patchmap"><SPAN CLASS="func">html_patchmap</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>file descriptor
+        <LI>host
+      </OL>
+    </TD>
+    <TD>
+      This function generates VisiPatch visual map for given switch using
+      HTML table to a file descriptor.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_html_port"><SPAN CLASS="func">html_port</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+        <LI>port name
+        <LI>"known ports" feature flag (on/off)
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>formatted line of HTML
+      </OL>
+    </TD>
+    <TD>
+      This function formats one line for switch ports listing. "KnownPorts" on
+      that the port name is checked for existence in
+      <SPAN CLASS="dbtable">porttable</SPAN> and handled
+      differently when they are not present (they are grayed out, not printed
+      in red).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_html_portlist_by_host"><SPAN CLASS="func">html_portlist_by_host</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>file descriptor for output
+        <LI>host
+      </OL>
+    </TD>
+    <TD>
+      This function generates complete switches ports listing (without HTML
+      header and end). This function basically iterates
+      <A CLASS="proc" HREF="#p_html_port">html_port</A>() over all ports
+      on given switch.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_html_switch_list"><SPAN CLASS="func">html_switch_list</SPAN></A>
+    </TD>
+    <TD>
+      This function generates switch lists with references to individual
+      port lists and some basic overview statistics. The generated file
+      is swlist.html.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_maintenance"><SPAN CLASS="func">maintenance</SPAN></A>
+      <OL CLASS="fargsolr">
+        <LI>error message or <SPAN CLASS="perlkwd">undef</SPAN> upon success
+      </OL>
+    </TD>
+    <TD>
+      This routine purges old entries from arptable and mactable in
+      backend database.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_name_to_ifindex_hash"><SPAN CLASS="func">name_to_ifindex_hash</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI>ifDescr->ifIndex hash
+      </OL>
+    </TD>
+    <TD>
+      This function returns reference to hash, that has ifDescr as its hash
+      key and ifIndex as value. This is necessary, since the new data retrieved
+      from SNMP are indexed by its ifIndex while the old data stored in
+      <SPAN CLASS="dbtable">status</SPAN>
+      table are indexed by their port name description
+      (<SPAN CLASS="snmpvar">ifDescr</A>).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_poll_host"><SPAN CLASS="func">poll_host</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+        <LI>retrieve bridging table flag
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; any other value means failure
+      </OL>
+    </TD>
+    <TD>
+      This function does all SNMP information retrieval for a given host;
+      it also loads old status data from database. Following actions are performed:
+      <UL>
+        <LI>switch platform is figured out
+        <LI>previous status data are loaded from backend db into memory
+        <LI><SPAN CLASS="snmpvar">sysLocation</SPAN> is retrieved
+        <LI>STP root port is retrieved
+        <LI>all relevant SNMP variables are retrieved for each port
+        <LI>on Cat6500 modules information is gathered
+        <LI>VLAN list is retrieved
+        <LI>additional Cat2900/3500 information is retrieved
+        <LI>CDP cache content is loaded
+        <LI>if enabled, bridging table is loaded
+        <LI>all non-ethernet ports are pruned out (usually sundry pseudointerfaces)
+      </UL>
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_arptable_update"><SPAN CLASS="func">sql_arptable_update</SPAN></A>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function compares mac table in memory with the data in database
+      and performs update accordingly.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_load_status"><SPAN CLASS="func">sql_load_status</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function loads contents of <SPAN CLASS="dbtable">status</SPAN> table
+      for given host from backend database into memory.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_mactable_update"><SPAN CLASS="func">sql_mactable_update</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function updates <SPAN CLASS="dbtable">mactable</SPAN> from what is
+      in memory (as a result of
+      <A CLASS="proc" HREF="spam-progdesc-snmp.html#p_snmp_get_arptable">snmp_get_arptable</A>()
+      function).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_status_update"><SPAN CLASS="func">sql_status_update</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+        <LI>update plan
+        <LI>index
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function updates <SPAN CLASS="dbtable">status</SPAN> table using update plan from
+      <A CLASS="proc" HREF="#p_find_changes">find_changes</A>()
+      function. Index argument is a hash generated by
+      <A CLASS="proc" HREF="#p_name_to_ifindex_hash">name_to_ifindex_hash</A>().
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_transaction"><SPAN CLASS="func">sql_transaction</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>batch of SQL commands
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This convenience function performs referenced batch of SQL commands as
+      a transaction and either commits it when sucessful or rolls it back upon
+      error.
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_switch_info_retrieve"><SPAN CLASS="func">sql_switch_info_retrieve</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function retrieves statistical data from backend database
+      (<SPAN CLASS="dbtable">swstats</A> table).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_sql_switch_info_update"><SPAN CLASS="func">sql_switch_info_update</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function updates switch statistics in backend database
+      (ie. <SPAN CLASS="dbtable">swstat</SPAN> table).
+    </TD>
+  </TR>
+
+  <TR>
+    <TD>
+      <A NAME="p_switch_info"><SPAN CLASS="func">switch_info</SPAN></A>
+      <OL CLASS="fargsola">
+        <LI>host
+      </OL>
+      <OL CLASS="fargsolr">
+        <LI><SPAN CLASS="perlkwd">undef</SPAN> on success; error message otherwise
+      </OL>
+    </TD>
+    <TD>
+      This function calculates some overall statistics about a switch and
+      stores it into <SPAN CLASS="perlvar">%swdata</SPAN>.
+    </TD>
+  </TR>
+
+</TABLE>
+
+</BODY>
+
+</HTML>

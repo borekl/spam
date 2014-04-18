@@ -1,0 +1,399 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+
+<HEAD>
+  <TITLE>Switch Ports Activity Monitor</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="default.css">
+</HEAD>
+
+<BODY>
+
+<P STYLE="font-size: smaller"><A HREF="spam-intro.html">&lt;&lt; Home</A>
+| <A HREF="spam-collector.html">&lt; Back</A>
+| <A HREF="spam-db.html">&gt; Next</A>
+</P>
+
+<H1>SPAM - WWW Interface</H1>
+
+<HR>
+
+<div class="i">
+<p>
+<a href="#www_overview">Overview</a><br>
+<a href="#www_main">Main Page and Switch List</a><br>
+<a href="#www_search">Search Tool</a><br>
+<a href="#www_addp">Add Patches Tool</a><br>
+<a href="#www_removep">Remove Patches Tool</a><br>
+<a href="#www_permout">Permanent Outlet Tool</a><br>
+<a href="#www_hlist">Host List</a><br>
+<a href="#www_hedit">Host Edit/Remove</a><br>
+<a href="#www_hredundancy">Host Redundancy Check</a><br>
+<a href="#www_ppmap">Patch Panel Map Tool</a><br>
+<a href="#www_ppmap2">Patch Panel Map Tool v2</a>
+</p>
+</div>
+
+<hr>
+
+<a name="www_overview">
+<H2>Overview</H2>
+</a>
+
+<DIV CLASS="i">
+
+<p>WWW interface to SPAM allows for convenient access to information
+collected and managed by SPAM. It also alows performing certain
+administrative tasks such as updating database of switch-to-outlet or
+outlet-to-server connections. Some parts of the WWW interface make use of
+JavaScript, so JavaScript needs to be enabled for full functionality.</p>
+
+</DIV>
+
+<a name="www_main">
+<h2>Main Page and Switch List</h2>
+</a>
+
+<div class="i">
+
+<img src="spam-main.png" alt="SPAM Main Page Screenshot">
+
+<p>Above screenshot shows the SPAM's main page and also a general layout of
+any SPAM page. Initially, SPAM page display list of switches. Above the
+table with switch list, there are categories of switches. User can choose to
+display either [All] switches or one category based (mostly) on sites by
+simply click on category name. This user choice is preserved between views
+of the page (ie. the next time user comes to this page, the same category
+will be automatically shown). This "switch categories" functionality uses
+JavaScript; when JS is disabled, list of all switches is displayed.</p>
+
+<h3>Explanation of fields</h3>
+
+<p><b>Device</b><br>
+This is the hostname of the switch. The actual hostname in the list is a
+link that will display list of all ports on given switch ("Port List").
+</p>
+
+<p><b>VTP domain</b><br>
+VTP domain the switch is in. VTP domain name in bold means the switch is
+running in <i>VTP master</i> mode.</p>
+
+<p><b>Location</b><br>
+This is taken from SNMP location configured on given switch.</p>
+
+<p><b>Total ports</b><br>
+Total number of ports on a switch.</p>
+
+<p><b>Patched ports</b><br>
+Number of patched ports on a switch, ie. ports that have associated
+consolidation point.</p>
+
+<p><b>Active ports</b><br>
+Number of active ports on a switch, ie. ports that have operational status
+"up". This usually means that the port is receiving link from connected
+device.</p>
+
+<p><b>Unregistered ports</b><br>
+Number of ports that are active (operationally up), but there's no
+associated consolidation point while at the same time given switch is
+defined in "knownports" configuration statement in spam.cfg. Usually, this
+means administrator's failure to enter newly patched connections into
+database with the "Add Patches Tool".</p>
+
+<p><b>Errdis ports</b><br>
+Number of error-disabled ports, ie. ports that were automatically shut-down by
+the switch after exceeding preset error limits.</p>
+
+</div>
+
+<a name="www_search">
+<h2>Search Tool</H2>
+</a>
+
+<div class="i">
+
+<p style="margin-left: 3em">
+<img src="spam-search.png" alt="SPAM Search Tool Screenshot">
+</p>
+
+<p>Search Tool is used to find information about outlets, consolidation
+points and switch ports. Number of criteria can be used for the search:</p>
+
+<p><b>Site</b><br>
+Either selects particular site or searches all sites.
+</p>
+
+<p><b>Outlet</b><br>
+Search for particular outlet on sites, where outlets are used (that is
+mostly at Vinice). The given entry must be exact match, though case needs not
+to match and missing or extra spaces are allowd (ie. search for "3036d" is
+taken as search for outlet named "3036 D").</p>
+
+<p><b>Consolidation point</b><br>
+Search for particular consolidation point. The match must be exact. Note,
+that in most sites outlets are actually consolidation points from SPAM's
+point of view.</p>
+
+<p><b>Switch name</b><br>
+Constrain search to particular switch. The match must be exact.</p>
+
+<p><b>Port Name</b><br>
+Search for particular switch port. Exact match is required; "1/1" is not
+equal to "Gi1/1".</p>
+
+<p><b>MAC Address</b><br>
+Search for switch port where given MAC address was seen. MAC address is
+entered in one of the following forms: <tt>HHHH.HHHH.HHHH</tt>, 
+<tt>HH:HH:HH:HH:HH:HH</tt> or <tt>HH-HH-HH-HH-HH-HH</tt>. Wildcard '*' can
+also be used with usual semantics. Note, that this field is only available
+with extra permission, so not all users will see it in the Search Tool.
+Note, that short lived MAC addresses are unlikely to be found here.</p>
+
+<p><b>IP address</b><br>
+Search for switch port where given IP address was seen. Wildcard '*' can be
+used here. Note, that short lived IP addresses are unlikely to be found
+here.</p>
+
+<p><b>Sort by</b><br>
+This option selects sorting by "site, switch and portname", "hostname" and
+"chg_when" fields.</p>
+
+<p>Note, that "Site" and "Sort by" fields choice is preserved between views
+of the Search Tool page.</p>
+
+</div>
+
+<a name="www_addp">
+<H2>Add Patches Tool</H2>
+</a>
+
+<DIV CLASS="i">
+<P>The "Add Patches" form is used to conveniently enter new patches into
+the database by staff that does connecting new outlets to switch. This
+form has few non-apparent features, that are documented here.</P>
+
+<P STYLE="margin-left: 3em"><IMG SRC="spam-add-1"><BR>
+<EM>Form in unfilled state</EM></P>
+
+<P>Above picture shows the form in its pristine state. Meaning of individual
+fields should be self-evident except for "Add rows" field. This one allows
+adding more fill-in rows into form and allow entering more than one entry in
+one turn for efficiency. When new empty fill-in rows, the content of last
+"host" column is copied to the new rows -- see example below. The entire
+batch needs to only work with one site, however. Rows are added after user
+presess "Submit" or "Check" buttons -- in such case the content of form is
+not submitted!</P>
+
+<P STYLE="margin-left: 3em">
+<IMG SRC="spam-add-2.png"><BR>
+<EM>You can add more than one entries per batch</EM>
+</P>
+
+<H3>Autocompletion</H3>
+
+<P>When you're entering new data, you need not to fill all the fields. The
+form will try to fill-in as much data as possible. This mainly works between
+consolidation point ("cp") and "outlet": usually only one needs to be entered (depends
+on content of OUT2CP table). Also "host" host is in some cases filled-in
+automatically (depends on CPRANGES table). In many cases <B>you only need to
+fill-in outlet name and switch port</B>, rest of the info will be filled-in
+from database. Note, that this automatic completion happens only after you
+press "Submit" or "Check" button.</P>
+
+<p>This switchport can be entered (and this is the recommended way) without
+its two-letter type designation, ie. instead of "Gi1/20" or "Fa0/1" one needs
+only to enter "1/20" or "0/1". The type is filled-in automatically.</p>
+
+<H3>Checking and submitting form</H3>
+
+<P>When you have entered necessary data, you can have the form check content
+for validity/integrity -- you do this by pressing "Check" button. The result
+is either some error message(s) in "condition" field or no message. The form
+remains filled-in. If you left some fields out, they will be autocompleted
+if possible.</P>
+
+<P>Submitting works exactly same as checking, except when validity check
+passes OK, the data are sent to backend database. It is possible, that data
+that checked OK with "Check" will be rejected by database due to
+constraint violation. Such errors are reported in "condition" field.</P>
+
+<P STYLE="margin-left: 3em">
+<IMG SRC="spam-add-3.png"><BR>
+<EM>You can entry only outlet to find consolidation point name and switch.
+The "Incomplete information" is normal at this point.
+</EM>
+</P>
+
+<H3>Recommended workflow</H3>
+
+<P>The "Add patches" form is designed to be the single source of information
+for a user who needs to activate (patch) bunch of outlets. <B>First</B>
+you add more empty rows to cover number of new patches; <B>second</B> you
+fill-in only outlet names and press "Check"; <B>third</B>, you print the
+form with consolidation point numbers and go to the wiring room to actually
+patch it and while doing so, you write actual port numbers to the paper;
+<B>last</B>, when you return you just type in port numbers, press "Submit"
+and you're done.</P>
+
+</DIV>
+
+<a name="www_removep">
+<H2>Remove Patch Tool</H2>
+</a>
+
+<DIV CLASS="i">
+
+<P STYLE="margin-left: 3em"><IMG SRC="spam-remove-1.png"><BR>
+<EM>Initial Remove Patch form</EM></P>
+
+<P>Remove Patch removes entries from database. Only one entry can be
+removed at once. The form works in two-pass mode: first you enter
+which entry is to be deleted. It is not necessary to enter all
+data, but the information must not be ambiguous. After this info
+is submitted, not-filled information appears in form for review; after
+second pressing of "Submit" button, the entry is deleted.</P>
+
+</DIV>
+
+
+<a name="www_permout">
+<h2>Permanent Outlets Tool</h2>
+</a>
+
+<div class="i">
+
+<P STYLE="margin-left: 3em"><IMG SRC="spam-permout-1.png"><BR>
+<em>Permanent Outlet form; here one of the entries is being edited</em></p>
+
+<p>Permanent Outlets tool allows adding, editing and removing of the so-called
+permanenout outles -- that is outlets, that are not to be disconnected after
+extended period of inactivity (which is normal for other outlets).</p>
+
+</div>
+
+<a name="www_hlist">
+<h2>Host List</h2>
+</a>
+
+<div class="i">
+
+<p STYLE="margin-left: 3em"><IMG SRC="spam-hlist.png"></p>
+
+<p>Host List shows contents of hosts table. It can either show entries
+for logged-in user's group or entries for all groups.</p>
+
+<p>Hosts table links outlets (consolidation points in fact) to actual
+devices (usually datacentre servers). The table host following fields:
+hostname, owner group, consolidation point, production status. This table is
+maintained by servers' owners and is meant to allow NMC to find out servers
+affected by switch or port malfunction and to contact their owners.</p>
+
+<p>Normally, the form will add entry with owner group that of logged-in
+user. However, user can be given special authorization, that will enable him
+to freely set owner group. This is meant to be used by development, which
+provisions servers for an operations team.</p>
+
+</div>
+
+<a name="www_hadd">
+<h2>Host Add</h2>
+</a>
+
+<div class="i">
+<p STYLE="margin-left: 3em"><IMG SRC="spam-hadd.png"></p>
+
+<p>This form allows adding hosts to hosts table. The usage is very similar to
+that of <a href="#www_addp">Add Patch</a>.</p>
+
+</div>
+
+
+<a name="www_hedit">
+<h2>Host Edit/Remove</h2>
+</a>
+
+<div class="i">
+
+<p STYLE="margin-left: 3em"><IMG SRC="spam-hedit.png"></p>
+
+<p>Here user can edit or delete entries from hosts database. User can only
+edit or delete entries with his owner group.</p>
+
+</div>
+
+<a name="www_hredundancy">
+<h2>Host Redundancy Check</h2>
+</a>
+
+<div class="i">
+
+<p STYLE="margin-left: 3em"><IMG SRC="spam-hredundancy.png"></p>
+
+<p>This report shows redundancy status for user's group or for all groups.
+Redundancy check is <b>ok</b> when server has more than one connection where
+each one goes to different switch; check status <b>fail</b> means that
+server either has only one connection, or has more than one, but they all
+lead to one switch; status <b>unknown</b> means that some of the entries
+have unassociated consolidation points and therefore check cannot be
+performed.</p>
+
+</div>
+
+<a name="www_ppmap">
+<h2>Patch Panel Map Tool</h2>
+</a>
+
+<div class="i">
+
+<p STYLE="margin-left: 3em"><IMG SRC="spam-ppmap.png"></p>
+
+<p>This tool helps user to find position of given connector on large VisiPatch
+arrays in datecentres. The arrays are organized in columns (named by capital
+letters), rows and positions (numbered starting from one). So in this form
+user enters name of the connector (the string is actually a reg-exp) and
+list of all matching connectors with their coordinates is reported back.</p>
+
+</div>
+
+<a name="www_ppmap2">
+<h2>Patch Panel Map Tool v2</h2>
+</a>
+
+<div class="i">
+<p>This is more sophisticated version of <a href="#www_ppmap">Patch Panel Map
+Tool</a>. It uses HTML 5 Canvas to draw graphical map of VisiPatch
+array. For this reason Canvas-enabled browser is required (most new browsers
+support Canvas with the exception of MS Internet Explorer).</p>
+
+<p STYLE="margin-left: 3em"><IMG SRC="spam-ppmap2-1.png"></p>
+
+<p>In the grey field user selects datacentre and can (but needs not) to
+enter reg-exp filter. After the map is displayed, moving mouse pointer over
+the map will show connector name and coordinates in the yellow field (upper
+right). The various types of outlets are colour coded as follows: </p>
+
+<p>
+<span style="font-weight : bold; color : white">
+<span style="background-color : rgb(255,100,200)">terminal servers</span> 
+<span style="background-color : rgb(100,100,200)">end-user outlets</span>
+<span style="background-color : rgb(200,200,100)">servers</span>
+<span style="background-color : rgb(200,50,50)">interconnects</span>
+<span style="background-color : rgb(100,200,100)">switch ports</span>
+<span style="background-color : rgb(200,100,0)">other active devices</span>
+<span style="background-color : rgb(75,75,150)">consolidation points</span>
+</span>
+</p>
+
+<p STYLE="margin-left: 3em"><IMG SRC="spam-ppmap2-2.png"></p>
+
+<p>Example: In above picture the graphical map displays only connectors with
+names matching reg-exp "^vdcS". Other connectors are darkened in the
+map. Note, that in the upper right corner of the yellow information field
+there is figure in form X/Y, where X is number of filtered connectors and Y
+is total number of connectors.</p>
+
+</div>
+
+</BODY>
+
+</HTML>

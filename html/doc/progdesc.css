@@ -1,0 +1,21 @@
+BODY { background : white; }
+A.proc { font-weight : bold; }
+SPAN.perlvar { font-style : italic; color : rgb(200,100,200); }
+SPAN.perlkwd { font-weight : bold; color : rgb(0,150,150); }
+SPAN.snmpvar { font-style : italic; color : rgb(100,100,0); }
+SPAN.dbtable { font-weight : bold;
+               color : rgb(100,100,100);
+	       text-transform : uppercase;
+	     }
+SPAN.htmltag { font-family : monospace; }
+H3.subtitle { background: rgb(220,220,255); padding: 0.3em;
+              text-transform : uppercase; margin-top : 3em; }
+SPAN.arg { color : green; }
+SPAN.gvar { font-weight : bold; }
+SPAN.func { font-weight : bold; font-size : large; }
+TD { vertical-align : top; }
+TD.arglist { font-size: larger; padding-right : 1em; white-space: nowrap; }
+SPAN.modtitle { color: blue; font-style: italic; }
+OL.fargsola { font-size: small; color: green; }
+OL.fargsolr { font-size: small; color: red; }
+

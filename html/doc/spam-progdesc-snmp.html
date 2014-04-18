@@ -1,0 +1,113 @@
+<HTML>
+
+<HEAD>
+  <TITLE>title</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="progdesc.css">
+</HEAD>
+
+<BODY>
+
+<H2 STYLE="background: rgb(220,220,220); padding: 0.5em;">Module <SPAN CLASS="modtitle">SPAM_SNMP.pm</SPAN></SPAN></H2>
+
+<H3 CLASS="subtitle">Description</H3>
+
+<P>This library contains collection of function for getting and
+processing information via SNMP used by SPAM collector.</P>
+
+
+<A NAME="func">
+<H3 CLASS="subtitle">Functions Overview</H3>
+</A>
+
+<TABLE BORDER=1>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_getif" CLASS="proc">snmp_getif</A>
+( <SPAN CLASS="arg">host</SPAN>, 
+<SPAN CLASS="arg">community</SPAN>,
+<SPAN CLASS="arg">field</SPAN> )</TD>
+<TD>This function retrieves given SNMP variable for all existing
+interfaces.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_getif_cat" CLASS="proc">snmp_getif_cat</A>
+( <SPAN CLASS="arg">host</SPAN>, 
+<SPAN CLASS="arg">community</SPAN>,
+<SPAN CLASS="arg">field</SPAN> )</TD>
+<TD>This function retrieves given SNMP Catalyst-specific variable for
+all existing interfaces.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_reindex_cat" CLASS="proc">snmp_reindex_cat</A>
+( <SPAN CLASS="arg">ifdata</SPAN>, 
+<SPAN CLASS="arg">cross_idx</SPAN> )</TD>
+<TD>This function reindexes hash retrieved by snmp_getif_cat() to standard
+ifIndex.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_merge_by_ifindex" CLASS="proc">snmp_merge_by_ifindex</A>
+( <SPAN CLASS="arg">hashes</SPAN> )</TD>
+<TD>This function merges multiple snmp_getif() hashes into single one.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_cat6k_modinfo" CLASS="proc">snmp_cat6k_modinfo</A>
+( <SPAN CLASS="arg">host</SPAN>, 
+<SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>This function retrieves information about all modules installed in a
+Catalyst 6000-class switch.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_cat6k_vlan_name" CLASS="proc">snmp_cat6k_vlan_name</A>
+( <SPAN CLASS="arg">vlan_no</SPAN>, <SPAN CLASS="arg">host</SPAN>, 
+<SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>This function gets VLAN name for given VLAN number.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_cdp_cache" CLASS="proc">snmp_cdp_cache</A>
+( <SPAN CLASS="arg">host</SPAN>, <SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>This function retrieves content of CDP cache into memory.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_get_syslocation" CLASS="proc">snmp_get_syslocation</A>
+( <SPAN CLASS="arg">host</SPAN>, <SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>This function retrieves SNMP sysLocation.0 variable.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_get_sysobjid" CLASS="proc">snmp_get_sysobjid</A>
+( <SPAN CLASS="arg">host</SPAN>, <SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>This function retrieves SNMP sysObjId.0 variable.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_get_stp_root_port" CLASS="proc">snmp_get_stp_root_port</A>
+( <SPAN CLASS="arg">host</SPAN>, <SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>This function figures out STP root port's ifindex.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_get_arptable" CLASS="proc">snmp_get_arptable</A>
+( <SPAN CLASS="arg">arpdef</SPAN> )</TD>
+<TD>Retrieves ARP cache from defined routers.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_get_mactable" CLASS="proc">snmp_get_mactable</A>
+( <SPAN CLASS="arg">host</SPAN>,
+<SPAN CLASS="arg">community</SPAN>,
+<SPAN CLASS="arg">vlanlist</SPAN>,
+<SPAN CLASS="arg">cdp_cache</SPAN> )</TD>
+<TD>Retrieves bridging table from given switch.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_get_vtpinfo" CLASS="proc">snmp_get_vtp_info</A>
+( <SPAN CLASS="arg">host</SPAN>,
+<SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>Get VTP domain name and VTP mode from a switch.</TD>
+</TR>
+
+<TR><TD CLASS="arglist"><A HREF="#p_snmp_vlanlist" CLASS="proc">snmp_vlanlist</A>
+( <SPAN CLASS="arg">host</SPAN>, <SPAN CLASS="arg">community</SPAN> )</TD>
+<TD>Retrieves list of VLANs from a Catalyst 6000-class switch. The result is
+returned as a reference to VLAN number to VLAN name hash.</TD>
+
+</TABLE>
+
+</BODY>
+
+</HTML>

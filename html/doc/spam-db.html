@@ -1,0 +1,274 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+
+<HEAD>
+  <TITLE>Switch Ports Activity Monitor</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="default.css">
+</HEAD>
+
+<BODY>
+
+<P STYLE="font-size: smaller"><A HREF="spam-intro.html">&lt;&lt; Home</A>
+| <A HREF="spam-cgi.html">&lt; Back</A>
+| <A HREF="spam-internals.html">&gt; Next</A>
+</P>
+
+<H1>SPAM - Backend Database</H1>
+
+<HR>
+
+<H2>Overview</H2>
+
+<DIV CLASS="i">
+
+<P>As a backend database software the open-source relational
+database server
+<A HREF="http://www.postgresql.org/">PostgreSQL</A> is used.
+The Collector and WWW interface modules communicate with backend
+database using Perl Pg module and Postgres' dialect of SQL (which
+should be fairly close to SQL92).</P>
+
+<P>SPAM uses two databases (database partitions): the native database
+<EM>spam</EM> that is used for storing its own data; and external database
+<EM>ondb</EM> used for retrieving external data about devices to be
+monitored.</P>
+
+<P>In essence, two kinds of information are stored in backend:
+<EM>status data</EM> retrieved from switches for the purpose of tracking changes;
+and <EM>administrative data</EM> such as patching in wiring closets.</P>
+
+<P>Two database users are used within SPAM context: <EM>swcoll</EM> under
+which SPAM Collector accesses database and <EM>swcgi</EM>, which is the
+user used by WWW administrative interface.</P>
+</DIV>
+
+
+<H2>Table relations</H2>
+
+<DIV CLASS="i">
+
+<IMG SRC="tables.png">
+
+<P>Yellow tables are maintained automatically by Collector; cyan table
+is maintained through WWW frontend; white tables are maintained manually
+by administrator.</P>
+
+</DIV>
+
+
+<H2>Table STATUS</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> status (
+  host          <B>varchar</B>(16),
+  portname	<B>varchar</B>(8),
+  status        <B>boolean</B>         <B>NOT NULL</B>,
+  inpkts        <B>int4</B>            <B>NOT NULL</B>,
+  outpkts       <B>int4</B>            <B>NOT NULL</B>,
+  lastchg	<B>timestamp</B>	<B>NOT NULL</B>,
+  lastchk	<B>timestamp</B>	<B>NOT NULL</B>,
+  ifindex       <B>int2</B>            <B>NOT NULL</B>,
+  vlan	        <B>int2</B>,
+  <B>PRIMARY KEY</B> ( host, portname )
+);
+
+<B>GRANT SELECT</B>, <B>INSERT, UPDATE</B>, <B>DELETE ON</B> status <B>TO</B> swcoll;
+<B>GRANT SELECT</B>, <B>UPDATE ON</B> status <B>TO</B> swcgi;
+</PRE>
+
+<P>This table is used by collector to store some of the status information
+from switches. This table is only updated by collector; read and update
+access is necessary for WWW frontend to be able to reset counters on
+new port.</P>
+</DIV>
+
+
+<H2>Table PORTTABLE</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> porttable (
+  host          <B>varchar</B>(16)	<B>NOT NULL</B>,
+  portname      <B>varchar</B>(8) 	<B>NOT NULL</B>,
+  cp            <B>varchar</B>(10)	<B>NOT NULL</B>,
+  site          <B>varchar</B>(3) 	<B>NOT NULL</B>,
+  chg_who       <B>varchar</B>(16),
+  chg_where     <B>inet</B>,
+  chg_when      <B>timestamp	DEFAULT CURRENT_TIMESTAMP</B>,
+  <B>PRIMARY KEY</B> ( site, host, portname )
+);
+</PRE>
+
+<P>This table is maintained using WWW frontend and tells what switch
+port is attached to which consolidation point (along with who has
+entered the information into database). Information is then used
+by WWW frontend (querying with Search Tool) and collector (for generating
+port listings with attached outlets).
+</P>
+</DIV>
+
+
+<H2>Table OUT2CP</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> out2cp (
+  site          <B>varchar</B>(3),
+  cp            <B>varchar</B>(10),
+  outlet        <B>varchar</B>(10) 	<B>NOT NULL</B>,
+  location      <B>varchar</B>(32),
+  dont_age      <B>boolean     	DEFAULT</B> 'false',
+  fault         <B>boolean     	DEFAULT</B> 'false',
+  <B>PRIMARY KEY</B> ( site, cp )
+);
+
+<B>CREATE UNIQUE INDEX</B> o2c_outlet <B>ON</B> out2cp ( site, outlet );
+<B>GRANT SELECT ON</B> out2cp <B>TO</B> swcoll;
+<B>GRANT SELECT ON</B> out2cp <B>TO</B> swcgi; 
+</PRE>
+
+<P>This table is manually maintained by SPAM administrator and maps
+consolidation points to physical outlets (and vice versa).</P>
+</DIV>
+
+
+<H2>Table MACTABLE</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> mactable (
+  mac           <B>macaddr</B>,
+  host          <B>varchar</B>(16)	<B>NOT NULL</B>,
+  portname      <B>varchar</B>(8) 	<B>NOT NULL</B>,
+  lastchk       <B>timestamp  	NOT NULL</B>,
+  <B>PRIMARY KEY</B> ( mac )
+);
+  
+<B>GRANT SELECT</B>, <B>INSERT</B>, <B>UPDATE</B>, <B>DELETE ON</B> mactable <B>TO</B> swcoll;
+<B>GRANT SELECT ON</B> mactable <B>TO</B> swcgi;
+</PRE>
+
+<P>This table is maintained by collector and lists MAC addresses found
+associated with switches port.</P>
+</DIV>
+
+
+<H2>Table ARPTABLE</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> arptable (
+  mac           <B>macaddr</B>,
+  ip            <B>inet    	NOT NULL</B>,
+  lastchk       <B>timestamp</B>,
+  <B>PRIMARY KEY</B> ( mac )
+);
+  
+<B>GRANT SELECT</B>, <B>INSERT</B>, <B>UPDATE</B>, <B>DELETE ON</B> arptable <B>TO</B> swcoll;
+<B>GRANT SELECT ON</B> arptable <B>TO</B> swcgi;
+</PRE>
+
+<P>In this table the ARP cache of selected routers is stored for mapping
+IP addresses to MAC addresses.</P>
+</DIV>
+
+
+<H2>Table CPRANGES</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> cpranges (
+  site          <B>char</B>(3)		<B>NOT NULL</B>,
+  host          <B>varchar</B>(16)     <B>NOT NULL</B>,
+  cpbeg         <B>int2            NOT NULL</B>,
+  cpend         <B>int2            NOT NULL</B>
+);
+  
+<B>GRANT SELECT ON</B> cpranges <B>TO</B> swcoll;
+<B>GRANT SELECT ON</B> cpranges <B>TO</B> swcgi; 
+</PRE>
+
+<P>This table is used for mapping individual switches to consolidation point
+numbers ranges. This is currently only done for Vinice locality.</P>
+</DIV>
+
+
+<H2>Table OUI</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> oui (
+  id            <B>macaddr		CHECK</B> ( id = trunc(id)),
+  name          <B>varchar</B>(32)	<B>NOT NULL</B>,
+  <B>PRIMARY KEY</B> ( id )
+);
+  
+<B>GRANT SELECT ON</B> oui <B>TO</B> swcoll;
+<B>GRANT SELECT ON</B> oui <B>TO</B> swcgi; 
+</PRE>
+
+<P>This table contains OUI database, ie. mapping of first three octets of
+a MAC address to NIC vendor name.</P>
+</DIV>
+
+
+<H2>Port SWSTAT</H2>
+
+<DIV CLASS="i">
+<PRE>
+<B>CREATE TABLE</B> swstat (
+  host          <B>varchar</B>(16)	<B>NOT NULL</B>,
+  location      <B>varchar</B>(48),
+  ports_total   <B>int2</B>,
+  ports_active  <B>int2</B>,
+  ports_patched <B>int2</B>,
+  ports_illact  <B>int2</B>,
+  ports_errdis  <B>int2</B>,
+  ports_inact   <B>int2</B>,
+  vtp_domain    <B>varchar</B>(16),
+  chg_when      <B>timestamp	DEFAULT CURRENT_TIMESTAMP</B>,
+  <B>PRIMARY KEY</B> ( host )
+);
+  
+<B>GRANT SELECT</B>, <B>INSERT</B>, <B>UPDATE</B>, <B>DELETE ON</B> swstat <B>TO</B> swcoll;
+</PRE>
+
+<P>This table contains some statistics about individual switches. These
+statistics are stored in order to be able always regenerate switches list even
+if not all switches are polled.</P>
+</DIV>
+
+
+<H2>ONDB database in relation to SPAM</H2>
+
+<DIV CLASS="i">
+
+<P><EM>Ondb</EM> database is used for two purposes: a) for retrieving list
+of devices that are to be monitored, b) for retrieving list of ARP servers
+(ie. routers) that are to be polled for their arp caches' content.</P>
+
+<P>List of switches is retrieved using following query.</P>
+
+<PRE>
+<B>SELECT</B> t3.hostname, t1.community
+  <B>FROM</B> mon_spam t1, monitor t2, hosts t3
+  <B>WHERE</B> t1.monitor_i = t2.monitor_i <B>AND</B> t2.hosts_i = t3.hosts_i
+  <B>ORDER BY</B> t3.hostname<
+</PRE>
+
+<P>List of ARP servers is retrieved using following query.</P>
+
+<PRE>
+<B>SELECT</B> t3.hostname, t1.community
+  <B>FROM</B> mon_arp t1, monitor t2, hosts t3
+  <B>WHERE</B> t1.monitor_i = t2.monitor_i <B>AND</B> t2.hosts_i = t3.hosts_i
+  <B>ORDER BY</B> t3.hostname
+</PRE>
+
+</DIV>
+
+</BODY>
+
+</HTML>

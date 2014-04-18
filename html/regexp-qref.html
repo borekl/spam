@@ -1,0 +1,44 @@
+<html>
+
+<head>
+  <title>Regular expressions quick reference</title>
+</head>
+
+<body>
+<h1>Regular expressions quick reference</h1>
+
+<h2>Character classes</h2>
+<table>
+  <tr> <td>element</td><td>description</td></tr>
+  <tr><td>.</td><td>Match any character</td></tr>
+  <tr><td>[xyz]</td><td>Match any of the specified characters</td></tr>
+  <tr><td>\s</td><td>Match white space</td></tr>
+  <tr><td>\S</td><td>Match non-white space</td></tr>
+  <tr><td>\d</td><td>Match digit</td></tr>
+  <tr><td>\D</td><td>Match non-digit</td></tr>
+  <tr><td>\w</td><td>Match alphanumeric character</tr>
+  <tr><td>\W</td><td>Match non-alphanumeric character</tr>
+</table>
+
+<h2>Quantifiers</h2>
+<table>
+  <tr> <td>element</td><td>description</td></tr>
+  <tr><td>*</td><td>Match zero or more occurences of preceding character</td></tr>
+  <tr><td>+</td><td>Match one or more occurences of preceding character</td></tr>
+  <tr><td>?</td><td>Match zero or one occurence of preceding character</td></tr>
+  <tr><td>{x}</td><td>Match exactly <i>x</i> occurences of preceding character</td></tr>
+  <tr><td>{x,y}</td><td>Match between <i>x</i> and <i>y</i> occurences of preceding character</td></tr>
+  <tr><td>{,x}</td><td>Match between zero and <i>x</i> occurences of preceding character</td></tr>
+  <tr><td>{x,}</td><td>Match <i>x</i> or more occurences of preceding character</td></tr>
+</table>
+
+<h2>Positions</h2>
+
+<table>
+  <tr><td>element</td><td>description</td></tr>
+  <tr><td>^</td></td><td>Match beginning of the string</td>
+  <tr><td>$</td></td><td>Match end of the string</td>
+</table>
+
+</body>
+</html>

@@ -1,0 +1,246 @@
+BODY { background : white; }
+
+.gray { color : gray; }
+
+
+SPAN.a {
+  background : rgb(230,230,255);
+}
+
+SPAN.b {
+  background : rgb(255,255,255);
+}
+
+SPAN.h {
+  background : rgb(255,255,128);
+}
+
+SPAN.portup {
+  color : green;
+  font-weight : bold;
+}
+
+SPAN.portup-illegal {
+  color : white;
+  background : red;
+  font-weight : bold;
+}
+
+SPAN.portdown {
+  color : red;
+  font-weight : bold;
+}
+
+SPAN.portdown-unpatched {
+  color : gray;
+}
+
+SPAN.porterrdis { color : red; background : rgb(255,255,0); font-weight : bold; }
+SPAN.portdis { color : white; background : black; font-weight : bold; }
+
+SPAN.dplxfull {
+  color : blue;
+  font-weight : bold;
+}
+
+SPAN.dplxhalf {
+  color : gray;
+  font-weight : bold;
+}
+
+SPAN.dplxauto {
+  color : black;
+  font-weight : normal;
+}
+
+SPAN.inactive1 {
+  font-weight : normal;
+  color : gray;
+}
+
+SPAN.inactive2 {
+  font-weight : normal;
+}
+
+SPAN.inactive3 {
+  font-weight : bold;
+}
+
+SPAN.hdr {
+  background : rgb(255,200,255); font-weight : bold;
+}
+
+SPAN.modhdr {
+  background : rgb(205,205,205);
+  font-weight : bold;
+  color : rgb(110,110,110);
+}
+
+SPAN.ndvlan {
+  font-weight : bold;
+}
+
+TD.st_lbl {
+  font-family : sans-serif;
+  font-weight : bold;
+}
+
+TD.st_txt {
+  font-family : sans-serif;
+}
+
+P.st_subpar {
+  text-indent: -1em;
+  margin : 0;
+  margin-left: 2em;
+  font-family : sans-serif;
+  font-size : smaller;
+}
+
+P.st_subpar2 {
+  margin : 0;
+  margin-left: 1em;
+  font-family : sans-serif;
+  font-size : smaller;
+}
+
+SPAN.st_sublbl {
+  font-weight : bold;
+}
+
+TD.formalert {
+  color : red;
+  font-weight : bold;
+  font-family : sans-serif;
+}
+
+P.std {
+  text-indent : 1em;
+  margin : 0;
+}
+
+/* DIV {
+  margin-top: 1em;
+  margin-bottom: 1em;
+} */
+
+TR.a { font-family : sans-serif; background : rgb(255,255,255) }
+TR.b { font-family : sans-serif; background : rgb(200,255,255) }
+TR.f { background : rgb(255,255,255) }
+TR.g { background : rgb(220,220,220) }
+TR.h { font-family : sans-serif; background : rgb(255,200,255) }
+TR.legend { font-family : sans-serif; font-size : smaller; }
+TR.summary { font-family : sans-serif; background : rgb(200,200,200); font-weight : bold; }
+
+SPAN.unreg   { color : red;  font-weight : bold; }
+SPAN.errdis  { color : red;  font-weight : bold; }
+SPAN.percent { color : gray; font-size : smaller; }
+SPAN.err     { color : red; }
+
+SPAN.dont-age { color : rgb(100,200,100); font-weight : bold; }
+
+P.loginf { color : gray; font-family : sans-serif; font-size : smaller; }
+SPAN.loginfhlt { font-weight : bold; }
+
+SPAN.prodstat-prod { color : green; }
+SPAN.prodstat-dev { color : blue; }
+SPAN.prodstat-tst { color : gray; }
+SPAN.prodstat-unk { color : red; }
+SPAN.desc-mism { color : white; background : red; font-weight : bold; }
+
+SPAN.redok { color : green; font-weight : bold; }
+SPAN.redfail { color : red; font-weight : bold; }
+SPAN.redunkn { color : blue; font-weight : bold; }
+SPAN.redhost { color : gray; font-weight : bold;  }
+SPAN.redbkg { background : rgb(215,215,215); }
+
+/*--- Add Patches ---*/
+
+tr.errmsg {
+  color : red;
+  font-size : small;
+}
+
+input.err {
+  border : 3px solid red;
+}
+
+/*--- Switch List ---*/
+
+a.shoplnk:link {
+  color : black;
+  text-decoration : none;
+}
+
+a.shoplnk:visited {
+  color : black;
+  text-decoration : none;
+}
+
+a.shoplnk:hover {
+  color : blue;
+  text-decoration : underline;
+}
+
+/*--- Switch List group selection menu ---*/
+
+DIV.swlist_grpsel {
+  text-align : center;
+  font-family : sans-serif;
+  font-size : small;
+  margin-bottom : 0.3em;
+  display : none;
+  user-select : none;
+  -moz-user-select : none;
+  -webkit-user-select : none;
+}
+
+SPAN.swlist_grpsel0 {
+  margin-left : 0.3em;
+  margin-right : 0.3em;
+  padding : 0.4em;
+}
+
+SPAN.swlist_grpsel0:hover {
+  color : blue;
+  text-decoration : underline;
+}
+
+SPAN.swlist_grpsel1 {
+  background-color : rgb(255,200,255);
+}
+
+SPAN.swlist_grpsel0:hover {
+  cursor : pointer;
+  /* background-color : rgb(255,230,255); */
+}
+
+SPAN.swlist_stale {
+  color : red;
+  font-weight : bold;
+}
+
+/*=== port list ===*/
+
+/* one mac address on port */
+SPAN.swdet-1 {
+  color : gray;
+}
+
+/* more than one macs on port */
+SPAN.swdet-n {
+  font-weight : bold;
+}
+
+/* more than one macs an port AND portfast enable */
+SPAN.swdet-pf {
+  font-weight : bold;
+  color : red;
+}
+
+/*=== html query out ===*/
+
+SPAN.hqo_grp {
+  background-color : rgb(200,200,200);
+  font-weight : bold;
+}

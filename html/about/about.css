@@ -1,0 +1,68 @@
+P.std {
+  text-indent : 0;
+  margin-bottom : 0.5em;
+}
+
+UL.frlist {
+  font-size : medium;
+}
+
+
+HR {
+  margin-top : 1em;
+  margin-bottom : 1em;
+}
+
+DIV {
+  margin-left : 3em;
+}
+
+TR {
+  font-family : sans-serif;
+}
+
+TD {
+  background-color : white;
+  padding : 0.2em;
+  vertical-align : top;
+  border : 2px solid gray;
+}
+
+TD.idx {
+  font-weight : bold;
+}
+
+TD.desc {
+  font-size : smaller;
+}
+
+TR {
+  border-top : solid black;
+}
+
+TR.tbl {
+  background-color : gray;
+  font-family : sans-serif;
+  font-size : smaller;
+  color : white;
+}
+
+TABLE.tbl {
+  table-layout : fixed;
+  border-collapse : collapse;
+}
+
+*#col1 { border: 3px solid black; width : 8em; }
+*#col2 { border: 3px solid black; width : 8em; }
+*#col3 { border: 3px solid black; width : 8em; }
+*#col4 { border: 3px solid black; width : 16em; }
+
+SPAN.nt {
+  color : rgb(200,50,50);
+  font-style : italic;
+}
+
+DT.statement {
+  font-family : monospace;
+  font-weight : bold;
+}

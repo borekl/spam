@@ -1,0 +1,88 @@
+<!doctype html>
+
+<html>
+
+<head>
+  <title>SPAM Main Menu</title>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel=stylesheet type="text/css" href="spam-menu.css">
+  <script type="text/javascript" src="jquery.js"></script>
+  <script type="text/javascript" src="patchact.js"></script>
+  <meta charset="utf-8">
+</head>
+
+<body>
+
+<p class="logo">
+S&nbsp;witch<br>
+P&nbsp;orts<br>
+A&nbsp;ctivity<br>
+M&nbsp;onitor
+</p>
+
+<hr>
+
+<p class="menu">
+<span>Switches</span><br>
+<a target="main" href="view.cgi?view=swlist">Switches List</a><br>
+<a target="main" href="spam.cgi?form=find">Search Tool</a><br>
+<a target="main" href="spam.cgi?form=add">Add</a> / 
+<a target="main" href="spam.cgi?form=remove">Remove</a> Patches<br>
+<a target="main" href="spam.cgi?form=permedit">Permanent Outlets</a><br>
+<a target="main" href="spam.cgi?form=swdetect">Bridge Detection</a><br>
+</p>
+
+<p class="menu">
+<span>Hosts</span><br>
+<a target="main" href="view.cgi?view=hosts">Hosts List</a>
+( <a target="main" href="view.cgi?view=hosts&amp;grpid=all">all groups</a> )<br>
+<a target="main" href="spam.cgi?form=hostadd">Add</a> / 
+<a target="main" href="spam.cgi?form=hostupd">Edit/Remove</a> Hosts<br>
+<a target="main" href="view.cgi?view=redundancy">Redundancy</a>
+( <a target="main" href="view.cgi?view=redundancy&amp;grpid=all">all groups</a> )
+</p>
+
+<p class="menu">
+<span>Miscellaneous</span><br>
+<a target="main" href="spam.cgi?form=ppmap">Patch Panel Map Tool</a><br>
+<a target="main" href="spam.cgi?form=ppmap2">Patch Panel Map Tool v2</a><br>
+<a target="main" href="doc/spam-intro.html">About SPAM</a>
+</p>
+
+<hr>
+
+<div id="pa_hide">
+
+<p class="patch">
+<span class="section">Patching Activity Top 5</span><br>
+<span id="pa_mode">
+<span class="pa_sel pa_act" id="pa_this">this</span>
+<span class="pa_sel" id="pa_last">last</span><br>
+</span>
+<span id="pa_period">
+<span class="pa_sel pa_act" id="pa_day">day</span>
+<span class="pa_sel" id="pa_week">week</span>
+<span class="pa_sel" id="pa_month">month</span>
+<span class="pa_sel" id="pa_year">year</span>
+</span>
+</p>
+
+<div id="patch1">
+</div>
+
+<div id="patch2">
+</div>
+
+<hr>
+
+</div>
+
+<p class="info">
+<span>Maintainer</span><br>
+<a href="mailto:Borek.Lupomesky@vodafone.com">Borek Lupoměský</a>,<br>
+Network Team, Office IT
+</p>
+
+</body>
+
+</html>

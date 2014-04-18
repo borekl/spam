@@ -1,0 +1,208 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+
+<HEAD>
+  <TITLE>Switch Ports Activity Monitor</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="default.css">
+  <STYLE>
+    DT { color : rgb(100,50,155); font-weight: bold; }
+    TT.file { font-weight : bold; }
+  </STYLE>
+</HEAD>
+
+<BODY>
+
+<P STYLE="font-size: smaller"><A HREF="spam-intro.html">&lt;&lt; Home</A>
+| <A HREF="spam-db.html">&lt; Back</A>
+</P>
+
+<H1>SPAM - Internals</H1>
+
+<HR>
+
+<UL>
+  <li><a href="#auth">Authentication and Authorization</a>
+  <li><a href="#files">Files and Dependencies</a></li>
+  <li><a href="#intern">Script Internals</a></li>
+</UL>
+
+<HR>
+
+<!------------------------------------------------------------------------>
+
+<a name="auth">
+<h2>Authentication and Authorization</h2>
+</a>
+
+<h3>Authentication</h3>
+
+<p>SPAM relies on WWW server to perform authentication; it expects
+to receive username in standard HTTP header.</p>
+
+<h3>Authorization</h3>
+
+<p>SPAM supports fine-grained authorization by using concept of
+<em>authorization tokens</em> that user needs to be assigned to be allowed
+to perform certain tasks. The authorization token is simply a string that
+identifies certain user action or access within spam, eg. token 'search'
+allows user to use "<a href="spam-cgi.html#www_search">Search Tool</a>". The
+definition of these tokens and their assignment to users is done through
+tables <tt>users</tt>, <tt>access</tt> and <tt>assign</tt> in database
+ONdb.</p>
+
+<dl>
+  <dt>users</dt>
+  <dd>This table simply defines users along with some additional info about
+  them (which is not relevant for authorization anyway). To have access to
+  SPAM, user must be defined in this table.</dd>
+  
+  <dt>access</dt>
+  <dd>This table defines available authorization tokens along with their
+  descriptions and reference numbers. Note, that entries pertaining to SPAM
+  need to have 'spam' in their 'system' field.</dd>
+  
+  <dt>assign</dt>
+  <dd>This table assigns authorization tokens to users. One assignment, that
+  is one user&ndash;token pair, per table entry.</dd>
+</dl>
+
+<p>There are few authorization tokens with special semantics:</p>
+
+<dl>
+  <dt>all</dt>
+  <dd>This token grants all other tokens with the exception of
+  <b>debug</b>. Think of it as superuser's authorization.</dd>
+  
+  <dt>disable</dt>
+  <dd>This token blocks any rights to given user. This means that even if
+  the user is assigned other tokens, he/she will not be able to use any of
+  them and all authorization attempts will fail. Think of it as a way of
+  locking the user out of SPAM.</dd>
+  
+  <dt>debug</dt>
+  <dd>This token is mean for developers and it will enable debug outputs
+  within SPAM. At the moment the only function is that in "<a
+  href="spam-cgi.html#www_search">Search Tool</a>" SQL query code will be
+  dumped. This token is specific in that it will not be enabled by token
+  'all' (so that users with 'all' superuser rights don't have to see debug
+  outputs all the time).</dd>
+</dl>
+
+<p>Above described authorization logic is encapsulated in stored procedure
+<tt>authorize_user(userid, system, token)</tt> which returns boolean.</p>
+
+<h3>Authorization Management with UserDB Web Admin</h3>
+
+<p>It is possible to conveniently manage authorization settings for SPAM
+using <a href="https://l1nets02/spam/useredit.html">User Database Web
+Admin</a>.</p>
+
+<hr>
+
+<a name="files">
+<h2>Files and Dependencies</h2>
+</a>
+
+<p>SPAM scripts and other files are on server <b>l1nets02</b> in directory
+/home/spam/SPAM</b>. The component files are listed below.</p>
+
+<table>
+
+<tr><th>file</th>
+<th>description</th>
+<th>dependencies</th></tr>
+
+<tr><td>spam.pl</td>
+<td>SPAM collector</td>
+<td>Perl 5.6, SPAM.pm, SPAM_SNMP, Pg.pm, SNMP utilities</td></tr>
+
+<tr><td>spam.cgi</td>
+<td>SPAM WWW interface</td>
+<td>Perl 5.6, SPAM.pm, Pg.pm</td></tr>
+
+<tr><td>SPAM.pm</td>
+<td>SPAM library (version using Pg.pm for database access)</td>
+<td>Pg.pm</td></tr>
+
+<tr><td>SPAMv2.pm</td>
+<td>SPAM library (version using DBI for database access)</td>
+<td>DBD::Pg</td></tr>
+
+<tr><td>SPAM_SNMP.pm</td>
+<td>SPAN SNMP library</td></tr>
+
+<tr><td>spam-swbug.pl</td>
+<td>SPAM "switch bug" e-mail notifier</td>
+<td>SPAM.pm</td></tr>
+
+<tr><td>spam-pdbug.pl</td>
+<td>SPAM "port down bug" e-mail notifier</td>
+<td>SPAMv2.pm</td></tr>
+
+<tr><td>spam.cfg</td>
+<td>SPAM configuration file</td></tr>
+
+<tr><td>view.cgi</td>
+<td>SPAM web viewing component</td>
+<td>Perl 5.6, SPAMv2.pm</td></tr>
+
+<tr><td>swlistmnu.js</td>
+<td>Switch List menu script</td>
+<td>jquery.js</td></tr>
+
+<tr><td>ppmap.cgi</td>
+<td>Patch Panel Map Tool v2 server-side script</td>
+<td>Perl 5.6, SPAMv2.pm</td></tr>
+
+<tr><td>ppmap.js</td>
+<td>Patch Panel Map Tool v2 client-side script</td>
+<td>ppmap.cgi, jquery.js, jquery-ui.js</td></tr>
+
+</table>
+
+<hr>
+
+
+<a name="intern">
+<h2>Script Internals</h2>
+</a>
+
+<p>Note: Descriptions below are guaranteed to be out-of-date.</p>
+
+<H3>Collector <em>spam.pl</em></H3>
+
+<UL>
+  <LI><A HREF="spam-progdesc-spam.html">Description</A>
+  <LI><A HREF="spam-progdesc-spam.html#gvar">Global variables</A>
+  <LI><A HREF="spam-progdesc-spam.html#func">List of functions</A>
+  <LI><A HREF="spam-progdesc-spam.html#fdsc">Functions description</A>
+</UL>
+
+<H3>WWW Interface <em>spam.cgi</em></H3>
+
+<UL>
+  <LI><A HREF="spam-progdesc-cgi.html">Description</A>
+  <LI><A HREF="spam-progdesc-cgi.html#gvar">Global variables</A>
+  <LI><A HREF="spam-progdesc-cgi.html#func">List of functions</A>
+  <LI><A HREF="spam-progdesc-cgi.html#fdsc">Functions description</A>
+</UL>
+
+<H3>Library <em>SPAM.pm</em></H3>
+
+<UL>
+  <LI><A HREF="spam-progdesc-lib.html">Description</A>
+  <LI><A HREF="spam-progdesc-lib.html#func">List of functions</A>
+</UL>
+
+<H3>Library <em>SPAM_SNMP.pm</em></H3>
+
+<UL>
+  <LI><A HREF="spam-progdesc-snmp.html">Description</A>
+  <LI><A HREF="spam-progdesc-snmp.html#func">List of functions</A>
+</UL>
+
+
+</BODY>
+
+</HTML>

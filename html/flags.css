@@ -1,0 +1,11 @@
+SPAN.flag-none       { color : rgb(200,200,200); }
+SPAN.flag-cdp        { color : black; font-weight : bold; }
+SPAN.flag-pfast      { color : blue; font-weight : bold; }
+SPAN.flag-str        { color : rgb(200,100,0); }
+SPAN.flag-trunk      { color : red; font-weight : bold; }
+SPAN.flag-1xunauth   { color : red; font-weight : bold; }      /* port in force-unauthorized configuration */
+SPAN.flag-1xauth     { color : rgb(128,128,128); }             /* port in force-authorized configuration */
+SPAN.flag-1xauto0    { color : black; font-weight : bold; }    /* port in neither authorized nor unauthorized state (doesn't usually appear) */
+SPAN.flag-1xauto1    { color : green; font-weight : bold; }    /* port in dot1x-authorized state */
+SPAN.flag-1xauto2    { color : red; font-weight : bold; }      /* port in dot1x-unauthorized state */
+SPAN.flag-1xmab      { color : blue; font-weight : bold; }     /* port in dot1x-unauthorized but MAB authorized state */

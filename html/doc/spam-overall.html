@@ -1,0 +1,54 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+
+<HEAD>
+  <TITLE>Switch Ports Activity Monitor</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="default.css">
+  <STYLE>
+    DT { font-weight : bold; font-size : large; }
+    DD { margin-bottom : 1em; }
+  </STYLE>
+</HEAD>
+
+<BODY>
+
+<P STYLE="font-size: smaller"><A HREF="spam-intro.html">&lt;&lt; Home</A>
+| <A HREF="spam-collector.html">&gt; Next</A>
+</P>
+
+<H1>SPAM - Overall Structure</H1>
+
+<HR>
+
+<P ALIGN=CENTER>
+<IMG SRC="structure.png" ALT="Basic structure">
+</P>
+
+<P>Switch Ports Activity Monitor consists from three basic components:</P>
+
+<DL>
+  <DT>Collector
+  <DD>This is the core component of SPAM, which is responsible for retrieving
+  information from ethernet switches using SNMP; it generates list of switches
+  and list of ports for each switch; it stores retrieved information into
+  database for changes tracking. Collector is written in Perl and is
+  executed from cron(8) on regular basis.
+  <A HREF="spam-collector.html">More on collector &gt;&gt;</A>
+  
+  <DT>WWW Interface
+  <DD>Enables user to add, remove and query patches database (basically the
+  PORTTABLE table).
+  <A HREF="spam-cgi.html">More on WWW interface &gt;&gt;</A>
+  
+  <DT>Backend Database
+  <DD>SQL database used to store information from collector and administrative
+  data.
+  <A HREF="spam-db.html">More on backend database &gt;&gt;</A>
+  
+</DL>
+
+
+</BODY>
+
+</HTML>

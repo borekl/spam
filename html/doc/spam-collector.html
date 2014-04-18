@@ -1,0 +1,207 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+
+<HEAD>
+  <TITLE>Switch Ports Activity Monitor</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="default.css">
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="../default.css">
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="../flags.css">
+  <STYLE>
+    DT { font-family : monospace; font-weight: bold; }
+    SPAN.val { font-style: italic; color : rgb(200,50,50); }
+  </STYLE>
+</HEAD>
+
+<BODY>
+
+<P STYLE="font-size: smaller"><A HREF="spam-intro.html">&lt;&lt; Home</A>
+| <A HREF="spam-overall.html">&lt; Back</A>
+| <A HREF="spam-cgi.html">&gt; Next</A>
+</P>
+
+<H1>SPAM - Collector</H1>
+
+<HR>
+
+<DIV CLASS="i">
+<P>
+  <A HREF="#ch_overview">Overview</A><BR>
+  <A HREF="#ch_options">Command Line Options</A><BR>
+  <A HREF="#ch_config">Configuration File</A>
+</P>
+</DIV>
+
+<HR>
+
+
+<A NAME="ch_overview">
+<H2>Overview</H2>
+</A>
+
+<DIV CLASS="i">
+<P>Collector is the core component of Switch Ports Activity
+Monitor (SPAM). Collector is a program (written in Perl), that gathers
+status information about ports from switches using SNMP. The retrieved data
+are stored to table <B>status</B> in backend database. The collector
+retrieves port status (up/down), duplex status, speed, VLAN membership,
+bridging information, in/out bytes counter and other values. Some other
+auxiliary tables are also maintained by the collector. The collector is run
+on regular basis from cron(8). At the time of writing this (Februrary 2010)
+one full run takes full two hours to complete.</P>
+
+<p>The collector uses lock file <tt>spam.lock</tt> in <tt>/tmp</tt>
+directory to avoid being run in more than one instance. In case the
+collector crashes or the host computer is rebooted during run, this file
+must be manually deleted.</p>
+
+</DIV>
+
+
+<!------------------------------------------------------------------------>
+
+
+<A NAME="ch_options">
+<H2>Command Line Options</H2>
+</A>
+
+<DIV CLASS="i">
+<DL>
+
+  <DT>--arptable, --noarptable
+  <DD>this option turns on or off retrieval of ARP table from defined core routers
+  (default off)
+
+  <dt>--autoreg
+  <dd>this option enables autoregistration, that is automatic entry of
+  outlets into <tt>porttable</tt> from specially formatted descriptions
+  (default off)
+  
+  <DT>--mactable, --nomactable
+  <DD>this option turns on or off retrieval of dot1d bridging table switches and
+  updating appropriate table in backend database (default on)
+
+  <DT>--vlanlist, --novlanlist
+  <DD>this option turns on or off generating of VLAN list (default off)
+
+  <DT>--quick
+  <DD>this option is equivalent of using
+  <TT>--noarptable</TT>, <TT>--nomactable</TT>  and <TT>--novlanlist</TT> together
+
+  <DT>--host=<SPAN CLASS="val">host</SPAN>
+  <DD>this option constrains polling to only host; this option can be used
+  more than once for polling just a few hosts; also partial matches count as
+  well: so --host=vin matches all vinS00c, vins20c and so on
+
+  <dt>--tasks=<span class="val">N</span>
+  <dd>specifies number of hosts to be processed in parallel; default value
+  is 8, maximum is 16
+  
+  <DT>--maint
+  <DD>this option invokes backend database maintenance, which includes
+  purging stale entries from mactable and arptable
+
+  <DT>--hosts
+  <DD>this option lists all switches that SPAM knows about and would poll
+  if full run were invoked; this list is pulled from ONdb database
+  
+  <DT>--arpservers
+  <DD>this option lists all ARP servers that SPAM knows about and would poll
+  if full run were invoked; this list is pulled from ONdb database
+    
+  <DT>--help, -?
+  <DD>this option causes the SPAM collector to write out brief help and then
+  exit without any further action
+
+</DL>
+</DIV>
+
+
+<!------------------------------------------------------------------------>
+
+
+<A NAME="ch_config">
+<H2>Configuration File</H2>
+</A>
+
+<DIV CLASS="i">
+<P>SPAM collector reads configuration file <tt>spam.cfg</tt> in
+its current directory. The configuration is plain text file with following
+configuration statements.</P>
+
+<DL>
+
+  <DT>htmldir <SPAN CLASS="val">path</SPAN>
+  <DD>This statement defines where the HTML pages will be generated
+
+  <DT>inactivethreshold <SPAN CLASS="val">seconds</SPAN>
+  <DD>Ports showing no activity for this long will be marked as inactive
+
+  <DT>inactivethreshold2 <SPAN CLASS="val">seconds</SPAN>
+  <DD>Ports showing no activity for this long will be marked as long time
+  inactive
+
+  <DT>excludehost <SPAN CLASS="val">hostname</SPAN>
+  <DD>Force not processing of this host
+
+  <DT>patchmap <SPAN CLASS="val">hostname</SPAN>
+  <DD>Include patch panel map with ports listing
+
+  <DT>knownports <SPAN CLASS="val">hostname</SPAN>
+  <DD>This will turn on special processing of registered ports (ie. ports that
+  are in table "porttable" in backend database); for these switches ports,
+  that are inactive will be either grayed out (if they are unregistered) or
+  marked inactive; also when port is found active and it is unregistered, it
+  will generate a warning
+
+  <DT>arpserver <SPAN CLASS="val">hostname</SPAN> <SPAN CLASS="val">community</SPAN>
+  <DD>This command defines host(s) that will be queried for their ARP tables;
+  SPAM stores ARP tables to map MACs to IPs which enables users to search by
+  IP addresses; use this command several times to include more than one
+  router. Note, that host(s) defined with this statement will be used <I>in
+  addition</I> to hosts pulled from ONdb database.
+
+  <DT>vlanserver <SPAN CLASS="val">hostname</SPAN> <SPAN CLASS="val">community</SPAN>
+  <SPAN CLASS="val">vtpdomain</SPAN>
+  <DD>This command defines host that will be queried for their VTP VLAN database;
+  the host should be Catalyst 6500-class switch and in VTP master mode;
+  only one host per VTP domain is allowed
+
+  <DT>community <SPAN CLASS="val">community-string</SPAN>
+  <DD>This command defines SNMP community string to be used to poll hosts and
+  retrieve ARP table from routers
+
+  <DT>arptableage <SPAN CLASS="val">seconds</SPAN>
+  <DD>Defines threshold age above which arptable entries will be purged
+  from database during maintenance run
+
+  <DT>mactableage <SPAN CLASS="val">seconds</SPAN>
+  <DD>Defines threshold age above which mactable entries will be purged
+  from database during maintenance run
+ 
+  <dt>dbconn <span CLASS="val">id</span>
+  <span CLASS="val">user</span>/<span CLASS="val">password</span>:<span CLASS="val">database</span>[@<span CLASS="val">host</span>]
+  <dd>This statement defines backend database connection parameters; host
+  definition is optional--when none is supplied localhost is used; currently
+  two id's must be defined for SPAM: <b>spam</b>, which connects the collector to
+  its native backend database; and <b>ondb</b> which is used to get list of
+  switches and arpservers from the Oskar Network Database.
+
+  <dt>snmpwalk <span class="val">cmdline</span>
+  <dt>snmpget <span class="val">cmdline</span>
+  <dd>These two statement define command-line to perform SNMP walk and SNMP
+  get operations.
+
+  <dt>siteconv <span class="val">site</span> <span class="val">alias</span>
+  <dd>This statement lets SPAM know, that <i>alias</i> is actually the same
+  physical site as <i>site</i> (ie. <b>ric</b> is the same site as
+  <b>rcn</b>). This is used to know that eg. switch <b>ricS03g</b> is at
+  site <b>rcn</b>.
+
+</DL>
+</DIV>
+
+
+</BODY>
+
+</HTML>

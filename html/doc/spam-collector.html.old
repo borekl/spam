@@ -1,0 +1,314 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+
+<HTML>
+
+<HEAD>
+  <TITLE>Switch Ports Activity Monitor</TITLE>
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="default.css">
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="../default.css">
+  <LINK REL=STYLESHEET TYPE="text/css" HREF="../flags.css">
+  <STYLE>
+    DT { font-family : monospace; font-weight: bold; }
+    SPAN.val { font-style: italic; color : rgb(200,50,50); }
+  </STYLE>
+</HEAD>
+
+<BODY>
+
+<P STYLE="font-size: smaller"><A HREF="spam-intro.html">&lt;&lt; Home</A>
+| <A HREF="spam-overall.html">&lt; Back</A>
+| <A HREF="spam-cgi.html">&gt; Next</A>
+</P>
+
+<H1>SPAM - Collector</H1>
+
+<HR>
+
+<DIV CLASS="i">
+<P>
+  <A HREF="#ch_overview">Overview</A><BR>
+  <A HREF="#ch_swlist">Switch List</A><BR>
+  <A HREF="#ch_portlists">Port Lists</A><BR>
+  <A HREF="#ch_options">Command Line Options</A><BR>
+  <A HREF="#ch_config">Configuration File</A>
+</P>
+</DIV>
+
+<HR>
+
+<!------------------------------------------------------------------->
+
+<A NAME="ch_overview">
+<H2>Overview</H2>
+</A>
+
+<DIV CLASS="i">
+<P>Collector is the core component of Switch Ports Activity
+Monitor (SPAM). Collector is a program (written in Perl), that gathers
+status information about ports from switches using SNMP. The retrieved data
+are stored to table <B>status</B> in backend database. The collector
+retrieves port status (up/down), duplex status, speed, VLAN membership,
+bridging information, in/out bytes counter and other values. Some other
+auxiliary tables are also maintained by the collector. The collector is run
+on regular basis from cron(8). At the time of writing this (Februrary 2010)
+one full run takes full two hours to complete.</P>
+
+</DIV>
+
+<!------------------------------------------------------------------->
+
+<A NAME="ch_swlist">
+<H2>Switch list</H2>
+</A>
+
+<DIV CLASS="i">
+<P><IMG SRC="html-swlist.png"></P>
+
+<P>After its every run, unless inhibited by <TT>--noreport</TT> command-line
+switch, the collector generates list of switches it monitors along with
+quick statistics for each. The fields are following:</P>
+
+<DL>
+  <DT>device
+  <DD>hostname of the device; it is an hyperlink that leads to list of ports
+  for given switch
+
+  <DT>location
+  <DD>contents of SNMP sysLocation.0 variable
+
+  <DT>ports total
+  <DD>number of ports physically present at given switch
+
+  <DT>ports patched
+  <DD>number of ports connected to network outlets; this number is retrieved
+  from backend database and is only available for devices, for which the
+  port tracking is enabled by <TT>KnownPorts</TT> configuration statement;
+  this number is given along with percentage of total ports
+
+  <DT>ports active
+  <DD>number of ports reported by switch to be in "up" state, ie. detecting
+  link; this number is given along with percentage of total ports
+  
+  <DT>ports unreg
+  <DD>number of ports that are active, but not registered in database;
+  this can be non-zero only for switches with enabled port tracking
+  (<TT>KnownPorts</TT> configuration statement).
+  
+  <DT>ports errdis
+  <DD>number of ports that are reported by switch to be in "errordisable"
+  state
+</DL>
+</DIV>
+
+<!------------------------------------------------------------------->
+
+<A NAME="ch_portlists">
+<H2>Port lists</H2>
+</A>
+
+<DIV CLASS="i">
+
+<P>For every switch the collector generates ports listing with various
+information about each port. The listings differ slightly depending on
+whether port tracking is enable or not for given switch.</P>
+
+<P><IMG SRC="html-portlist1.png"></P>
+
+<P>Above picture shows port listing on a switch with port usage tracking
+disabled. All ports names are either green or red to indicate up or down
+state.</P>
+
+<P><IMG SRC="html-portlist2.png"></P>
+
+<P>Above picture shows port listing on a switch with port tracking
+enabled. The main difference is, that ports can have, besides up and down,
+also inactive state, that means no outlet is connected to the port. The
+inactive state is indicated by grey colour of port name.</P>
+
+<P>Meaning of each field is explained in following list:</P>
+
+<DL>
+
+  <DT>port
+  <DD>shows port name and port state; ports can have these states with
+  visual representation given in brackets:
+  <UL>
+    <LI>up (<TT><SPAN CLASS="portup">4/36</SPAN></TT>)
+    <LI>down  (<TT><SPAN CLASS="portdown">4/36</SPAN></TT>)
+    <LI>inactive (<TT><SPAN CLASS="portdown-unpatched">4/36</SPAN></TT>)
+    <LI>disabled (<TT><SPAN CLASS="portdis">4/36</SPAN></TT>)
+    <LI>unregistered (<TT><SPAN CLASS="portup-illegal">4/36</SPAN></TT>)
+    <LI>errordisabled (<TT><SPAN CLASS="porterrdis">4/36</SPAN></TT>)
+  <UL>
+
+  <DT>dupl
+  <DD>shows port duplex state; can be either <TT><SPAN CLASS="dplxhalf">half</SPAN></TT>,
+  <TT><SPAN CLASS="dplxfull">full</SPAN></TT> or none (when port is not up)
+  
+  <DT>rate
+  <DD>shows port speed and is usualy one of 10M, 100M or 1G
+  
+  <DT>flags
+  <DD>shows additional port flags:
+  <UL>
+    <LI><TT><SPAN CLASS="flag-cdp">C</SPAN></TT>: port receives CDP messages
+    <LI><TT><SPAN CLASS="flag-pfast">F</SPAN></TT>: port is in spanning tree
+    "fast start" mode
+    <LI><TT><SPAN CLASS="flag-str">R</SPAN></TT>: port is spanning tree root port
+    <LI><TT><SPAN CLASS="flag-trunk">q</SPAN></TT>: port is in 802.1q trunking mode
+    <LI><TT><SPAN CLASS="flag-trunk">i</SPAN></TT>: port is in ISL trunking mode
+    <LI><TT><SPAN CLASS="flag-trunk">?</SPAN></TT>: port is in unknown/other trunking mode
+  </UL>
+
+  <DT>vlan
+  <DD>shows port VLAN membership
+  
+  <DT>cp
+  <DD>shows consolidation point name the port is patched to
+  
+  <DT>outlet
+  <DD>shows network outlet associated with the consolidation point the port
+  is connected to
+  
+  <DT>inactivity
+  <DD>shows for how long the port has seen no incoming or outgoing traffic;
+  this figure can have several forms:
+  <UL>
+    <LI>completely missing - means the port is inactive for less time
+    than specified in <TT>inactivethreshold</TT> configuration statement --
+    that is for short period of time (default 1 day); note: this masking
+    of short-term inactivity is only used for ports that are patched!, other
+    ports always show how long they have been inactive
+    <LI>is in light typeface - means the port is inactive for less time
+    than specified in <TT>inactivethreshold2</TT> but more than
+    <TT>inactivethreshold</TT> -- that is for not very long (default is
+    more than 1 day and less than 7 days)
+    <LI>is in bold typeface - means the port is inactive for more time
+    than specified in <TT>inactivethreshold2</TT> (default is more than 7
+    days)
+  </UL>
+
+  <DT>description
+  <DD>shows port description reported by switch
+  
+  <DT>location
+  <DD>shows outlet location for given outlet -- if it is in database
+</DL>
+
+
+</DIV>
+
+<!------------------------------------------------------------------->
+
+<A NAME="ch_options">
+<H2>Command Line Options</H2>
+</A>
+
+<DIV CLASS="i">
+<DL>
+
+  <DT>--noreport
+  <DD>this option turns off generating HTML pages
+
+  <DT>--noarptable
+  <DD>this option turns off retrieval of ARP table from defined core routers
+
+  <DT>--nomactable
+  <DD>this option turns off retrieval of dot1d bridging table switches and
+  updating appropriate table in backend database
+
+  <DT>--novlanlist
+  <DD>this option turns off generating of VLAN list
+
+  <DT>--quick
+  <DD>this option is equivalent of using
+  <TT>--noarptable</TT>, <TT>--nomactable</TT>  and <TT>--novlanlist</TT> together
+
+  <DT>--host=<SPAN CLASS="val">host</SPAN>
+  <DD>this option constrains polling to only host; this option can be used
+  more than once for polling just a few hosts
+
+  <DT>--maint
+  <DD>this option invokes backend database maintenance, which includes
+  purging stale entries from mactable and arptable
+
+  <DT>--help, -?
+  <DD>this option causes the SPAM collector to write out brief help and then
+  exit without any further action
+
+</DL>
+</DIV>
+
+<!------------------------------------------------------------------->
+
+<A NAME="ch_config">
+<H2>Configuration File</H2>
+</A>
+
+<DIV CLASS="i">
+<P>SPAM collector reads configuration file <tt>spam.cfg</tt> in
+its current directory. The configuration is plain text file with following
+configuration statements.</P>
+
+<DL>
+
+  <DT>htmldir <SPAN CLASS="val">path</SPAN>
+  <DD>This statement defines where the HTML pages will be generated
+
+  <DT>inactivethreshold <SPAN CLASS="val">seconds</SPAN>
+  <DD>Ports showing no activity for this long will be marked as inactive
+
+  <DT>inactivethreshold2 <SPAN CLASS="val">seconds</SPAN>
+  <DD>Ports showing no activity for this long will be marked as long time
+  inactive
+
+  <DT>excludehost <SPAN CLASS="val">hostname</SPAN>
+  <DD>Force not processing of this host
+
+  <DT>patchmap <SPAN CLASS="val">hostname</SPAN>
+  <DD>Include patch panel map with ports listing
+
+  <DT>knownports <SPAN CLASS="val">hostname</SPAN>
+  <DD>This will turn on special processing of registered ports (ie. ports that
+  are in table "porttable" in backend database); for these switches ports,
+  that are inactive will be either grayed out (if they are unregistered) or
+  marked inactive; also when port is found active and it is unregistered, it
+  will generate a warning
+
+  <DT>arpserver <SPAN CLASS="val">hostname</SPAN> <SPAN CLASS="val">community</SPAN>
+  <DD>This command defines host(s) that will be queried for their ARP tables;
+  SPAM stores ARP tables to map MACs to IPs which enables users to search by
+  IP addresses; use this command several times to include more than one router
+
+  <DT>vlanserver <SPAN CLASS="val">hostname</SPAN> <SPAN CLASS="val">community</SPAN>
+  <DD>This command defines host that will be queried for their VTP VLAN database;
+  the host should be Catalyst 6000 class switch and in VTP master mode;
+  only one host is allowed
+
+  <DT>community <SPAN CLASS="val">community-string</SPAN>
+  <DD>This command defines SNMP community string to be used to poll hosts and
+  retrieve ARP table from routers
+
+  <DT>arptableage <SPAN CLASS="val">seconds</SPAN>
+  <DD>Defines threshold age above which arptable entries will be purged
+  from database during maintenance run
+
+  <DT>mactableage <SPAN CLASS="val">seconds</SPAN>
+  <DD>Defines threshold age above which mactable entries will be purged
+  from database during maintenance run
+ 
+  <dt>dbconn <span CLASS="val">id</span>
+  <span CLASS="val">user</span>/<span CLASS="val">password</span>:<span CLASS="val">database</span>[@<span CLASS="val">host</span>]
+  <dd>This statement defines backend database connection parameters; host
+  definition is optional--when none is supplied localhost is used; currently
+  two id's must be defined for SPAM: <b>spam</b>, which connects the collector to
+  its native backend database; and <b>ondb</b> which is used to get list of
+  switches and arpservers from the Oskar Network Database.
+
+</DL>
+</DIV>
+
+
+</BODY>
+
+</HTML>
