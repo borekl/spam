@@ -143,13 +143,17 @@ sub pad_or_cut
 }
 
 
+#==========================================================================
+# Wrap string with SPAN element, optinally with given CSS class.
+#==========================================================================
+
 sub html_span
 {
   my $s = shift;
   my $class = shift;
   
-  if($class) { return qq{<SPAN CLASS="$class">$s</SPAN>} };
-  return "<SPAN>$s</SPAN>";
+  if($class) { return qq{<span class="$class">$s</span>} };
+  return "<span>$s</span>";
 }
 
 
