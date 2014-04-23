@@ -119,13 +119,16 @@ END
 
 
 #==========================================================================
+# This function takes string 's' and length 'l' and either pads the string
+# with spaces if it's shorter, or trims it if it's longer. The 'r' argument
+# makes the padding go to the left, so the result is right aligned.
 #==========================================================================
 
 sub pad_or_cut
 {
-  my $s = shift;
-  my $l = shift;
-  my $r = shift;
+  my $s = shift;     # source string
+  my $l = shift;     # length to pad or cut to
+  my $r = shift;     # right align if true
   
   if(length($s) < $l) {
     if($r) {
