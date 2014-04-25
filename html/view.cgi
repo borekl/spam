@@ -959,13 +959,22 @@ sub html_view_switch
       $k =~ /(\d+)\/\d+$/;
       my $n = $1;
       if($mod != $n) {
-        my $aux = sprintf(" %d. %s (%s)", $n, $modstat->{$n}[1], $modstat->{$n}[2]);
-        $aux = pad_or_cut($aux, get_format_len('switch'));
-        $aux = html_span($aux, 'modhdr');
-        $result .= $aux . "\n";
+        if(exists $modstat->{$n}) {
+          my $aux = sprintf(" %d. %s (%s)", $n, $modstat->{$n}[1], $modstat->{$n}[2]);
+          $aux = pad_or_cut($aux, get_format_len('switch'));
+          $aux = html_span($aux, 'modhdr');
+          $result .= $aux . "\n";
+        }
         $mod = $n;
       }
     }
+    
+    #--- skip if module doesn't exist
+    # Cisco seems to return ports from removed modules as if they still
+    # existed and there's no way to tell them apart from real ports.
+    # (Observed with Cisco Catalyst 6500 switch).
+    
+    next if $mod && !exists $modstat->{$mod};
     
     #--- regular rows
     
