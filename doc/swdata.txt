@@ -1,0 +1,29 @@
+Description of swdata structure used in spam.pl
+"""""""""""""""""""""""""""""""""""""""""""""""
+
+%swdata --- <HOST> -+- stats -----+- sysuptime
+                    |             +- sysuptime2
+                    |             +- syslocation
+                    +- stproot
+                    +- vtpdomain
+                    +- vtpmode
+                    +- hw ---------- <SLOT#> ------------+- type
+                    |                                    +- model
+                    |                                    +- sn
+                    |                                    +- hwrev
+                    |                                    +- fwrev
+                    |                                    +- swrev
+                    |                                    +- descr
+                    +- <SNMPVAR> --- <IDX>
+                    +- dbStatus ---- [  1 ifOperStatus
+                                        2 ifInPkts
+                                        3 ifOutPkts
+                                        4 lastchk
+                                        5 vlan
+                                        6 descr
+                                        7 duplex
+                                        8 rate
+                                        9 flags
+                                       10 ifAdminStatus
+                                       11 errordisable
+                                       12 lastchg ]
