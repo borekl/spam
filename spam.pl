@@ -73,9 +73,9 @@ sub get_platform
   my $platform;
   my ($eid, $dev) = snmp_get_sysobjid($host, $ip, $community);
 
-  @known_platforms = qw(c6500 c4000 c2900 c2950 c2960 c3500 c3560 c6500-ios
-                        c4000-ios c4500-ios c2620 c4948-ios c7600 c2800
-                        c6500vss c3550 nx5000);
+  @known_platforms = qw(c6500 c4000 c2900 c2950 c2960 c3500 c3560 c3650
+                        c6500-ios c4000-ios c4500-ios c2620 c4948-ios
+                        c7600 c2800 c6500vss c3550 nx5000);
                         
   if($eid != 9) { return undef; }
   if($dev =~ /^5\.(44|45)$/) { $platform = 'c6500'; }
@@ -95,6 +95,7 @@ sub get_platform
   if($dev =~ /^1\.576$/) { $platform = 'c2800'; }
   if($dev =~ /^1\.896$/) { $platform = 'c6500vss' }
   if($dev =~ /^3\.1084/) { $platform = 'nx5000'; }
+  if($dev =~ /^1\.1824$/) { $platform = 'c3650'; }
   return ($platform, $dev);
 } 
 
