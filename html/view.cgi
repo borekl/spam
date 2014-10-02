@@ -93,7 +93,7 @@ EOHD
 
 %swclass = ( 'all' => 'All', 'vin' => 'Vinice Floors', 'vdc' => 'Vinice DC',
              'str' => 'Středokluky', 'rcn' => 'Říčany', 'chr' => 'Chrudim', 'brr' => 'Brno',
-             'bsc' => 'BSC', 'sho' => 'Shops', 'err' => '!' );
+             'bsc' => 'BSC', 'sho' => 'Shops', 'sto' => 'Stodůlky', 'err' => '!' );
 
 
 #==========================================================================
@@ -668,7 +668,7 @@ sub html_view_swlist
   # was detected (at the moment, only 'stale' condition); 'err' is only
   # display to users with 'debug' token.
     
-  @grps = qw(all vin vdc rcn str chr brr sho bsc);
+  @grps = qw(all vin vdc rcn str sto chr brr sho bsc);
   push(@grps, 'err') if user_access_evaluate($ENV{REMOTE_USER}, 'debug');
 
   #--- start HTML
@@ -753,6 +753,7 @@ EOHD
       next if ($swc eq 'vdc' && $k !~ /^vdc/);
       next if ($swc eq 'rcn' && $k !~ /^(ric|rcn)/);
       next if ($swc eq 'str' && $k !~ /^str/);
+      next if ($swc eq 'sto' && $k !~ /^sto/);
       next if ($swc eq 'chr' && $k !~ /^chr/);
       next if ($swc eq 'brr' && $k !~ /^brr/);
       next if ($swc eq 'bsc' && $k !~ /^bsc/);
