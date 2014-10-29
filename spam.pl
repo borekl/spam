@@ -384,7 +384,7 @@ sub poll_host
 
   #--- duplex values for switches supporting Etherlike-MIB ----------------
 
-  if($platform =~ /^(c6800|c6500-ios|c6500vss|cat4000-ios|c4948-ios|c6500|c4000|c2620|c2800|c7600|c2960|c3560|c3550)$/) {
+  if($platform =~ /^(c6800|c6500-ios|c6500vss|cat4000-ios|c4948-ios|c6500|c4000|c2620|c2800|c7600|c2960|c3560|c3550|c3850)$/) {
     tty_message("[$host] Getting SNMP dot3StatsDuplexStatus (started)\n");
     $ret = snmp_getif($host, $ip, $community, 'dot3StatsDuplexStatus');
     if(!defined $ret) {
