@@ -519,6 +519,7 @@ sub sql_sites
   
   ### UGLY HACK ### FIXME ###
   push(@result, 'brr');
+  push(@result, 'sto');
   @result = sort(@result);
   ###########################
 
