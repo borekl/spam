@@ -87,11 +87,11 @@ EOHD
 
 #--- FIXME: list of "known" hosts
 
-@known_hosts = qw(vins11c vins20c vins21c vins22c vins30c vins31c vins40c vins50c vins51c vins60c vins70c vdcs02c vdcs03c vdcs04c vdcs05c);
+@known_hosts = ();
 
 #--- switch classess
 
-%swclass = ( 'all' => 'All', 'vin' => 'Vinice Floors', 'vdc' => 'Vinice DC',
+%swclass = ( 'all' => 'All',
              'str' => 'Středokluky', 'rcn' => 'Říčany', 'chr' => 'Chrudim', 'brr' => 'Brno',
              'bsc' => 'BSC', 'sho' => 'Shops', 'sto' => 'Stodůlky', 'err' => '!' );
 
@@ -668,7 +668,7 @@ sub html_view_swlist
   # was detected (at the moment, only 'stale' condition); 'err' is only
   # display to users with 'debug' token.
     
-  @grps = qw(all vin vdc rcn str sto chr brr sho bsc);
+  @grps = qw(all rcn str sto chr brr sho bsc);
   push(@grps, 'err') if user_access_evaluate($ENV{REMOTE_USER}, 'debug');
 
   #--- start HTML
