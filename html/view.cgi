@@ -616,7 +616,13 @@ sub format_shop_location
   if($l =~ /^(.*);(.*);(.*);Shop ([A-Z].*);(.*);(.*);(.*)$/) {
     my ($sh_site, $sh_coord_lat, $sh_coord_long, $sh_id, $sh_loc, $sh_street, $sh_venue)
       = ($1, $2, $3, $4, $5, $6, $7);
-    my $url = 'http://www.mapy.cz/#x=@y=@z=@mm=@sa=@st=s@ssq=' . $sh_coord_lat . '%20' . $sh_coord_long;
+ 
+    my $url = sprintf(
+      'https://www.mapy.cz/zakladni?x=%s&y=%s&z=16',
+      $sh_coord_long,
+      $sh_coord_lat
+    );
+ 
     if($sh_venue eq 'x') { $sh_venue = undef; }
     $sh_loc =~ s/\s+\d+$//;
     $ret = "$sh_id $sh_loc";
