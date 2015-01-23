@@ -2100,7 +2100,7 @@ EOHD
     print '    <td>';
     if($i == 0) {
       print $q->popup_menu(-name=>"site", -values=>$outlet_sites, 
-                           -default=>($cookval{addpatchsite} ? $cookval{addpatchsite}:'vin'));
+                           -default=>($cookval{addpatchsite} ? $cookval{addpatchsite}:'sto'));
     } else {
       print "</td>\n";
     }
