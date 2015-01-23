@@ -618,7 +618,7 @@ sub format_shop_location
       = ($1, $2, $3, $4, $5, $6, $7);
  
     my $url = sprintf(
-      'https://www.mapy.cz/zakladni?x=%s&y=%s&z=16',
+      'https://www.mapy.cz/zakladni?x=%s&y=%s&z=16&l=0',
       $sh_coord_long,
       $sh_coord_lat
     );
