@@ -2684,8 +2684,6 @@ Original version <a href="https://l5nets02/spam/spam.cgi?form=ppmap">here</a>.</
     <div>site</div>
     <div>
       <select id="site" name="site">
-      <option value="vinDC2">Vinice DC2</option>
-      <option value="vinDC3">Vinice DC3</option>
       <option value="rcnSWR">Jažlovice Switch Room</option>
       <option value="brrSWR">Brno Switch Room</option>
       </select>
