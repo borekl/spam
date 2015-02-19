@@ -189,6 +189,34 @@ sub array_find
             
 
 #===========================================================================
+# Format the result of PostgreSQL's age() function into a more condensed
+# form.
+#===========================================================================
+
+sub format_macage
+{
+  my $s = shift;
+
+  #--- remove the hh:mm:ss.ssss part
+  $s =~ s/ ?\d\d:\d\d:\d\d\.\d+//;
+  
+  #--- days
+  $s =~ s/ days?/d/;
+
+  #--- months
+  $s =~ s/ mons?/m/;
+  
+  #--- years
+  $s =~ s/ years?/y/;
+  
+  #--- remove all whitespace
+  $s =~ s/ //g;
+  
+  return $s;
+}
+
+
+#===========================================================================
 # form validation/normalization routines
 #===========================================================================
 
@@ -820,10 +848,10 @@ sub sql_query
    
   #--- what we query for ---
 
-  $q  = "SELECT site, host, portname, cp, ";
-  $q .= 'outlet, coords, location, vlan, net_ip AS network, hostname, ';
-  $q .= "dnsname, ip, mac, manuf(mac), p.chg_who, date_trunc('second', ";
-  $q .= 'p.chg_when) as chg_when ';
+  $q  = q{SELECT site, host, portname, cp, };
+  $q .= q{outlet, coords, location, vlan, net_ip AS network, hostname, };
+  $q .= q{dnsname, p.chg_who, date_trunc('second', p.chg_when) AS chg_when, };
+  $q .= q{ip, mac, manuf(mac), age(current_timestamp, m.lastchk) AS macage };
 
   #--- where we query from ---
 
@@ -1044,6 +1072,15 @@ sub html_query_out
     my @a;
     for(my $c = 0; $c < $cols; $c++) {
       $a[$c] = $r_rows->[$r][$c];
+      
+      #--- output reformatting (YES, THIS WHOLE PROGRAM IS RIPE FOR A REWRITE!)
+      if($r_fnames->[$c] eq 'macage') {
+        $a[$c] = format_macage($a[$c]);
+      }
+      if($r_fnames->[$c] eq 'chg_when') {
+        $a[$c] =~ s/:\d\d.\d\d$//;
+      }
+      
       $widths[$c] = length($a[$c]) if length($a[$c]) > $widths[$c];
     }
     $table[$r] = \@a;
@@ -1108,6 +1145,7 @@ sub html_query_out
       next if $r_fnames->[$c] eq 'oid';
       #--- skip hidden columns
       next if grep { $_ eq $r_fnames->[$c] } @opt_hidecolumn;
+      #--- display the field
       my $s = html_fill_up($table[$r][$c], $widths[$c] + $div);
       print $s;
     }
