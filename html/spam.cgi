@@ -2048,7 +2048,9 @@ sub form_add
   #=== generate HTML page =================================================
 
   my $outlet_sites = sql_sites('out2cp');
-
+  my $site = $cookval{addpatchsite} ? $cookval{addpatchsite}:'sto';
+  my $use_cp = sql_site_uses_cp($site);
+  
   #--- page header
     
   http_header($q, 'Add new patches', $cookie, [], [ 'jquery.js', 'spam-form_add.js' ]);
@@ -2080,10 +2082,20 @@ sub form_add
     <th>site</th>
     <th>host</th>
     <th>port</th>
+EOHD
+
+  if($use_cp) {
+    print <<EOHD;    
     <th>cp</th>
     <th>outlet</th>
   </tr>
 EOHD
+  } else {
+    print <<EOHD;    
+    <th>outlet</th>
+  </tr>
+EOHD
+  }
  
   #--- table rows
 
@@ -2099,8 +2111,11 @@ EOHD
     print '    <td>', $i + 1, ".</td>\n";
     print '    <td>';
     if($i == 0) {
-      print $q->popup_menu(-name=>"site", -values=>$outlet_sites, 
-                           -default=>($cookval{addpatchsite} ? $cookval{addpatchsite}:'sto'));
+      print $q->popup_menu(
+        -name=>"site",
+        -values=>$outlet_sites, 
+        -default=>$site
+      );
     } else {
       print "</td>\n";
     }
@@ -2111,8 +2126,10 @@ EOHD
     print '    <td>', $q->textfield(-name=>"port${si}", -size=>8, -maxlength=>16, -class=>$class), "</td>\n";
     $class = grep(/^cp/, @tag) ? 'err' : '';
     print '    <td>', $q->textfield(-name=>"cp${si}", -size=>16, -maxlength=>16, -class=>$class), "</td>\n";
-    $class = grep(/^outlet/, @tag) ? 'err' : '';
-    print '    <td>', $q->textfield(-name=>"outlet${si}", -size=>16, -maxlength=>16, -class=>$class), "</td>\n";
+    if($use_cp) {
+      $class = grep(/^outlet/, @tag) ? 'err' : '';
+      print '    <td>', $q->textfield(-name=>"outlet${si}", -size=>16, -maxlength=>16, -class=>$class), "</td>\n";
+    }
     #--- add/remove buttons
     print '    <td>';
     print qq[<button name="remove${si}">&minus;</button>] if $rows > 1;

@@ -116,6 +116,21 @@ sub backend_patching_activity
 
 
 #==========================================================================
+# Used by Add Patches (internally spam-form_add.js) to retrieve whether
+# given site uses cp's or not.
+#==========================================================================
+
+sub backend_usecp
+{
+  my $q = shift;
+  my $site = $q->url_param('site');
+  
+  my $use_cp = sql_site_uses_cp($site);
+  printf(qq[{ "data" : %d }\n], $use_cp);
+}
+
+
+#==========================================================================
 #=== MAIN =================================================================
 #==========================================================================
 
@@ -130,4 +145,5 @@ print qq{Content-type: application/json; charset: utf-8\n\n};
 given($qtype) {
   when('ppmap') { backend_ppmap($q); }
   when('patchact') { backend_patching_activity($q); }
+  when('usecp') { backend_usecp($q); }
 }

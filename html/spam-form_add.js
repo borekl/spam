@@ -118,6 +118,38 @@ function table_renumber()
 
 
 /*-----------------------------------------------------------------------*
+ *-----------------------------------------------------------------------*/
+
+function site_change()
+{
+  var site = $(this).val();
+  var jq_table = $('table');
+  
+  $.get('spam-backend.cgi', { q: "usecp", site: site }, function(x) {
+    var col4 = jq_table.find('th').eq(4).text();
+    if(col4 == 'cp' && x.data == 0) {
+      // remove table column 'cp'
+      jq_table.find('tr').find('td:eq(4),th:eq(4)').remove();
+    } else if(col4 == 'outlet' && x.data == 1) {
+      // add table column 'cp'
+      var jq_tr = jq_table.find('tr');
+      jq_tr.find('th:eq(4)').before("<th>cp</th>");
+      jq_tr.find('td:eq(4)').each(function() {
+        var rowno = $(this).parent().find('td:eq(0)').text();
+        var rowno2 = rowno.match(/[0-9]+/g);
+        rowno2[0]--;
+        if(rowno2.length < 2) {
+          rowno2[0] = '0' + rowno2[0];
+        }
+        $(this).after('<td><input name="outlet'+rowno2[0]+'" size="16" maxlength="16" type="text"></td>');
+      });
+    }
+  });
+}
+
+
+
+/*-----------------------------------------------------------------------*
   MAIN
  *-----------------------------------------------------------------------*/
 
@@ -125,5 +157,6 @@ $(document).ready(function ()
 {
   $('button[name=add00]').click(row_add);
   $('button[name=reset]').click(form_reset);
+  $('select[name=site]').change(site_change);
   $('table').on('renumber', table_renumber);
 });

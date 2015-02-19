@@ -31,6 +31,7 @@ use integer;
   compare_ports
   load_port_table
   sql_sites
+  sql_site_uses_cp
 );
 
 
@@ -525,6 +526,23 @@ sub sql_sites
 
   $sites_cache{$table} = \@result;
   return \@result;
+}
+
+
+#===========================================================================
+# This function checks if given site uses two-level connection hierarchy
+# (switch-cp-outlet) or single-level hierarchy (switch-outlet).
+#===========================================================================
+
+sub sql_site_uses_cp
+{
+  my $site = lc($_[0]);
+  my $dbh = dbconn('spam');
+  my $query = qq{SELECT site FROM out2cp GROUP BY site HAVING site = ?};
+
+  if(!ref($dbh) || !$site) { return undef; }
+  my $sth = $dbh->prepare($query);
+  return int($sth->execute($site));
 }
 
 
