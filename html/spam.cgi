@@ -767,7 +767,7 @@ sub substitute_asterisk
 # content is read into memory
 #
 # Arguments: 1. hash reference with search conditions (keys are: site,
-#               outlet, cp, host, portname, mac, ip
+#               outcp, host, portname, mac, ip
 #            2. optional ORDER BY expression(s)
 # Returns:   1. scalar: error message
 #               array ref: field names
@@ -790,7 +790,7 @@ sub sql_query
   
   #--- validate/preprocess input
 
-  $s->{outlet} = normalize_outlet($s->{outlet});
+  $s->{outcp} = normalize_outlet($s->{outcp});
   $s->{host} = lc($s->{host});
   ### FIXME: wildcard form of this only allows for 'colon' format
   $s->{mac} = normalize_mac($s->{mac}, 2) unless index($s->{mac}, '*') != -1;
@@ -803,15 +803,11 @@ sub sql_query
 
   #--- query "root" field selection
 
-  if($s->{outlet}) {
-    $root_field = 'o';
-  } else {
-    $root_field = 's';
-  }
+  $root_field = $s->{outcp} ? 'o' : 's';
 
   #--- query type ---
   
-  if($s->{outlet} || $s->{cp}) {
+  if($s->{outcp}) {
     $qtype = 'porttable';
   } elsif($s->{host} || $s->{portname}) {
     $qtype = 'status';
@@ -866,31 +862,49 @@ sub sql_query
   #--- query conditions to be met ---
 
   my @where_fields = (
-    'site', 'outlet', 'o.cp',  "${host_field}.host",
+    'site', 'outcp', "${host_field}.host",
     'portname', 'mac', 'ip', 'macact'
   );
 
+  #--- compose the WHERE section of the query
+  # $s is hashref with the query conditions
+  
   for my $k (@where_fields) {
+
+    # actual field name, without table
+    # (ie. the part after the dot)
     my $raw_key = $k;
     $raw_key =~ s/^.\.//;
-    if(exists $s->{$raw_key} && $s->{$raw_key}) {
+
+    # 'outcp' is composite pseudo-field, it resolves into
+    # both 'cp' and 'outlet'
+    if(exists $s->{$raw_key} && $s->{$raw_key}) 
+    {
       $q .= $f ? ' AND ' : 'WHERE ';
+      # mac field
       if($k eq 'mac') {
         if(index($s->{mac}, '*') == -1) {
           $q .= sprintf("mac = '%s'", $s->{mac});
         } else {
           $q .= sprintf("mac::text ~* '^%s\$'", substitute_asterisk($s->{mac}));
         }
+      # ip field
       } elsif($k eq 'ip') {
         if(index($s->{ip}, '*') == -1) {
           $q .= sprintf("ip = '%s'", $s->{ip});
         } else {
           $q .= sprintf("ip::text ~* '^%s\$'", substitute_asterisk($s->{ip}));
         }
-      } elsif($k eq 'o.cp') {
-        $q .= sprintf("( o.cp = '%s' OR p.cp = '%s' )", $s->{cp}, $s->{cp}); 
+      # outcp pseudo-field
+      } elsif($k eq 'outcp') {
+        $q .= sprintf(
+          q{( p.cp = '%s' OR outlet = '%s' )},
+          $s->{$raw_key}, $s->{$raw_key}
+        );
+      # mac activity field
       } elsif($k eq 'macact') {
         $q .= q{active = 't'};
+      # all other fields
       } else {
         $q .= sprintf("%s = '%s'", $k, $s->{$raw_key});
       }
@@ -1200,7 +1214,7 @@ sub sql_load_vlans
 sub form_find
 {
   my ($q) = @_;
-  my ($outlet, $cp, $host, $port, $loc, $r, $err1, $err2, $mac_array);
+  my ($outcp, $host, $port, $loc, $r, $err1, $err2, $mac_array);
   my ($mode, $c, $qs);
   my $self = $q->url(-relative=>1);
   my ($e, $access, $can_ipmac);
@@ -1278,13 +1292,9 @@ sub form_find
         $q->popup_menu(-name=>'site', -values=>\@outlet_sites_loc, -default=>$site_def),
         "</TD>\n";
 
-  print "<TR><TD VALIGN=TOP>Outlet:";
-  print "<TD VALIGN=TOP>", $q->textfield(-name=>'outlet', -size=>10, -maxlength=>10);
-  print "<BR><SMALL>", $r->[4],"</SMALL>\n" if $r->[4];
-
-  print "<TR><TD VALIGN=TOP>Consolidation point:";
-  print "<TD VALIGN=TOP>", $q->textfield(-name=>'cp', -size=>10, -maxlength=>10), "\n";
-
+  print '<tr><td valign=top">Outlet:';
+  print '<td valign=top>', $q->textfield(-name=>'outcp', -size=>10, -maxlength=>10), "\n";
+  
   print "<TR><TD VALIGN=TOP>Switch name:";
   print "<TD VALIGN=TOP>", $q->textfield(-name=>'host', -size=>16, -maxlength=>16), "\n";
 
@@ -1324,16 +1334,17 @@ sub form_find
 
   $Form::site = undef if $Form::site eq '-any-';
   $query_conds{site} = $Form::site;
-  $query_conds{outlet} = $Form::outlet;
-  $query_conds{cp} = $Form::cp;
+  $query_conds{outcp} = $Form::outcp;
   $query_conds{host} = $Form::host;
   $query_conds{portname} = $Form::port;
   $query_conds{mac} = $Form::mac;
   $query_conds{ip} = $Form::ip;
   $query_conds{macact} = $Form::macact;
   
+  #--- skip empty forms (to avoid listing all entries in the entire db)
+  
   my $empty_query = 1;
-  for(qw(site outlet cp host portname mac ip)) {
+  for(qw(site outcp host portname mac ip)) {
     if($query_conds{$_}) {
       $empty_query = 0;
       last;
@@ -1343,7 +1354,10 @@ sub form_find
   undef $empty_query;
 
   my ($r_names, $r_rows);
-  ($r_names, $r_rows, $query_str) = sql_query(\%query_conds, $sortby_sql{$Form::sortby});
+  ($r_names, $r_rows, $query_str) = sql_query(
+    \%query_conds, 
+    $sortby_sql{$Form::sortby}
+  );
   print '<P><TT>', sql_display($query_str), "</TT></P>\n" if $debug;
 
   my $nrows = scalar(@$r_rows);
