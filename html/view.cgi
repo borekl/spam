@@ -87,7 +87,7 @@ EOHD
 
 #--- FIXME: list of "known" hosts
 
-@known_hosts = ();
+@known_hosts = ( 'stos10', 'stos20', 'stos21', 'stos30', 'stos40', 'stos50' );
 
 #--- switch classess
 
