@@ -266,6 +266,12 @@ sub normalize_cp
   #--- remove leading and trailing spaces ---
   $cp =~ s/^\s+//;
   $cp =~ s/\s+$//;
+  
+  #--- normalize possible outlet names
+  if($cp =~ /^(\d{4})\s*([a-z])/i) {
+    $cp = sprintf('%s %s', $1, uc($2));
+  }
+  
   return $cp;
 }
 
@@ -1896,6 +1902,13 @@ sub form_add
       $q->param("cp${si}") || $q->param("outlet${si}") );
     $form_empty = 0;
 
+    #--- normalize cp
+    
+    if($q->param("cp${si}")) {
+      my $out = normalize_cp($q->param("cp${si}"));
+      $q->param(-name=>"cp${si}", -value=>$out);
+    }
+    
     #--- normalize outlet ---
 
     if($q->param("outlet${si}")) {
@@ -1925,15 +1938,6 @@ sub form_add
       }
     }
 
-    #--- try to guess hostname ---
-
-    if(!$q->param("host${si}") && $q->param("cp${si}")) {
-      my $host = find_host_by_cp($q->param("cp${si}"), $q->param("site"));
-      if($host) {
-        $q->param(-name=>"host${si}", -value=>$host);
-      }
-    }
-
     #--- validate portname ---
     # port must be found in STATUS table, otherwise no go
 
@@ -1957,9 +1961,8 @@ sub form_add
     # if outlet is specified, but cp was not found
 
     if(($cp == -1 || !$cp) && $q->param("outlet${si}")) {
-      push(@{$state_array[$i]}, ["Cannot find consolidation point", ["cp${si}"]]);
-      $form_valid = 0;
-      next;
+      push(@{$state_array[$i]}, ["Cannot find consolidation point",
+      ["cp${si}"]]); $form_valid = 0; next;
     }
 
     #--- check bad port ---
@@ -2132,7 +2135,7 @@ sub form_add
   <tr>
     <th>&nbsp;</th>
     <th>site</th>
-    <th>host</th>
+    <th>switch</th>
     <th>port</th>
 EOHD
 
