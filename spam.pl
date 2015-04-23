@@ -1243,6 +1243,7 @@ sub sql_switch_info_update
   my $stat = $swdata{$host}{stats};
   my $dbh = dbconn('spam');
   my ($sth, $qtype, $q);
+  my (@fields, @args, @vals);
 
   #--- ensure database connection
   
@@ -1256,57 +1257,70 @@ sub sql_switch_info_update
     $sth = $dbh->prepare('SELECT count(*) FROM swstat WHERE host = ?');
     $sth->execute($host) || die "DBERR|" . $sth->errstr() . "\n";
     my ($count) = $sth->fetchrow_array();
-    $qtype = ($count == 0 ? "i" : "u");
+    $qtype = ($count == 0 ? 'i' : 'u');
 
-    #--- update/insert ---
-    if($qtype eq "i") {
-      $q = "INSERT INTO swstat ( host, location, ports_total, ports_active, ports_patched, ports_illact, ports_errdis, ports_inact, ports_used, vtp_domain, vtp_mode, boot_time ) VALUES ( ";
-      $q .= "'$host', ";
-      {
-        my $syslocation = $stat->{syslocation};
-        $syslocation =~ s/'/''/g;
-        $q .= "'" . $syslocation . "', ";
-      }
-      $q .= sprintf("%d, ", $stat->{p_total});
-      $q .= sprintf("%d, ", $stat->{p_act});
-      $q .= sprintf("%d, ", $stat->{p_patch});
-      $q .= sprintf("%d, ", $stat->{p_illact});
-      $q .= sprintf("%d, ", $stat->{p_errdis});
-      $q .= sprintf("%d, ", $stat->{p_inact});
-      $q .= sprintf("%d, ", $stat->{p_used});
-      if ($swdata{$host}{vtpdomain}) {
-        $q .= sprintf("'%s', ", $swdata{$host}{vtpdomain});
-      } else {
-        $q .= sprintf("'', ");
-      }
-      $q .= sprintf("%d, ", $swdata{$host}{vtpmode});
-      $q .= sprintf("'%s') ", strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})));
-    } else {
-      $q = "UPDATE swstat SET ";
-      {
-        my $syslocation = $stat->{syslocation};
-        $syslocation =~ s/'/''/g;
-        $q .= sprintf("location = E'%s', ", $syslocation);
-      }     
-      $q .= sprintf("ports_total = %d, ", $stat->{p_total});
-      $q .= sprintf("ports_active = %d, ", $stat->{p_act});
-      $q .= sprintf("ports_patched = %d, ", $stat->{p_patch});
-      $q .= sprintf("ports_illact = %d, ", $stat->{p_illact});
-      $q .= sprintf("ports_errdis = %d, ", $stat->{p_errdis});
-      $q .= sprintf("ports_inact = %d, ", $stat->{p_inact});
-      $q .= sprintf("ports_used = %d, ", $stat->{p_used});
-      $q .= sprintf("boot_time = '%s', ", strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})));
-      if($swdata{$host}{vtpdomain}) {
-        $q .= sprintf("vtp_domain = '%s', ", $swdata{$host}{vtpdomain});
-      } else {
-        $q .= sprintf('vtp_domain = NULL, ');
-      }
-      $q .= sprintf("vtp_mode = '%d', ", $swdata{$host}{vtpmode});
-      $q .= 'chg_when = current_timestamp ';
-      $q .= "WHERE host = '$host'";
+    #--- insert ---
+
+    if($qtype eq 'i') {
+    
+      $q = q{INSERT INTO swstat ( %s ) VALUES ( %s )};
+      my @fields = qw( 
+        host location ports_total ports_active ports_patched ports_illact
+        ports_errdis ports_inact ports_used vtp_domain vtp_mode boot_time 
+      );
+      @vals = ('?') x scalar(@fields);
+      @args = (
+        $host,
+        $stat->{syslocation} =~ s/'/''/r,
+        $stat->{p_total},
+        $stat->{p_act},
+        $stat->{p_patch},
+        $stat->{p_illact},
+        $stat->{p_errdis},
+        $stat->{p_inact},
+        $stat->{p_used},
+        $swdata{$host}{vtpdomain},
+        $swdata{$host}{vtpmode},
+        strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime}))
+      );
+
+      $q = sprintf($q, join(',', @fields), join(',', @vals));
+    
+    } 
+    
+    #--- update ---
+
+    else {
+      
+      $q = q{UPDATE swstat SET %s,chg_when = current_timestamp WHERE host = ?};
+      @fields = (
+        'location = ?', 'ports_total = ?', 'ports_active = ?',
+        'ports_patched = ?', 'ports_illact = ?',
+        'ports_errdis = ?', 'ports_inact = ?',
+        'ports_used = ?', 'boot_time = ?',
+        'vtp_domain = ?', 'vtp_mode = ?'
+      );
+      @args = (
+        $stat->{syslocation} =~ s/'/''/r,
+        $stat->{p_total},
+        $stat->{p_act},
+        $stat->{p_patch},
+        $stat->{p_illact},
+        $stat->{p_errdis},
+        $stat->{p_inact},
+        $stat->{p_used},
+        strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
+        $swdata{$host}{vtpdomain},
+        $swdata{$host}{vtpmode},
+        $host
+      );
+      
+      $q = sprintf($q, join(',', @fields));
+
     }
+    
     $sth = $dbh->prepare($q);
-    $sth->execute() || die 'DBERR|' . $sth->errstr() . "\n";
+    $sth->execute(@args) || die 'DBERR|' . $sth->errstr() . "\n";
 
   #--- eval ends here ------------------------------------------------------
   
