@@ -9,3 +9,6 @@ SPAN.flag-1xauto0    { color : black; font-weight : bold; }    /* port in neithe
 SPAN.flag-1xauto1    { color : green; font-weight : bold; }    /* port in dot1x-authorized state */
 SPAN.flag-1xauto2    { color : red; font-weight : bold; }      /* port in dot1x-unauthorized state */
 SPAN.flag-1xmab      { color : blue; font-weight : bold; }     /* port in dot1x-unauthorized but MAB authorized state */
+SPAN.flag-poecan     { color : green;}
+SPAN.flag-poedis     { color : #666; }
+SPAN.flag-poepwr     { color : green; font-weight : bold; }

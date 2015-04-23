@@ -224,6 +224,7 @@ sub poll_host
   my ($host, $getmactable) = @_;
   my $community = $cfg->{community};
   my ($ret, $platform, $objid, $ip);
+  my $cat_idx;
 
   #--- host-specific community override
   
@@ -311,45 +312,66 @@ sub poll_host
     $swdata{$host}{$k} = $ret;
   }
 
+  #--- PoE information via POWER-ETHERNET-MIB
+  
+  if($platform eq 'c6500-ios') {
+    tty_message("[$host] Getting SNMP portIfIndex (started)\n");
+    $cat_idx = snmp_getif_cat($host, $ip, $community, 'portIfIndex');
+    #printf("portIndex: %s\n", $cat_idx);
+    tty_message("[$host] Getting SNMP portIfIndex (finished)\n");
+    tty_message("[$host] Getting SNMP pethPsePortDetectionStatus (started)\n");
+    my $data = snmp_getif_cat($host, $ip, $community, 'pethPsePortDetectionStatus');
+    $swdata{$host}{pethPsePortDetectionStatus} = snmp_reindex_cat($data, $cat_idx);
+    #printf("detectionStatus: %s\n", $swdata{$host}{pethPsePortDetectionStatus});
+    #for my $kk (keys $swdata{$host}{pethPsePortDetectionStatus}) {
+    #  printf("%s -> %s\n", $kk, $swdata{$host}{pethPsePortDetectionStatus}{$kk});
+    #}
+    tty_message("[$host] Getting SNMP pethPsePortDetectionStatus (finished)\n");
+  }
+  
   #--- retrieve CatOS specific variables (defined in STACK-MIB) -----------
 
-  if($platform =~ /^(c4000|c6500)$/) {
-    foreach my $k (qw(portIfIndex
-                     portName
-                     portDuplex
-                     portAdditionalOperStatus
-                     portSpantreeFastStart
-                    )) {
-      tty_message("[$host] Getting SNMP $k (started)\n");
-      $ret = snmp_getif_cat($host, $ip, $community, $k);
-      if(!defined $ret) {
-        tty_message("[$host] Getting SNMP $k (failed)\n");
-        return "Failed to retrieve variable $k";
-      }
-      if($k ne "portIfIndex") {
-        tty_message("[$host] Getting SNMP $k (reindexing)\n");
-        $ret = snmp_reindex_cat($ret, $swdata{$host}{portIfIndex});
-      }
-      tty_message("[$host] Getting SNMP $k (finished)\n");
-      $swdata{$host}{$k} = $ret;
-    }
-
-    #--- move portName to ifAlias
-    for my $ifi (keys %{$swdata{$host}{portName}}) {
-      $swdata{$host}{ifAlias}{$ifi} = $swdata{$host}{portName}{$ifi};
-    }
-    delete $swdata{$host}{portName};
-    
-    #--- hardware information
-    tty_message("[$host] Getting hardware information (started)\n");
-    $ret = snmp_hwinfo_entity_mib($host, $ip, $community);
-    if(!defined $ret || !ref($ret)) {
-      tty_message("[$host] Getting hardware information (failed)\n");
-    } else {
-      tty_message("[$host] Getting hardware information (finished)\n");
-      $swdata{$host}{hw} = $ret;
-    }
-  }
+  # NOTE: This looks like this is actually no more used, since
+  # CatOS is now history.
+  
+  #if($platform =~ /^(c4000|c6500)$/) {
+  #  foreach my $k (qw(portIfIndex
+  #                   portName
+  #                   portDuplex
+  #                   portAdditionalOperStatus
+  #                   portSpantreeFastStart
+  #                   pethPsePortDetectionStatus
+  #                  )) {
+  #    tty_message("[$host] Getting SNMP $k (started)\n");
+  #    $ret = snmp_getif_cat($host, $ip, $community, $k);
+  #    if(!defined $ret) {
+  #      tty_message("[$host] Getting SNMP $k (failed)\n");
+  #      return "Failed to retrieve variable $k";
+  #    }
+  #    if($k ne "portIfIndex") {
+  #      tty_message("[$host] Getting SNMP $k (reindexing)\n");
+  #      $ret = snmp_reindex_cat($ret, $swdata{$host}{portIfIndex});
+  #    }
+  #    tty_message("[$host] Getting SNMP $k (finished)\n");
+  #    $swdata{$host}{$k} = $ret;
+  #  }
+  #
+  #  #--- move portName to ifAlias
+  #  for my $ifi (keys %{$swdata{$host}{portName}}) {
+  #    $swdata{$host}{ifAlias}{$ifi} = $swdata{$host}{portName}{$ifi};
+  #  }
+  #  delete $swdata{$host}{portName};
+  #  
+  #  #--- hardware information
+  #  tty_message("[$host] Getting hardware information (started)\n");
+  #  $ret = snmp_hwinfo_entity_mib($host, $ip, $community);
+  #  if(!defined $ret || !ref($ret)) {
+  #    tty_message("[$host] Getting hardware information (failed)\n");
+  #  } else {
+  #    tty_message("[$host] Getting hardware information (finished)\n");
+  #    $swdata{$host}{hw} = $ret;
+  #  }
+  #}
 
   #--- vlan list
   # This is done here because we need VLAN list for getting bridging
@@ -1126,36 +1148,43 @@ sub switch_info
 # Creates flags bitfield from information scattered in $swdata. The
 # bitfield is as follows:
 #
-#  0. CDP ..................................  1
-#  1. portfast .............................  2
-#  2. STP root .............................  4
-#  3. trunk dot1q .......................... .8
-#  4. trunk isl ............................ 16
-#  5. trunk unknown ........................ 32
-#  6. dot1x force-authorized (new) ......... 64
-#  7. dot1x force-unauthorized (new) ...... 128
-#  8. dot1x auto (new) .................... 256
-#  9. dot1x authorized .................... 512
-# 10. dot1x unauthorized ................. 1024
-# 11. MAB auth success ................... 2048
+#  0. CDP .................................... 1
+#  1. portfast ............................... 2
+#  2. STP root ............................... 4
+#  3. trunk dot1q ............................ 8
+#  4. trunk isl ............................. 16
+#  5. trunk unknown ......................... 32
+#  6. dot1x force-authorized (new) .......... 64
+#  7. dot1x force-unauthorized (new) ....... 128
+#  8. dot1x auto (new) ..................... 256
+#  9. dot1x authorized ..................... 512
+# 10. dot1x unauthorized .................. 1024
+# 11. MAB auth success .................... 2048
+# 12. PoE port ............................ 4096
+# 13. PoE port enabled .................... 8192
+# 14. PoE port supplying power ........... 16384
 #===========================================================================
 
-sub port_flag_pack {
+sub port_flag_pack
+{
   my $hdata = shift;
   my $port = shift;
   my $result = 0;
   
   #--- collect info
   
-  my $cdp_flag = exists $hdata->{cdpcache}{$port};
+  my $cdp_flag      = exists $hdata->{cdpcache}{$port};
   my $portfast_flag = (($hdata->{portSpantreeFastStart}{$port} == 1)
                       || ($hdata->{portfast}{$port} == 1));
-  my $root_flag = ($hdata->{stproot} == $port);
-  my $trunk_flag = ($hdata->{vlanTrunkPortDynamicStatus}{$port} == 1);
-  if($trunk_flag) { $trunk_flag = $hdata->{vlanTrunkPortEncapsulationOperType}{$port}; }
+  my $root_flag     = ($hdata->{stproot} == $port);
+  my $trunk_flag    = ($hdata->{vlanTrunkPortDynamicStatus}{$port} == 1);
+     $trunk_flag    = $hdata->{vlanTrunkPortEncapsulationOperType}{$port} if $trunk_flag;
   my $dot1x_pc_flag = $hdata->{dot1xAuthAuthControlledPortControl}{$port};
   my $dot1x_st_flag = $hdata->{dot1xAuthAuthControlledPortStatus}{$port};
-  my $cafSMS_mab = $hdata->{cafSessionMethodState}{$port}{3};
+  my $cafSMS_mab    = $hdata->{cafSessionMethodState}{$port}{3};
+  my $poe_port      = (exists $hdata->{pethPsePortDetectionStatus}{$port});
+  my $poe_enable    = ($hdata->{pethPsePortDetectionStatus}{$port} != 1);
+  my $poe_power     = ($hdata->{pethPsePortDetectionStatus}{$port} == 3);
 
   #--- pack bits
   
@@ -1171,6 +1200,9 @@ sub port_flag_pack {
   if($dot1x_st_flag == 1) { $result |= 512; }
   if($dot1x_st_flag == 2) { $result |= 1024; }
   if($cafSMS_mab == 4)    { $result |= 2048; }
+  if($poe_port)           { $result |= 4096; }
+  if($poe_enable)         { $result |= 8192; }
+  if($poe_power)          { $result |= 16384; }
 
   return $result;
 }

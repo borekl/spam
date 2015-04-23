@@ -111,7 +111,11 @@ my %snmp_fields = (
   # cafSessionMethodState.<ifIndex>.<cafSessionId>.<cafSessionMethod> = INTEGER
   #   cafSessionMethod { 1:other, 2:dot1x; 3:MAB; 4:webAuth }
   #   cafSessionMethodState { 1:not run; 2:running; 3:failed; 4:auth success; 5:auth fail }
-  cafSessionMethodState => '.1.3.6.1.4.1.9.9.656.1.4.2.1.2'
+  cafSessionMethodState => '.1.3.6.1.4.1.9.9.656.1.4.2.1.2',
+  #--- POWER-ETHERNET-MIB
+  # pethPsePortDetectionStatus.<mod>.<port> = INTEGER
+  #   1:disabled, 2:searching, 3:deliveringPower,4:fault
+  pethPsePortDetectionStatus => '.1.3.6.1.2.1.105.1.1.1.6'
 );
 
 

@@ -31,7 +31,7 @@ $cache_time{swlist1} = 300;      # cache timeout for switch list
 $cache_time{hosts} = 300;        # cache timeout for hosttab
 $cache_time{sites} = 3600;       # cache timeout for ondb:sites
 
-$formats{switch} = '%12po %4du %4ra %5fl %3sd %3vl %8cp %8ou %9in %24de %12ho %8gr';
+$formats{switch} = '%12po %4du %4ra %6fl %3sd %3vl %8cp %8ou %9in %24de %12ho %8gr';
 $formats{hosts} = '%16ho %8gr %8cp %8hn %6po %3vl %24de* %9hA %11hB %9hC %11hD';
 
 $views{hwinfo} = 'SELECT n, partnum, sn FROM hwinfo WHERE host = ?';
@@ -263,6 +263,13 @@ sub field_formatter
         }
       }
       if(!$fv->{pf_dot1x_pc}) { $aux .= '-'; }
+      # PoE
+      if($fv->{pf_poepwr}) {
+        $aux .= html_span('E', 'flag-poepwr');
+      } 
+      else {
+        $aux .= '-';
+      }
       #
       $aux .= '</span>';
       return $aux;
@@ -601,6 +608,10 @@ sub port_flag_unpack
   if($n & 512) { $fv->{pf_dot1x_st} = 1; }
   if($n & 1024) { $fv->{pf_dot1x_st} = 2; }
   if($n & 2048) { $fv->{pf_mab} = 4; }
+  if($n & 4096) { $fv->{pf_poe} = 1; }
+  if($n & 8192) { $fv->{pf_poeena} = 1; }
+  if($n & 16384) { $fv->{pf_poepwr} = 1; }
+  
   return;
 }
 
@@ -1011,6 +1022,7 @@ sub html_view_switch
      <span class="flag-1xmab">X</span>  Port is in dot1x auto mode, MAC bypass active
      <span class="flag-1xauth">x</span>  Port is in dot1x force-authorized mode
      <span class="flag-1xunauth">x</span>  Port is in dot1x force-unauthorized mode
+ 6   <span class="flag-poepwr">E</span>  Port is supplying power
 </PRE>
 
 EOHD
