@@ -5,7 +5,7 @@
 # """""""""""""""""""""""""""""""""""""""""""""
 # SNMP COLLECTOR component
 #
-# © 2000-2012 Borek Lupomesky <Borek.Lupomesky@vodafone.com>
+# © 2000-2015 Borek Lupomesky <Borek.Lupomesky@vodafone.com>
 # © 2002      Petr Cech
 #
 # This script does retrieving SNMP data from switches and updating
