@@ -169,12 +169,16 @@ sub sql_load_status
   my $dbh = dbconn('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-  my $sth = $dbh->prepare("SELECT portname, status, inpkts, outpkts, "
-              . "date_part('epoch', lastchg), date_part('epoch', lastchk), "
-              . "vlan, descr, duplex, rate, flags, adminstatus, errdis, "
-              . "floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg)) "
-              . "FROM status WHERE host = '$host'");
-  my $r = $sth->execute();
+  my $qry = 'SELECT %s FROM status WHERE host = ?';
+  my @fields = (
+    'portname', 'status', 'inpkts', 'outpkts', 
+    q{date_part('epoch', lastchg)}, q{date_part('epoch', lastchk)},
+    'vlan', 'descr', 'duplex', 'rate', 'flags', 'adminstatus', 'errdis',
+    q{floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg))}
+  );
+  $qry = sprintf($qry, join(',', @fields));
+  my $sth = $dbh->prepare($qry);
+  my $r = $sth->execute($host);
   if(!$r) {
     return 'Database query failed (spam, ' . $sth->errstr() . ')';
   }
@@ -201,8 +205,9 @@ sub sql_load_uptime
   my $dbh = dbconn('spam');
   
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-  my $sth = $dbh->prepare("SELECT date_part('epoch', boot_time) FROM swstat WHERE host = '$host'");
-  my $r = $sth->execute();
+  my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
+  my $sth = $dbh->prepare($qry);
+  my $r = $sth->execute($host);
   if(!$r) {
     return 'Database query failed (spam, ' . $sth->errstr() . ')';
   }
@@ -331,7 +336,7 @@ sub poll_host
   
   #--- retrieve CatOS specific variables (defined in STACK-MIB) -----------
 
-  # NOTE: This looks like this is actually no more used, since
+  # NOTE: This looks like this is actually used no more, since
   # CatOS is now history.
   
   #if($platform =~ /^(c4000|c6500)$/) {
@@ -701,8 +706,10 @@ sub sql_status_update
   my $hdata = $swdata{$host};
   my ($r, $q, $fields, $current_time, $if, @update);
   my $reboot_flag = 0;
+  my (@fields, @vals, @bind);
 
   #--- did switch reboot in-between SPAM runs?
+
   my $bt_now  = $swdata{$host}{stats}{sysuptime};
   my $bt_last = $swdata{$host}{stats}{sysuptime2};
   if($bt_now && $bt_last) {
@@ -712,6 +719,7 @@ sub sql_status_update
   }
   
   #--- create entire SQL transaction into @update array ---
+
   for my $k (@$update_plan) {
 
     #--- INSERT
@@ -719,70 +727,100 @@ sub sql_status_update
     $if = $idx->{$k->[1]};
     $current_time = strftime("%c", localtime());
     if($k->[0] eq 'i') {
-      $fields = "host, portname, status, inpkts, outpkts, lastchg, lastchk, ifindex, vlan, descr, duplex, rate, flags, adminstatus, errdis";
-      $q = "INSERT INTO status ( $fields ) VALUES ( ";
-      $q .= "'$host', "; # host
-      $q .= "'$k->[1]', "; # portname
-      $q .= sprintf("'%s', ", ($hdata->{ifOperStatus}{$if} == 1 ? 'true':'false')); # status
-      $q .= sprintf("%lu, %lu, ", $hdata->{ifInUcastPkts}{$if}, $hdata->{ifOutUcastPkts}{$if}); # inpkts, outpkts
-      $q .= sprintf("'%s', '%s', ", $current_time, $current_time); # lastchg, lastchk
-      $q .= sprintf("%d, ", $if); # ifindex
-      $q .= sprintf("%d, ", $hdata->{vmVlan}{$if}); # vlan
-      if($hdata->{ifAlias}{$if}) { # descr
-        my $descr = $hdata->{ifAlias}{$if};
-        $descr =~ s/'/''/g;
-        $q .= "'" . $descr . "'";
-      } else {
-        $q .= "NULL ";
-      }
-      $q .= ', ';
-      $q .= sprintf("%d, ", $hdata->{portDuplex}{$if}); # duplex
-      $q .= sprintf("%d, ", $hdata->{ifSpeed}{$if} / 1000000); # rate
-      $q .= sprintf('%d, ', port_flag_pack($hdata, $if)); # flags
-      $q .= sprintf("'%s', ", ($hdata->{ifAdminStatus}{$if} == 1 ? 'true':'false' )); # adminstatus
-      $q .= sprintf("'%s' )", (addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 'true':'false')); # errdis
-    } elsif(lc($k->[0]) eq 'u') {
+
+      @fields = qw(
+        host portname status inpkts outpkts lastchg lastchk
+        ifindex vlan descr duplex rate flags adminstatus errdis
+      );
+      @vals = ('?') x 15;
+      @bind = (
+        $host,
+        $k->[1],
+        $hdata->{ifOperStatus}{$if} == 1 ? 'true' : 'false',
+        $hdata->{ifInUcastPkts}{$if},
+        $hdata->{ifOutUcastPkts}{$if},
+        $current_time,
+        $current_time,
+        $if,
+        $hdata->{vmVlan}{$if},
+        $hdata->{ifAlias}{$if} =~ s/'/''/gr,
+        $hdata->{portDuplex}{$if},
+        ($hdata->{ifSpeed}{$if} / 1000000) =~ s/\..*$//r,
+        port_flag_pack($hdata, $if),
+        $hdata->{ifAdminStatus}{$if} == 1 ? 'true' : 'false',
+        addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 'true' : 'false'
+      );
+
+      $q = sprintf(
+        q{INSERT INTO status ( %s ) VALUES ( %s )},
+        join(',', @fields), join(',', @vals)
+      );
+      
+    } 
+    elsif(lc($k->[0]) eq 'u') {
 
       #--- UPDATE
 
-      $q = 'UPDATE status SET ';
       if($k->[0] eq 'U') {
-        $q .= sprintf("lastchg = '%s', ", $current_time) if !$reboot_flag;
-        $q .= sprintf("lastchk = '%s', ", $current_time);
-        $q .= sprintf("status = '%s', ", ($hdata->{ifOperStatus}{$if} == 1 ? 't':'f'));
-        $q .= sprintf("inpkts = %lu, ", $hdata->{ifInUcastPkts}{$if});
-        $q .= sprintf("outpkts = %lu, ", $hdata->{ifOutUcastPkts}{$if});
-        $q .= sprintf("ifindex = %d, ", $if);
-        $q .= sprintf("vlan = %d, ", $hdata->{vmVlan}{$if});
-        if($hdata->{ifAlias}{$if}) {
-          my $descr = $hdata->{ifAlias}{$if};
-          $descr =~ s/'/''/g;
-          $q .= sprintf("descr = '%s', ", $descr);
-        } else {
-          $q .= "descr = NULL, ";
+
+        @fields = (
+          'lastchk = ?', 'status = ?', 'inpkts = ?',
+          'outpkts = ?', 'ifindex = ?', 'vlan = ?', 'descr = ?',
+          'duplex = ?', 'rate = ?', 'flags = ?', 'adminstatus = ?',
+          'errdis = ?'
+        );
+        @bind = (
+          $current_time,
+          $hdata->{ifOperStatus}{$if} == 1 ? 't':'f',
+          $hdata->{ifInUcastPkts}{$if},
+          $hdata->{ifOutUcastPkts}{$if},
+          $if,
+          $hdata->{vmVlan}{$if},
+          $hdata->{ifAlias}{$if} =~ s/'/''/gr,
+          $hdata->{portDuplex}{$if},
+          ($hdata->{ifSpeed}{$if} / 1000000) =~ s/\..*$//r,
+          port_flag_pack($hdata, $if),
+          $hdata->{ifAdminStatus}{$if} == 1 ? 't':'f',
+          addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 't':'f'
+        );
+        
+        if(!$reboot_flag) {
+          push(@fields, 'lastchg = ?');
+          push(@bind, $current_time);
         }
-        $q .= sprintf('duplex = %d, ', $hdata->{portDuplex}{$if});
-        $q .= sprintf('rate = %d, ', $hdata->{ifSpeed}{$if} / 1000000);
-        $q .= sprintf('flags = %d, ', port_flag_pack($hdata, $if)); # flags
-        $q .= sprintf("adminstatus = '%s', ", ($hdata->{ifAdminStatus}{$if} == 1 ? 't':'f' )); # adminstatus
-        $q .= sprintf("errdis = '%s' ", (addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 't':'f')); # errdis
+        
+        $q = sprintf(
+          q{UPDATE status SET %s},
+          join(',', @fields)
+        );
+      
       } else {
-        $q .= sprintf("lastchk = '%s' ", $current_time);
+      
+        $q = q{UPDATE status SET lastchk = ?};
+        @bind = ( $current_time );
+        
       }
-      $q .= sprintf("WHERE host = '%s' AND portname = '%s'", $host, $k->[1]);
+      
+      $q .= q{ WHERE host = ? AND portname = ?};
+      push(@bind, $host, $k->[1]);
+
     } elsif($k->[0] eq 'd') {
 
       #--- DELETE
 
-      $q = 'DELETE FROM status ';
-      $q .= sprintf("WHERE host = '%s' AND portname = '%s'", $host, $k->[1]);
+      $q = q{DELETE FROM status WHERE = ? AND portname = ?};
+      push(@bind, $host, $k->[1]);
+      
     } else {
+    
       die('FATAL ERROR');
+
     }
-    push(@update, $q);
+    push(@update, [ $q, @bind ]);
   }
 
   #--- sent data to db and finish---
+
   $r = sql_transaction(\@update);
   return $r;
 }
@@ -835,8 +873,10 @@ sub sql_hwinfo_update
 
   for my $k (@current) {
     if(!exists $swdata{$host}{hw}{$k->[0]}) {
-      $query = sprintf("DELETE FROM hwinfo WHERE host = '%s' AND n = %d", $host, $k->[0]);
-      push(@update_plan, $query);
+      push(@update_plan, [
+        q{DELETE FROM hwinfo WHERE host = ? AND n = ?},
+        $host, $k->[0]
+      ]);
       $stats[1]++;
 
   #--- create update plan, part 2: identify changed modules
@@ -848,18 +888,35 @@ sub sql_hwinfo_update
          || $swdata{$host}{hw}{$k->[0]}{hwrev} ne $k->[4]
          || $swdata{$host}{hw}{$k->[0]}{fwrev} ne $k->[5]
          || $swdata{$host}{hw}{$k->[0]}{swrev} ne $k->[6]
-         || $swdata{$host}{hw}{$k->[0]}{descr} ne $k->[7]) {
-        $query = 'UPDATE hwinfo SET ';
-        $query .= sprintf("partnum = '%s', ", $swdata{$host}{hw}{$k->[0]}{model});
-        $query .= sprintf("sn = '%s', ", $swdata{$host}{hw}{$k->[0]}{sn});
-        $query .= sprintf("type = '%s', ", $swdata{$host}{hw}{$k->[0]}{type});
-        $query .= sprintf("hwrev = '%s', ", $swdata{$host}{hw}{$k->[0]}{hwrev});
-        $query .= sprintf("fwrev = '%s', ", $swdata{$host}{hw}{$k->[0]}{fwrev});
-        $query .= sprintf("swrev = '%s', ", $swdata{$host}{hw}{$k->[0]}{swrev});
-        $query .= sprintf("descr = '%s', ", substr($swdata{$host}{hw}{$k->[0]}{descr}, 0, 64));
-        $query .= 'chg_when = CURRENT_TIMESTAMP ';
-        $query .= sprintf("WHERE host = '%s' AND n = %d", $host, $k->[0]);
-        push(@update_plan, $query);
+         || $swdata{$host}{hw}{$k->[0]}{descr} ne $k->[7]) 
+      {
+
+        $query =  q{UPDATE hwinfo SET chg_when = current_timestamp,%s };
+        $query .= q{WHERE host = ? AND n = ?};
+
+        my @fields = (
+          'partnum = ?', 'sn = ?', 'type = ?',
+          'hwrev = ?', 'fwrev = ?',  'swrev = ?',
+          'descr = ?'
+        );
+        
+        my @bind = (
+          $swdata{$host}{hw}{$k->[0]}{model},
+          $swdata{$host}{hw}{$k->[0]}{sn},
+          $swdata{$host}{hw}{$k->[0]}{type},
+          $swdata{$host}{hw}{$k->[0]}{hwrev},
+          $swdata{$host}{hw}{$k->[0]}{fwrev},
+          $swdata{$host}{hw}{$k->[0]}{swrev},
+          substr($swdata{$host}{hw}{$k->[0]}{descr}, 0, 64),
+          $host,
+          $k->[0]          
+        );
+        
+        push(@update_plan, [
+          sprintf($query, join(',', @fields)),
+          @bind
+        ]);
+        
         $stats[2]++;
       }
     }
@@ -869,17 +926,25 @@ sub sql_hwinfo_update
   
   for my $k (keys %{$swdata{$host}{hw}}) {
     if(!grep { $_->[0] == $k } @current) {
-      $query = 'INSERT INTO hwinfo ( host,n,partnum,sn,type,hwrev,fwrev,swrev,descr ) ';
-      $query .= sprintf("VALUES ( '%s', %d, '%s', '%s', '%s', '%s', '%s','%s', '%s' )",
-                  $host, $k, $swdata{$host}{hw}{$k}{model},
-                  $swdata{$host}{hw}{$k}{sn},
-                  $swdata{$host}{hw}{$k}{type},
-                  $swdata{$host}{hw}{$k}{hwrev},
-                  $swdata{$host}{hw}{$k}{fwrev},
-                  $swdata{$host}{hw}{$k}{swrev},
 
-                );
-      push(@update_plan, $query);
+      $query = q{INSERT INTO hwinfo ( %s ) VALUES ( %s )};
+      
+      my @fields = qw(host n partnum sn type hwrev fwrev swrev descr);
+      my @vals = ('?') x 9;
+      my @bind = (
+        $host, $k, $swdata{$host}{hw}{$k}{model},
+        $swdata{$host}{hw}{$k}{sn},
+        $swdata{$host}{hw}{$k}{type},
+        $swdata{$host}{hw}{$k}{hwrev},
+        $swdata{$host}{hw}{$k}{fwrev},
+        $swdata{$host}{hw}{$k}{swrev},
+        substr($swdata{$host}{hw}{$k->[0]}{descr}, 0, 64)
+      );
+
+      push(@update_plan, [
+        sprintf($query, join(',', @fields), join(',', @vals)),
+        @bind
+      ]);
       $stats[0]++;
     }
   }
@@ -902,6 +967,11 @@ sub sql_hwinfo_update
 #
 # Arguments: 1. reference to list of lines to be sent do db
 # Returns:   1. error message or undef
+#
+# The list of database statements to be performed may take two forms.
+# One is just string containing the statement. The other is array ref,
+# that contains the statement in [0] and the rest of the array are bind
+# variables. Both forms can be mixed freely.
 #==========================================================================
 
 sub sql_transaction
@@ -911,28 +981,44 @@ sub sql_transaction
   my $r;
   
   #--- ensure database connection
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
+
+  if(!ref($dbh)) { 
+    return 'Cannot connect to database (spam)'; 
+  }
   
   #--- begin transaction
+
   $dbh->begin_work()
   || return 'Cannot begin database transaction (spam, ' . $dbh->errstr() . ')';
   
   #--- perform update
-  for (@$update) {
-    $dbh->do($_) || do {
-      my $err;
-      my $err1 = $dbh->errstr();
+
+  for my $row (@$update) {
+  
+### DEBUG ###
+#printf("TRANSACTION>>>%s\n", join('|', @$row));
+#############
+
+    my $qry = ref($row) ? $row->[0] : $row;
+    my @args;
+    if(ref($row)) { @args = @$row[1 .. scalar(@$row)-1]; }
+    my $sth = $dbh->prepare($qry);
+    my $r = $sth->execute(@args);
+    my $err1 = $sth->errstr();
+    my $err;
+    if(!$r) {
       if($dbh->rollback()) {
         $err = sprintf('Database update failed (%s), transaction rolled back', $err1);
       } else {
         my $err2 = $dbh->errstr();
         $err = sprintf('Database update failed (%s), transaction rollback failed (%s)', $err1, $err2);
       }
-      return $err;
-    };
+    return $err;
+    }
   }
-
+  
   #--- commit transaction
+
   $dbh->commit()
   || do {
     my $err = sprintf('Cannot commit database transaction (%s)', $dbh->errstr());
@@ -940,6 +1026,7 @@ sub sql_transaction
   };
     
   #--- finish successfully
+
   return undef;
 }
 
@@ -973,31 +1060,55 @@ sub sql_mactable_update
 
   #--- reset 'active' field to 'false'
   
-  push(@update, "UPDATE mactable SET active = 'f' WHERE host = '$host' and active = 't'");
+  push(
+    @update,
+    [ 
+      q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'}, 
+      $host
+    ]
+  );
 
   #--- gather update plan ---
 
   foreach my $if (keys %{$swdata{$host}{mactable}}) {
     foreach my $mac (@{$swdata{$host}{mactable}{$if}}) {
-      my $q;
+      my ($q, @fields, @bind);
       my $aux = strftime("%c", localtime());
       next if !exists $swdata{$host}{ifDescr}{$if};
+
       if(exists $mac_current{$mac}) {
+        
         #--- update 'mactable' ---
-        $q = 'UPDATE mactable SET ';
-        $q .= sprintf("host = '%s', ",          $host);
-        $q .= sprintf("portname = '%s', ",      $swdata{$host}{ifDescr}{$if});
-        $q .= sprintf("lastchk = '%s', ",        $aux);
-        $q .= "active = 't' ";
-        $q .= sprintf("WHERE mac = '%s'",       $mac);
+
+        @fields = (
+          'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
+        );
+        @bind = (
+          $host, $swdata{$host}{ifDescr}{$if}, $aux, $mac
+        );
+        $q = sprintf(
+          q{UPDATE mactable SET %s WHERE mac = ?},
+          join(',', @fields)
+        );
+        
       } else {
+
         #--- insert ---
-        $q = "INSERT INTO mactable ( mac, host, portname, lastchk, active ) VALUES ( ";
-        $q .= sprintf("'%s', '%s', '%s', '%s', 't' )", $mac, $host,
-                      $swdata{$host}{ifDescr}{$if}, $aux);
+
+        @fields = (
+          'mac', 'host', 'portname', 'lastchk','active'
+        );
+        @bind = (
+          $mac, $host, $swdata{$host}{ifDescr}{$if}, $aux, 't'
+        );
+        $q = sprintf(
+          q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
+          join(',', @fields)
+        );
+        
         delete $mac_current{$mac};
       }
-      push(@update, $q) if $q;
+      push(@update, [ $q, @bind ]) if $q;
     }
   }
 
@@ -1026,7 +1137,8 @@ sub sql_arptable_update
   #--- query current state ---
 
   my $sth = $dbh->prepare('SELECT mac FROM arptable');
-  $sth->execute() || return 'Database query failed (spam,' . $sth->errstr() . ')';
+  $sth->execute() 
+    || return 'Database query failed (spam,' . $sth->errstr() . ')';
   while(($mac) = $sth->fetchrow_array) {
     $mac = lc($mac);
     $arp_current{$mac} = 0;
@@ -1037,36 +1149,46 @@ sub sql_arptable_update
   foreach $mac (keys %$arptable) {
     my $aux = strftime("%c", localtime());
     if(exists $arp_current{lc($mac)}) {
+
       #--- update ---
-      $q = "UPDATE arptable SET ";
-      $q .= sprintf("ip = '%s', ", $arptable->{$mac});
-      $q .= sprintf("lastchk = '%s' ", $aux);
-      {
-        my $iaddr = inet_aton($arptable->{$mac});
-        ### DNS resolution disabled for being too slow #####
-        #my $dnsname = gethostbyaddr($iaddr, AF_INET);
-        my $dnsname;
-        ####################################################
-        if($dnsname) {
-          $q .= ", dnsname = '$dnsname' ";
-        }
-      }
-      $q .= "WHERE mac = '$mac'";
+      
+      push(@update, [
+        q{UPDATE arptable SET ip = ?, lastchk = ? WHERE mac = ?},
+        $arptable->{$mac},
+        $aux,
+        $mac
+      ]);
+      
     } else {
+      
       #--- insert ---
+      
       {
         my $iaddr = inet_aton($arptable->{$mac});
         my $dnsname = gethostbyaddr($iaddr, AF_INET);
+        
+        my @fields = qw(mac ip lastchk);
+        my @bind = (
+          $mac, $arptable->{$mac},
+          $aux
+        );
+        
         if($dnsname) {
-          $q = "INSERT INTO arptable ( mac, ip, dnsname, lastchk ) VALUES ( ";
-          $q .= sprintf("'%s', '%s', '%s', '%s' )", $mac, $arptable->{$mac}, lc($dnsname), $aux);
-        } else {
-          $q = "INSERT INTO arptable ( mac, ip, lastchk ) VALUES ( ";
-          $q .= sprintf("'%s', '%s', '%s' )", $mac, $arptable->{$mac}, $aux);
+          push(@fields, 'dnsname');
+          push(@bind, lc($dnsname));
         }
+        
+        push(@update, [
+          sprintf(
+            q{INSERT INTO arptable ( %s ) VALUES ( %s )},
+            join(',', @fields),
+            join(',', (('?') x scalar(@fields)))
+          ),
+          @bind
+        ]);
+
       }
     }
-    push(@update, $q);
   }
 
   #--- send update to the database ---
@@ -1880,7 +2002,7 @@ eval {
               tty_message(sprintf("[%s] Updating status table (%d/%d/%d/%d)\n", 
                         $host, $update_stats->[0], $update_stats->[1], $update_stats->[2], $update_stats->[3]));
               my $e = sql_status_update($host, $update_plan, $idx);
-              if($e) { tty_message("[$host] Updating status table ($e)\n"); next; }
+              if($e) { tty_message("[$host] Updating status table (failed, $e)\n"); }
 	      tty_message("[$host] Updating status table (finished)\n");
 
 	      #--- update swstat table ---
@@ -1888,7 +2010,7 @@ eval {
 	      tty_message("[$host] Updating swstat table (started)\n");
 	      switch_info($host);
 	      $e = sql_switch_info_update($host);
-	      if($e) { tty_message("[$host] Updating swstat table ($e)\n"); next; }
+	      if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
 	      tty_message("[$host] Updating swstat table (finished)\n");
 	  
 	    #--- update hwinfo table ---
@@ -1898,7 +2020,7 @@ eval {
 	        tty_message("[$host] Updating hwinfo table (started)\n");
 	        ($e, $update_stats) = sql_hwinfo_update($host);
                 tty_message(sprintf("[%s] Updating hwinfo table (%d/%d/%d)\n", $host, $update_stats->[0], $update_stats->[1], $update_stats->[2]));
-	        if($e) { tty_message("[$host] Updating hwinfo table ($e)\n");; next; }
+	        if($e) { tty_message("[$host] Updating hwinfo table ($e)\n"); }
 	        tty_message("[$host] Updating hwinfo table (finished)\n");
               }
 
@@ -1907,7 +2029,7 @@ eval {
 	      if($get_mactable) {
                 tty_message("[$host] Updating mactable (started)\n");
                 $e = sql_mactable_update($host);
-                if(defined $e) { print $e, "\n"; next; }
+                if(defined $e) { print $e, "\n"; }
                 tty_message("[$host] Updating mactable (finished)\n");
 	      }
 
