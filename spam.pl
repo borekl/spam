@@ -938,7 +938,7 @@ sub sql_hwinfo_update
         $swdata{$host}{hw}{$k}{hwrev},
         $swdata{$host}{hw}{$k}{fwrev},
         $swdata{$host}{hw}{$k}{swrev},
-        substr($swdata{$host}{hw}{$k->[0]}{descr}, 0, 64)
+        substr($swdata{$host}{hw}{$k}{descr}, 0, 64)
       );
 
       push(@update_plan, [
