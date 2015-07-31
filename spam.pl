@@ -75,7 +75,7 @@ sub get_platform
 
   @known_platforms = qw(c6500 c4000 c2900 c2950 c2960 c3500 c3560 c3650 c3850
                         c6500-ios c4000-ios c4500-ios c2620 c4948-ios
-                        c7600 c2800 c6500vss c3550 nx5000 c6800);
+                        c7600 c2800 c6500vss c3550 nx5000 c6800vss);
                         
   if($eid != 9) { return undef; }
   if($dev =~ /^5\.(44|45)$/) { $platform = 'c6500'; }
@@ -97,7 +97,7 @@ sub get_platform
   if($dev =~ /^3\.1084/) { $platform = 'nx5000'; }
   if($dev =~ /^1\.1824$/) { $platform = 'c3650'; }
   if($dev =~ /^1\.1643$/) { $platform = 'c3850'; }
-  if($dev =~ /^1.1934$/) { $platform = 'c6800'; }
+  if($dev =~ /^1.1934$/) { $platform = 'c6800vss'; }
   return ($platform, $dev);
 } 
 
@@ -247,7 +247,8 @@ sub poll_host
 
   tty_message("[$host] Getting platform info (started)\n");
   ($platform, $objid) = get_platform($host, $ip, $community);
-  $cfg->{host}{$host}{type} = $platform;
+  #$cfg->{host}{$host}{type} = $platform;
+  $swdata{$host}{stats}{platform} = $platform;
   if($platform) { 
     tty_message("[$host] Getting platform info ($platform)\n");
   } else {
@@ -1420,7 +1421,8 @@ sub sql_switch_info_update
       $q = q{INSERT INTO swstat ( %s ) VALUES ( %s )};
       my @fields = qw( 
         host location ports_total ports_active ports_patched ports_illact
-        ports_errdis ports_inact ports_used vtp_domain vtp_mode boot_time 
+        ports_errdis ports_inact ports_used vtp_domain vtp_mode boot_time
+        platform 
       );
       @vals = ('?') x scalar(@fields);
       @args = (
@@ -1435,7 +1437,8 @@ sub sql_switch_info_update
         $stat->{p_used},
         $swdata{$host}{vtpdomain},
         $swdata{$host}{vtpmode},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime}))
+        strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
+        $stat->{platform}
       );
 
       $q = sprintf($q, join(',', @fields), join(',', @vals));
@@ -1452,7 +1455,8 @@ sub sql_switch_info_update
         'ports_patched = ?', 'ports_illact = ?',
         'ports_errdis = ?', 'ports_inact = ?',
         'ports_used = ?', 'boot_time = ?',
-        'vtp_domain = ?', 'vtp_mode = ?'
+        'vtp_domain = ?', 'vtp_mode = ?',
+        'platform = ?'
       );
       @args = (
         $stat->{syslocation} =~ s/'/''/r,
@@ -1466,6 +1470,7 @@ sub sql_switch_info_update
         strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
         $swdata{$host}{vtpdomain},
         $swdata{$host}{vtpmode},
+        $stat->{platform},
         $host
       );
       
