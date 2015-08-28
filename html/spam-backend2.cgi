@@ -41,7 +41,8 @@ $views{hwinfo} = 'SELECT n, partnum, sn FROM hwinfo WHERE host = ?';
 
 my $debug = 0;
 my $js;
-
+my %dbh;
+my ($db_ondb, $db_spam);
 
 
 #=============================================================================
@@ -54,6 +55,8 @@ BEGIN {
   binmode STDOUT, ":utf8";
   dbinit('spam', 'spam', 'swcgi', 'InvernessCorona', 'l5nets01.oskarmobil.cz');
   dbinit('ondb', 'ondb', 'swcgi', 'InvernessCorona', 'l5nets01.oskarmobil.cz');
+  $dbh{'spam'} = $db_spam = dbconn('spam');
+  $dbh{'ondb'} = $db_ondb = dbconn('ondb');
 }
 
 
@@ -88,7 +91,6 @@ sub remove_undefs
 sub user_access_evaluate
 {
   my ($access, $user) = @_;
-  my $dbh = dbconn('ondb');
   my ($v);
 
   #--- sanitize arguments
@@ -98,15 +100,9 @@ sub user_access_evaluate
   $user = lc($user);
   $access = lc($access);
 
-  #--- ensure database connection
-
-  if(!ref($dbh)) {
-    return 'Database connection failed (ondb)';
-  }
-
   #--- query
 
-  my $sth = $dbh->prepare(qq{SELECT authorize_user(?,'spam',?)::int});
+  my $sth = $db_ondb->prepare(qq{SELECT authorize_user(?,'spam',?)::int});
   my $r = $sth->execute($user, $access);
   if(!$r) {
     return sprintf('Database query failed (ondb, %s)', $sth->errstr());
@@ -140,7 +136,7 @@ sub sql_select
 
   #--- other init
   
-  my $dbh = dbconn($dbid);
+  my $dbh = $dbh{$dbid};
   my %re;
 
   #--- some debugging info
@@ -561,7 +557,12 @@ sub sql_aux_data
 my %args;
 my $q = new CGI;
 my $req = $q->param('r');  # request type
+
+# below code allows the arguments to be specified on command line for
+# debugging purposes as "par1=val1 par2=val2 ... "
+
 if(!$req && $ARGV[0]) {
+  $debug = 1;
   $js->pretty(1);
   $req = $ARGV[0];
   for my $arg (@ARGV[1 .. scalar(@ARGV)-1]) {
@@ -570,18 +571,34 @@ if(!$req && $ARGV[0]) {
   }
 }
 
+#--- preamble
+
+print "Content-type: application/json; charset=utf-8\n\n";
+
+#--- verify database availability
+
+{
+  my %re;
+  my @db_unavailable = grep { !ref($dbh{$_}) } keys %dbh;
+
+  if(scalar(@db_unavailable)) {
+    $re{'userid'} = $ENV{'REMOTE_USER'};
+    $re{'status'} = 'error';
+    $re{'errmsg'} = 'Database connection failed';
+    $re{'errwhy'} = 'Unavailable db: ' . join(', ', @db_unavailable);
+    print $js->encode(\%re), "\n";
+    exit;
+  }
+}
+
 #--- debugging mode
 
 my $e;
 ($e, $debug) = user_access_evaluate('debug');
-#if($debug) {
+if($debug) {
   $js->pretty(1);
-#}
+}
 $debug = 1;
-
-#--- preamble
-
-print "Content-type: application/json; charset=utf-8\n\n";
 
 #-----------------------------------------------------------------------------
 #--- central dispatch --------------------------------------------------------
