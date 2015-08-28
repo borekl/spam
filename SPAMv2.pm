@@ -41,6 +41,9 @@ use integer;
 my (%dbconn);
 my %sites_cache;
 
+#--- configuration ---
+my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
+
 
 #===========================================================================
 # Load configuration from external file
@@ -210,7 +213,7 @@ sub dbconn
   return $dbconn{$id}{conn} if defined $dbconn{$id}{conn};
   my $s = sprintf('dbi:Pg:dbname=%s', $dbconn{$id}{params}[0]);
   if($dbconn{$id}{params}[3]) { $s .= sprintf(';host=%s', $dbconn{$id}{params}[3]); }
-  $c = $dbconn{$id}{conn} = DBI->connect($s, $dbconn{$id}{params}[1], $dbconn{$id}{params}[2], { AutoCommit => 1, pg_enable_utf => 1 });
+  $c = $dbconn{$id}{conn} = DBI->connect($s, $dbconn{$id}{params}[1], $dbconn{$id}{params}[2], \%dbi_params);
   if(!ref($c)) { $c = $DBI::errstr; }
   return $c;
 }
