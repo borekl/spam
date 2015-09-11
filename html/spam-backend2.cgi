@@ -388,6 +388,87 @@ sub sql_get_swinfo
 
 
 #=============================================================================
+# Function that gets search result and produces new search result with
+# switch linecard info interleaved within for the benefit of the front-end
+# template.
+#=============================================================================
+
+sub search_hwinfo_interleave
+{
+  #--- arguments
+  
+  my $re = shift;
+  
+  #--- other variables
+  
+  my @new;    # the new search result we're creating here
+  my $vss;    # the switch is Cisco VSS
+  
+  $vss = $re->{'swinfo'}{'result'}{'vss'} // 0;
+    
+  #--- iterate over the search output and create a new one
+  
+  my $n_last = '';
+  for my $row (@{$re->{'search'}{'result'}}) {
+
+  #--- parse portname and get the linecard number; note
+  #--- that on VSS switches line-card number is in form of
+  #--- sw#/linecard#
+
+    $row->{'portname'} =~ /^[a-z]+(\d+|\d+\/\d+)\/(\d+)$/i;
+    my $n_curr = $1;
+
+  #--- if the last line-card id is different from the current
+  #--- it means we're in the place of the list where we want
+  #--- to enter the line-card info
+
+    if($n_curr ne $n_last) {
+    
+  #--- for VSS switches, reading of present line-cards
+  #--- is not working with the standard MIB (FIXME);
+  #--- therefore we merely push the line-card designation without
+  #--- any additional information
+  
+      if($vss) {
+        push(@new, { 'n' => $n_curr });
+      } 
+      
+  #--- for non-VSS switch we try to find the associated line-card
+  #--- info stored in 'hwinfo' key; if we find it, we push the
+  #--- hwinfo entry, otherwise just the line-card designation
+        
+      else {
+        my ($hwentry) = grep {
+          $_->{'n'} eq $n_curr;
+        } @{$re->{'hwinfo'}{'result'}};
+        if(ref($hwentry)) { # found a hwentry
+          push(@new, $hwentry);
+        } else { # found no hwentry
+          push(@new, { 'n' => $n_curr});
+        }
+      }
+
+  #--- end of current line-card boundary processing
+    
+      $n_last = $n_curr;
+
+    }
+
+  #--- regular row push (merely copies the source)
+  
+    push(@new, $row);
+
+  }
+  
+  #--- replace the old search result with the new
+  
+  $re->{'search'}{'result'} = \@new;
+  
+}
+
+
+
+#=============================================================================
 # Search the database, function that does the heavy lifting for the Search
 # Tool.
 #=============================================================================
@@ -516,41 +597,8 @@ sub sql_search
   # switches; but only when user is searching by switch name
   
   if($re{'hwinfo'} && scalar(@{$re{'hwinfo'}{'result'}})) {
-    my $n_last = '';
-    for my $row (@{$re{'search'}{'result'}}) {
-
-  # parse portname and get the linecard number; note
-  # that on VSS switches line-card number is in form of
-  # sw#/linecard#
-
-      $row->{'portname'} =~ /^[a-z]+(\d+|\d+\/\d+)\/(\d+)$/i;
-      my $n_curr = $1;
-      if($n_curr ne $n_last) {
-  
-        # for VSS switches, reading of present line-cards
-        # is not working with the standard MIB
-  
-        if($vss) {
-          push(@{$re{'search'}{'result2'}}, { 'n' => $n_curr });
-        } else {
-          my ($hwentry) = grep {
-            $_->{'n'} eq $n_curr;
-          } @{$re{'hwinfo'}{'result'}};
-          if(ref($hwentry)) {
-            push(@{$re{'search'}{'result2'}}, $hwentry);
-          } else {
-            push(@{$re{'search'}{'result2'}}, { 'n' => $n_curr });
-          }
-        }
-        $n_last = $n_curr;
-      }
-      push(@{$re{'search'}{'result2'}}, $row);
-    }
-
-    $re{'search'}{'result'} = $re{'search'}{'result2'};
-    delete $re{'search'}{'result2'};
+    search_hwinfo_interleave(\%re);
   }
-  
     
   #--- finish
   
