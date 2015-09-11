@@ -332,6 +332,62 @@ sub mangle_swlist
 
 
 #=============================================================================
+# Gets hwinfo from database and stores it under 'hwlist' key in supplied
+# hashref.
+#=============================================================================
+
+sub sql_get_hwinfo
+{
+  #--- arguments
+
+  my (
+    $re,           # 1. hashref where the result is stored
+    $host          # 2. switch hostname
+  ) = @_;
+  
+  #--- do the query
+  
+  my $local_re = sql_select('spam', $views{'hwinfo'}, $host, undef, 1);
+  if($local_re->{'status'} eq 'ok') {
+    $re->{'hwinfo'} = $local_re;
+  }
+}
+
+
+
+#=============================================================================
+# Gets swstat entry from database and stores it under 'swinfo' key in supplied
+# hashref.
+#=============================================================================
+
+sub sql_get_swinfo
+{
+  #--- arguments
+
+  my (
+    $re,           # 1. hashref where the result is stored
+    $host          # 2. switch hostname
+  ) = @_;
+  
+  #--- do the query
+
+  my $local_re = sql_select(
+    'spam', 'SELECT * FROM v_swinfo WHERE host = ?',
+    $host, undef, 1
+  );
+  if($local_re->{'status'} eq 'ok') {
+    $local_re->{'result'} = $local_re->{'result'}[0];
+    $local_re->{'result'}{'platform'} =~ /vss$/ && do {
+      $local_re->{'result'}{'vss'} = 1;
+    };
+    ($local_re->{'result'}{'descr'}) = mangle_location($local_re->{'result'});
+  }
+  $re->{'swinfo'} = $local_re;
+}
+
+
+
+#=============================================================================
 # Search the database, function that does the heavy lifting for the Search
 # Tool.
 #=============================================================================
@@ -364,7 +420,7 @@ sub sql_search
     $row->{'flags'} = port_flag_unpack($row->{'flags'});
   };
 
-  #--- get hwinfo an swinfo in case the only parameter is "host"
+  #--- get hwinfo and swinfo in case the only parameter is "host"
   
   # this allows us to display module headings for modular switches,
   # which in turn allows use of this function for switch portlist.
@@ -379,33 +435,12 @@ sub sql_search
   
   #--- hwinfo (list of linecards)
   
-    $re{'hwinfo'} = sql_select(
-      'spam', $views{'hwinfo'}, $par->{'host'}, undef, 1
-    );
-    if(
-      $re{'hwinfo'}{'status'} ne 'ok'
-      || !scalar($re{'hwinfo'}{'result'})
-    ) { 
-      delete $re{'hwinfo'};
-    }
-        
-  #--- swstat (information about platform)
+    sql_get_hwinfo(\%re, $par->{'host'});
   
-    $re{'swinfo'} = sql_select(
-      'spam', 'SELECT * FROM v_swinfo WHERE host = ?',
-      $par->{'host'}, undef, 1
-    );
-    if($re{'swinfo'}{'status'} ne 'ok') {
-      delete $re{'swinfo'};
-      delete $re{'hwinfo'} if exists($re{'hwinfo'});
-    } else {
-      $re{'swinfo'}{'result'} = $re{'swinfo'}{'result'}[0];
-      $re{'swinfo'}{'result'}{'platform'} =~ /vss$/ && do {
-        $re{'swinfo'}{'result'}{'vss'} = $vss = 1;
-      };
-      ($re{'swinfo'}{'result'}{'descr'}) = mangle_location($re{'swinfo'}{'result'});
+  #--- swstat (information about platform)
 
-    }
+    sql_get_swinfo(\%re, $par->{'host'});
+    $vss = $re{'swinfo'}{'result'}{'vss'} // 0;
   }
   
   #--- decide what view to use
