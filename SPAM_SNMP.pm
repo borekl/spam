@@ -812,54 +812,6 @@ sub snmp_portfast
 
 
 #==========================================================================
-# This function retrieves information about modules installed in a Catalyst
-# 6XXX switch with IOS (serial number and model).
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. %modinfo  hash reference or error message string in form
-#                     %modinfo -> MOD-NUMBER -> [sn|model] -> value
-#==========================================================================
-
-sub snmp_cat6k_ios_modinfo
-{
-  my ($host, $ip, $community) = @_;
-  my %modinfo;
-  #my $entPhysicalModelName = $snmp_fields{entPhysicalModelName};
-  #my $entPhysicalSerialNum = $snmp_fields{entPhysicalSerialNum};
-  my $cmd_snmp_model = "$snmpwalk -c $community $ip .1.3.6.1.4.1.9.5.1.3.1.1.17 |";
-  my $cmd_snmp_serial = "$snmpwalk -c $community $ip .1.3.6.1.4.1.9.5.1.3.1.1.26 |";
-
-  eval {
-    #--- module model ---
-    open(SW, $cmd_snmp_model) or die "Cannot run snmp command\n";
-    while(<SW>) {
-      /\.(\d) \"(.*)\"$/ && do {
-        $modinfo{$1}{model} = $2;
-        $modinfo{$1}{type} = 'linecard';
-      };
-    }
-    close(SW);
-    #--- module serial number ---
-    open(SW, $cmd_snmp_serial) or die "Cannot run snmp command\n";
-    while(<SW>) {
-      chomp;
-      /\.(\d) \"(.*)\"$/ && do {
-        $modinfo{$1}{sn} = $2;
-        $modinfo{$1}{type} = 'linecard';
-      }
-    }
-    close(SW);
-  };
-  if($@) {
-    chomp($@);
-    return 'failed (' . $@ . ')';
-  }
-  return \%modinfo;
-}
-
-
-#==========================================================================
 # This function retrieves information about components installed in
 # a Catalyst 6000-series switch with IOS.
 #
@@ -867,8 +819,8 @@ sub snmp_cat6k_ios_modinfo
 #
 # Arguments: 1. host
 #            2. community
-# Returns:   1. %modinfo  hash reference or error message string in form
-#                     %modinfo -> MOD-NUMBER -> [sn|model] -> value
+# Returns:   1. %hwinfo  hash reference or error message string in form
+#               %hwinfo -> CHASSIS-NO MOD-NO -> [sn|model|..] -> value
 #==========================================================================
 
 sub snmp_hwinfo_entity_mib
@@ -895,53 +847,83 @@ sub snmp_hwinfo_entity_mib
     }
     close(SW);
 
-    #--- check if ENTITY-MIB is really supported
-    
-    $check = 0;
-    for my $idx (keys %{$tmpinfo{11}}) {
-      if($tmpinfo{11}{$idx}) { $check = 1; last; }
-    }
-    if(!$check) {
-      #--- fallback call
-      my $ret = snmp_cat6k_ios_modinfo($host, $ip, $community);
-      if(!$ret || !ref($ret)) {
-        die "Failed ($ret)";
-      }
-      $hwinfo = $ret;
-      return;
-    }
-    
     #--- processing
+    #
+    # entPhysTable sub-tables
+    #  2 .. entPhysicalDescription
+    #  4 .. entPhysicalContainedIn
+    #  5 .. entPhysicalClass (3-chassis, 5-container, 6-ps, 9-linecard)
+    #  7 .. entPhysicalName
+    #  8 .. entPhysicalHwRev
+    #  9 .. entPhysicalFwRev
+    # 10 .. entPhysicalSwRev
+    # 11 .. entPhysicalSerialNum
+    # 13 .. entPhysicalModelName
 
     for my $idx (keys %{$tmpinfo{5}}) {
+      my ($class, $container, $physname);
+      my $chassis = 0;
+      my $slot = 0;
+      
+      #--- entPhysicalClass
+      
+      $class = $tmpinfo{5}{$idx};
+      
+      #--- chassis number (in VSS systems)
+      # the entPhysicalName for a container is either "Physical Slot N"
+      # or "Chassis N Physical Slot M"
+      
+      if($class == 6 || $class == 9) {
+        $container = $tmpinfo{4}{$idx};
+        $physname  = $tmpinfo{7}{$container};
+        $physname =~ /chassis (\d+)/i && do {
+          $chassis = $1;
+        };
+      }
+      elsif($class == 3) {
+        $physname  = $tmpinfo{7}{$idx};
+        $physname =~ /chassis (\d+)/i && do {
+          $chassis = $1;
+        };
+      }
+      
+      #--- chassis
+    
       if($tmpinfo{5}{$idx} == 3) {
-        $hwinfo->{$cidx}{type} = 'chassis';
+        $hwinfo->{$chassis}{$cidx}{type}  = 'chassis';
+        $hwinfo->{$chassis}{$cidx}{descr} = $tmpinfo{2}{$idx};
+        $hwinfo->{$chassis}{$cidx}{model} = $tmpinfo{13}{$idx};
+        $hwinfo->{$chassis}{$cidx}{sn}    = $tmpinfo{11}{$idx};
+        $hwinfo->{$chassis}{$cidx}{hwrev} = $tmpinfo{8}{$idx};
+        $cidx++;
       }
+      
+      #--- power supply
+      
       elsif($tmpinfo{5}{$idx} == 6) {
-        $hwinfo->{$cidx}{type} = 'ps';
+        $hwinfo->{$chassis}{$cidx}{type} = 'ps';
+        $hwinfo->{$chassis}{$cidx}{descr} = $tmpinfo{2}{$idx};
+        $hwinfo->{$chassis}{$cidx}{model} = $tmpinfo{13}{$idx};
+        $hwinfo->{$chassis}{$cidx}{sn}    = $tmpinfo{11}{$idx};
+        $hwinfo->{$chassis}{$cidx}{hwrev} = $tmpinfo{8}{$idx};
+        $cidx++;
       }
+      
+      #--- module
+      
       elsif($tmpinfo{5}{$idx} == 9) {
-        my $container = $tmpinfo{4}{$idx};
-        #next if $tmpinfo{5}{$container} == 9;
-        my $physdescr = $tmpinfo{7}{$container};
-        $physdescr =~ /slot (\d+)/i && do {
-          my $slot = $1;
-          $hwinfo->{$slot}{type} = 'linecard';
-          $hwinfo->{$slot}{model} = $tmpinfo{13}{$idx};
-          $hwinfo->{$slot}{sn} = $tmpinfo{11}{$idx};
-          $hwinfo->{$slot}{hwrev} = $tmpinfo{8}{$idx};
-          $hwinfo->{$slot}{fwrev} = $tmpinfo{9}{$idx};
-          $hwinfo->{$slot}{swrev} = $tmpinfo{10}{$idx};
-          $hwinfo->{$slot}{descr} = $tmpinfo{2}{$idx};
+        $physname =~ /slot (\d+)/i && do {
+          $slot = $1;
+          $hwinfo->{$chassis}{$slot}{type}  = 'linecard';
+          $hwinfo->{$chassis}{$slot}{model} = $tmpinfo{13}{$idx};
+          $hwinfo->{$chassis}{$slot}{sn}    = $tmpinfo{11}{$idx};
+          $hwinfo->{$chassis}{$slot}{hwrev} = $tmpinfo{8}{$idx};
+          $hwinfo->{$chassis}{$slot}{fwrev} = $tmpinfo{9}{$idx};
+          $hwinfo->{$chassis}{$slot}{swrev} = $tmpinfo{10}{$idx};
+          $hwinfo->{$chassis}{$slot}{descr} = $tmpinfo{2}{$idx};
         };
         next;
-      } else {
-        next;
-      }
-      $hwinfo->{$cidx}{sn} = $tmpinfo{11}{$idx};
-      $hwinfo->{$cidx}{model} = $tmpinfo{13}{$idx};
-      $hwinfo->{$cidx}{descr} = $tmpinfo{2}{$idx};
-      $cidx++;
+      } 
     }
   };
 
@@ -949,41 +931,8 @@ sub snmp_hwinfo_entity_mib
     chomp($@);
     return 'failed (' . $@ . ')';
   }
+
   return $hwinfo;
-}
-
-
-#==========================================================================
-#==========================================================================
-
-sub snmp_cat4k_ios_modinfo
-{
-  die; ### FUNCTION NOT IN USE
-  
-  my ($host, $ip, $community) = @_;
-  my %modinfo;
-  my $cmd_snmp_model = "$snmpwalk -c $community $ip .1.3.6.1.4.1.9.9.92.1.1.1.3 |";
-  my $cmd_snmp_serial = "$snmpwalk -c $community $ip .1.3.6.1.4.1.9.9.92.1.1.1.2 |";
-
-  eval {
-    #--- module model
-    open(SW, $cmd_snmp_model) or die "Cannot run snmp command\n";
-    while(<SW>) {
-      /\.(\d)000 \"(.*)\"$/ && do { $modinfo{$1}{model} = $2;};
-    }
-    close(SW);
-    #--- module serial
-    open(SW, $cmd_snmp_serial) or die "Cannot run snmp command\n";
-    while(<SW>) {
-      /\.(\d)000 \"(.*)\"$/ && do { $modinfo{$1}{sn} = $2;};
-    }
-    close(SW);
-  };
-  if($@) {
-    chomp($@);
-    return 'failed (' . $@ . ')';
-  }
-  return \%modinfo;
 }
 
 

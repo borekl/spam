@@ -436,9 +436,9 @@ sub poll_host
     $swdata{$host}{cafSessionMethodState} = $ret;
   }
   
-  #--- retrieve Cat4000-ios specific data ---------------------------------
+  #--- retrieve modular switch hwinfo data --------------------------------
 
-  if($platform =~ /^(c4000-ios|c6500-ios|c6500vss|c4948-ios|c7600|c6800)$/) {
+  if($platform =~ /^(c4000-ios|c6500-ios|c6500vss|c4948-ios|c7600|c6800|c6800vss)$/) {
 
     #--- module information
     tty_message("[$host] Getting hardware information (started)\n");
@@ -842,7 +842,7 @@ sub sql_hwinfo_update
   my $query;
   my $ret;
   my $sth;
-  my @current;
+  my @db;
   my @update_plan;
   my @stats = ( 0, 0, 0 );   # i/d/u
   
@@ -853,16 +853,16 @@ sub sql_hwinfo_update
   
   #--- load current data from hwinfo
 
-  $query = qq{SELECT n, partnum, sn, type, hwrev, fwrev, swrev, descr FROM hwinfo WHERE host = ?};
+  $query = qq{SELECT * FROM hwinfo WHERE host = ?};
   $sth = $dbh->prepare($query);
-  $sth->execute($host) || return 'Database query failed (spam,' . $sth->errstr() . ')';
-  while(my @a = $sth->fetchrow_array) {
-    push(@current, \@a);
+  $sth->execute($host) || return sprintf('Database query failed (spam, %s)', $sth->errstr());
+  while(my $row = $sth->fetchrow_hashref) {
+    push(@db, $row);
   }
 
   #--- remove all component for a host
   
-  if((scalar(@current) > 0) && (!exists $swdata{$host}{hw})) {
+  if((scalar(@db) > 0) && (!exists $swdata{$host}{hw})) {
     # FIXME - DO WE NEED THIS?
   }
 
@@ -872,86 +872,88 @@ sub sql_hwinfo_update
 
   #--- create update plan, part 1: identify removed modules
 
-  for my $k (@current) {
-    if(!exists $swdata{$host}{hw}{$k->[0]}) {
+  for my $row (@db) {
+    my ($m, $n) = ($row->{'m'}, $row->{'n'});
+    if(!exists $swdata{$host}{hw}{$m}{$n}) {
       push(@update_plan, [
-        q{DELETE FROM hwinfo WHERE host = ? AND n = ?},
-        $host, $k->[0]
+        q{DELETE FROM hwinfo WHERE host = ? AND m = ? AND n = ?},
+        $host, $m, $n
       ]);
       $stats[1]++;
 
   #--- create update plan, part 2: identify changed modules
 
-    } else {
-      if($swdata{$host}{hw}{$k->[0]}{model} ne $k->[1]
-         || $swdata{$host}{hw}{$k->[0]}{sn} ne $k->[2]
-         || $swdata{$host}{hw}{$k->[0]}{type} ne $k->[3]
-         || $swdata{$host}{hw}{$k->[0]}{hwrev} ne $k->[4]
-         || $swdata{$host}{hw}{$k->[0]}{fwrev} ne $k->[5]
-         || $swdata{$host}{hw}{$k->[0]}{swrev} ne $k->[6]
-         || $swdata{$host}{hw}{$k->[0]}{descr} ne $k->[7]) 
-      {
+    } elsif(
+      $swdata{$host}{'hw'}{$m}{$n}{'model'} ne $row->{'partnum'} ||
+      $swdata{$host}{'hw'}{$m}{$n}{'sn'}    ne $row->{'sn'}      ||
+      $swdata{$host}{'hw'}{$m}{$n}{'type'}  ne $row->{'type'}    ||
+      $swdata{$host}{'hw'}{$m}{$n}{'hwrev'} ne $row->{'hwref'}   ||
+      $swdata{$host}{'hw'}{$m}{$n}{'fwrev'} ne $row->{'fwrev'}   ||
+      $swdata{$host}{'hw'}{$m}{$n}{'swrev'} ne $row->{'swrev'}   ||
+      $swdata{$host}{'hw'}{$m}{$n}{'descr'} ne $row->{'descr'} 
+    ) {
 
-        $query =  q{UPDATE hwinfo SET chg_when = current_timestamp,%s };
-        $query .= q{WHERE host = ? AND n = ?};
+      $query =  q{UPDATE hwinfo SET %s };
+      $query .= q{WHERE host = ? AND m = ? AND n = ?};
 
-        my @fields = (
-          'partnum = ?', 'sn = ?', 'type = ?',
-          'hwrev = ?', 'fwrev = ?',  'swrev = ?',
-          'descr = ?'
-        );
-        
-        my @bind = (
-          $swdata{$host}{hw}{$k->[0]}{model},
-          $swdata{$host}{hw}{$k->[0]}{sn},
-          $swdata{$host}{hw}{$k->[0]}{type},
-          $swdata{$host}{hw}{$k->[0]}{hwrev},
-          $swdata{$host}{hw}{$k->[0]}{fwrev},
-          $swdata{$host}{hw}{$k->[0]}{swrev},
-          substr($swdata{$host}{hw}{$k->[0]}{descr}, 0, 64),
-          $host,
-          $k->[0]          
-        );
-        
-        push(@update_plan, [
-          sprintf($query, join(',', @fields)),
-          @bind
-        ]);
-        
-        $stats[2]++;
-      }
+      my @fields = (
+        'chg_when = current_timestamp',
+        'partnum = ?', 'sn = ?', 'type = ?',
+        'hwrev = ?', 'fwrev = ?',  'swrev = ?',
+        'descr = ?'
+      );
+      
+      my @bind = (
+        $swdata{$host}{hw}{$m}{$n}{model},
+        $swdata{$host}{hw}{$m}{$n}{sn},
+        $swdata{$host}{hw}{$m}{$n}{type},
+        $swdata{$host}{hw}{$m}{$n}{hwrev},
+        $swdata{$host}{hw}{$m}{$n}{fwrev},
+        $swdata{$host}{hw}{$m}{$n}{swrev},
+        substr($swdata{$host}{hw}{$m}{$n}{descr}, 0, 64),
+        $host, $m, $n
+      );
+      
+      push(@update_plan, [
+        sprintf($query, join(',', @fields)),
+        @bind
+      ]);
+      
+      $stats[2]++;
     }
   }
 
   #--- create update plan, part 3: identify new modules
   
-  for my $k (keys %{$swdata{$host}{hw}}) {
-    if(!grep { $_->[0] == $k } @current) {
+  for my $m (keys %{$swdata{$host}{hw}}) {
+    for my $n (keys %{$swdata{$host}{hw}{$m}}) {
+      if(!grep { exists $_->{$m}{$n} } @db) {
 
-      $query = q{INSERT INTO hwinfo ( %s ) VALUES ( %s )};
-      
-      my @fields = qw(host n partnum sn type hwrev fwrev swrev descr);
-      my @vals = ('?') x 9;
-      my @bind = (
-        $host, $k, $swdata{$host}{hw}{$k}{model},
-        $swdata{$host}{hw}{$k}{sn},
-        $swdata{$host}{hw}{$k}{type},
-        $swdata{$host}{hw}{$k}{hwrev},
-        $swdata{$host}{hw}{$k}{fwrev},
-        $swdata{$host}{hw}{$k}{swrev},
-        substr($swdata{$host}{hw}{$k}{descr}, 0, 64)
-      );
+        $query = q{INSERT INTO hwinfo ( %s ) VALUES ( %s )};
+        
+        my @fields = qw(host m n partnum sn type hwrev fwrev swrev descr);
+        my @vals = ('?') x 10;
+        my @bind = (
+          $host, $m, $n, $swdata{$host}{hw}{$m}{$n}{model},
+          $swdata{$host}{'hw'}{$m}{$n}{'sn'},
+          $swdata{$host}{'hw'}{$m}{$n}{'type'},
+          $swdata{$host}{'hw'}{$m}{$n}{'hwrev'},
+          $swdata{$host}{'hw'}{$m}{$n}{'fwrev'},
+          $swdata{$host}{'hw'}{$m}{$n}{'swrev'},
+          substr($swdata{$host}{hw}{$m}{$n}{descr}, 0, 64)
+        );
 
-      push(@update_plan, [
-        sprintf($query, join(',', @fields), join(',', @vals)),
-        @bind
-      ]);
-      $stats[0]++;
+        push(@update_plan, [
+          sprintf($query, join(',', @fields), join(',', @vals)),
+          @bind
+        ]);
+        $stats[0]++;
+      }
     }
   }
 
   #--- send the whole batch to db
-  
+
   if(scalar(@update_plan) > 0) {
     my $e = sql_transaction(\@update_plan);
     if($e) { return ($e, \@stats); }
