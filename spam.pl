@@ -887,10 +887,10 @@ sub sql_hwinfo_update
       $swdata{$host}{'hw'}{$m}{$n}{'model'} ne $row->{'partnum'} ||
       $swdata{$host}{'hw'}{$m}{$n}{'sn'}    ne $row->{'sn'}      ||
       $swdata{$host}{'hw'}{$m}{$n}{'type'}  ne $row->{'type'}    ||
-      $swdata{$host}{'hw'}{$m}{$n}{'hwrev'} ne $row->{'hwref'}   ||
+      $swdata{$host}{'hw'}{$m}{$n}{'hwrev'} ne $row->{'hwrev'}   ||
       $swdata{$host}{'hw'}{$m}{$n}{'fwrev'} ne $row->{'fwrev'}   ||
       $swdata{$host}{'hw'}{$m}{$n}{'swrev'} ne $row->{'swrev'}   ||
-      $swdata{$host}{'hw'}{$m}{$n}{'descr'} ne $row->{'descr'} 
+      substr($swdata{$host}{'hw'}{$m}{$n}{'descr'},0,64) ne $row->{'descr'} 
     ) {
 
       $query =  q{UPDATE hwinfo SET %s };
@@ -924,10 +924,10 @@ sub sql_hwinfo_update
   }
 
   #--- create update plan, part 3: identify new modules
-  
+
   for my $m (keys %{$swdata{$host}{hw}}) {
     for my $n (keys %{$swdata{$host}{hw}{$m}}) {
-      if(!grep { exists $_->{$m}{$n} } @db) {
+      if(!grep { $_->{'m'} eq $m && $_->{'n'} eq $n } @db) {
 
         $query = q{INSERT INTO hwinfo ( %s ) VALUES ( %s )};
         
@@ -2026,7 +2026,7 @@ eval {
 	        my $update_stats;
 	        tty_message("[$host] Updating hwinfo table (started)\n");
 	        ($e, $update_stats) = sql_hwinfo_update($host);
-                tty_message(sprintf("[%s] Updating hwinfo table (%d/%d/%d)\n", $host, $update_stats->[0], $update_stats->[1], $update_stats->[2]));
+                tty_message(sprintf("[%s] Updating hwinfo table (i:%d/d:%d/u:%d)\n", $host, $update_stats->[0], $update_stats->[1], $update_stats->[2]));
 	        if($e) { tty_message("[$host] Updating hwinfo table ($e)\n"); }
 	        tty_message("[$host] Updating hwinfo table (finished)\n");
               }
