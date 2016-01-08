@@ -75,7 +75,7 @@ sub get_platform
 
   @known_platforms = qw(c6500 c4000 c2900 c2950 c2960 c3500 c3560 c3650 c3850
                         c6500-ios c4000-ios c4500-ios c2620 c4948-ios
-                        c7600 c2800 c6500vss c3550 nx5000 c6800vss);
+                        c7600 c2800 c6500vss c3550 nx5000 nx3000 c6800vss);
                         
   if($eid != 9) { return undef; }
   if($dev =~ /^5\.(44|45)$/) { $platform = 'c6500'; }
@@ -95,6 +95,7 @@ sub get_platform
   if($dev =~ /^1\.576$/) { $platform = 'c2800'; }
   if($dev =~ /^1\.896$/) { $platform = 'c6500vss' }
   if($dev =~ /^3\.1084/) { $platform = 'nx5000'; }
+  if($dev =~ /^3\.1666/) { $platform = 'nx3000'; }
   if($dev =~ /^1\.1824$/) { $platform = 'c3650'; }
   if($dev =~ /^1\.1643$/) { $platform = 'c3850'; }
   if($dev =~ /^1.1934$/) { $platform = 'c6800vss'; }
