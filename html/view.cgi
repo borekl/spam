@@ -1266,7 +1266,7 @@ Content-type: text/html; charset=utf-8
 
 <head>
   <title>view.cgi</title>
-  <link rel=stylesheet type="text/css" href="default.css">
+  <link rel=stylesheet type="text/css" href="default-old.css">
   <link rel=stylesheet type="text/css" href="flags.css">
 EOHD
   if($js) {

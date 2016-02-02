@@ -63,7 +63,7 @@ sub http_header
   
   #--- default.css
   
-  push(@$css, 'default.css');
+  push(@$css, 'default-old.css');
   
   #--- HTTP header
   
