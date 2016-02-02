@@ -1,0 +1,20 @@
+<td class="num">
+  {@ne key=status value=1}
+
+    {@select key=inact}
+
+      {@gte value=2592000}
+        <span class="inact30d">{inact_fmt}<?a>
+      {/gte}
+
+      {@gte value=604800}
+        {inact_fmt}
+      {/gte}
+
+      {@gte value=3600}
+        <span class="inact1h">{inact_fmt}</span>
+      {/gte}
+    {/select}  
+
+  {/ne}
+</td>

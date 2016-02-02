@@ -1,0 +1,80 @@
+<h1>Port list for <em>{swinfo.result.host}</em></h1>
+
+
+<div id="swinfo">
+  {#swinfo.result}
+  <table>
+    <tbody>
+      <tr><th class="swinfo">Location</th>     <td>{descr}</td></tr>
+      <tr><th class="swinfo">Total ports</th>  <td>{ports_total}</td></tr>
+      <tr><th class="swinfo">Active ports</th> <td>{ports_active}</td></tr>
+      <tr><th class="swinfo">Boot time</th>    <td>{boot_time} ({boot_age} ago)</td></tr>
+      <tr><th class="swinfo">Last check</th>   
+      <td>
+        {chg_when}{~s}
+        {@eq key=stale value=1}
+          (<span class="warn">{lastchk_age} ago</span>)
+        {:else}
+          ({lastchk_age} ago)
+        {/eq}
+      </td></tr>
+    </tbody>
+  </table>
+  {/swinfo.result}
+</div>
+
+
+
+<table class="list" id="portlist"> {!========================================!}
+
+  <thead> {!-----------------------------------------------------------------!}
+    <tr>
+      <th>port</th>
+      <th>duplex</th>
+      <th>rate</th>
+      <th>flags</th>
+      <th>mac</th>
+      <th>vlan</th>
+      <th>cp</th>
+      <th>outlet</th>
+      <th>inact</th>
+      <th>description</th>
+   </tr>
+  </thead>
+
+  <tbody> {!-----------------------------------------------------------------!}
+
+  {#search.result}
+    <tr>
+
+      {!--- module info ---!}
+
+      {?n}
+      <td colspan=10 class="modinfo">
+        {@eq key=m value=0}
+          {n}. {partnum} <span class="modsn">{sn}</span>
+        {:else}
+          {m}/{n}. {partnum} <span class="modsn">{sn}</span>
+        {/eq}
+      </td>
+      {:else}
+
+      {>"port-port" /}
+      {>"port-duplex" /}
+      {>"port-rate" /}
+      {>"port-flags" /}
+      {>"port-maccnt" /}
+      {>"port-vlan" /}
+      {>"port-cp" /}
+      {>"port-outlet" /}
+      {>"port-inactivity" /}
+      {>"port-description" /}      
+
+      {/n}
+
+    </tr>
+  {/search.result}
+
+  </tbody>
+
+</table>

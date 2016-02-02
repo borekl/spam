@@ -1,0 +1,78 @@
+{!--- header ---------------------------------------------------------------!}
+
+<h1>Add Patches</h1>
+
+{!--- error/success message ------------------------------------------------!}
+
+<div id="addp_mesg">
+
+  <p class="nodisp error">
+  Failed to save the data
+  </p>
+
+  <p class="nodisp success">
+  Data saved successfully
+  </p>
+
+</div>
+
+{!---  site selector menu --------------------------------------------------!}
+
+<div class="addp_site">
+  <select name="addp_site" data-storage="addpatchsite">
+  </select>
+</div>
+
+<br>
+
+{!--- form -----------------------------------------------------------------!}
+
+<table class="addpatch">
+
+<thead>
+
+<tr>
+  <th>&nbsp;</th>
+  <th>switch</th>
+  <th>port</th>
+  <th>cp</th>
+  <th>outlet</th>
+  <th>&nbsp;</th>
+  <th>&nbsp;&nbsp;&nbsp;</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+  <td class="num">1.</td>
+  <td>
+    <input name="addp_sw00" maxlength="16" size="16">
+  </td>
+  <td>
+    <input name="addp_pt00" maxlength="16" size="8">
+  </td>
+  <td>
+    <input name="addp_cp00" maxlength="16" size="16">
+  </td>
+  <td>
+    <input name="addp_ou00" maxlength="16" size="16">
+  </td>
+  <td>
+    <button name="addp_ad00">+</button>
+    <button name="addp_dl00">–</button>
+  </td>
+  <td><span></span></td>
+</tr>
+
+</tbody>
+
+</table>
+
+{!--- submit/reset buttons -------------------------------------------------!}
+
+<div class="addp_buttons">
+<button type="submit" name="addp_submit">Submit</button>
+<button type="reset" name="addp_reset">Reset</button>
+</div>

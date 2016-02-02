@@ -1,0 +1,76 @@
+{!==========================================================================
+  Search Tool result table.
+  ==========================================================================!}
+
+
+{!--- query summary --------------------------------------------------------!}
+
+{#search}
+<p class="srcsummary">
+  {@select key=lines}
+
+    {@eq value=0}No matching entries found{/eq}  
+    {@eq value=1}<span>1</span> matching entry found{/eq}
+    {@none}<span>{lines}</span> matching entries found{/none}
+
+  {/select}
+</p>
+{/search}
+
+{!--- table heading --------------------------------------------------------!}
+
+<table class="list" id="srcres">
+
+<thead>
+
+  <tr>
+    <th>site</th>
+    <th>switch</th>
+    <th>port</th>
+    <th>duplex</th>
+    <th>rate</th>
+    <th>flags</th>
+    <th>vlan</th>
+    <th>outlet</th>
+    <th>inact</th>
+    <th>description</th>
+    <th>ip</th>
+    <th>mac</th>
+  </tr>
+
+</thead>
+
+{!--- table rows -----------------------------------------------------------!}
+
+<tbody>
+
+  {#search.result}
+
+  {?n}
+  {:else}
+  <tr>
+  
+    <td>
+    {site}
+    </td>
+
+    {>"port-host" /}
+    {>"port-port" /}
+    {>"port-duplex" /}
+    {>"port-rate" /}
+    {>"port-flags" /}
+    {>"port-vlan" /}
+    {>"port-outcp" /}
+    {>"port-inactivity" /}
+    {>"port-description" /}
+    {>"port-ipaddr" /}
+    {>"port-mac" /}
+
+  </tr>
+  {/n}
+
+  {/search.result}
+
+</tbody>
+
+</table>

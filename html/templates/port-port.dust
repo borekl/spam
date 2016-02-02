@@ -1,0 +1,21 @@
+{@eq key=adminstatus value=0}
+  <td class="port_disa">
+    <cpan class="port_inv">{portname}</span>
+  </td>
+{:else}
+  <td>
+    {@eq key=status value=1}
+      {?unregistered}
+        {?flags.cdp}
+          <span class="port_up">{portname}</span>
+        {:else}
+          <span class="port_unreg">{portname}</span>
+        {/flags.cdp}
+      {:else}
+        <span class="port_up">{portname}</span>
+      {/unregistered}
+    {:else}
+      <span class="port_down">{portname}</span>
+    {/eq}
+  </td>
+{/eq}

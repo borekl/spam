@@ -1,0 +1,84 @@
+<div id="swgroups">
+  <span class="lnk swgrp" data-grp="all">All</span>
+  <span class="lnk swgrp" data-grp="brr">Brno</span>
+  <span class="lnk swgrp" data-grp="chr">Chrudim</span>
+  <span class="lnk swgrp" data-grp="rcn">Říčany</span>
+  <span class="lnk swgrp" data-grp="sto">Stodůlky</span>
+  <span class="lnk swgrp" data-grp="str">Středokluky</span>
+  <span class="lnk swgrp" data-grp="sho">Shops</span>
+  <span class="lnk swgrp" data-grp="bsc">BSC</span>
+  <span class="lnk swgrp" data-grp="oth">Other</span>
+  {?debug}
+  <span class="lnk swgrp warn" data-grp="stl">!</span>
+  {/debug}
+</div>
+
+<table id="swlist">
+
+  <thead>
+    <tr>
+      <th rowspan=2>device</th>
+      <th rowspan=2>vtp domain</th>
+      <th rowspan=2>location</th>
+      <th colspan=5>ports</th>
+    </tr>
+
+    <tr>
+      <th rowspan=2>total</th>
+      <th>patched</th>
+      <th>active</th>
+      <th>unreg</th>
+      <th>errdis</th>
+    </tr>
+
+  </thead>
+
+  <tbody id="swlist">
+
+      {#result grp=grp}
+        {#filterhost}
+        <tr>
+          <td class="host">
+            <span class="lnk">{host}</span>&nbsp;
+            {@eq key=stale value=1}<span class="warn">!</span>{/eq}
+          </td>
+          <td>{vtp_domain}</td>
+          <td>{descr}</td>
+          <td class="num">{ports_total}</td>
+          <td class="num">{ports_patched}</td>
+          <td class="num">{ports_active}</td>
+          {@eq key=ports_illact value=0}
+            <td class="num">{ports_illact}</td>
+          {:else}
+            <td class="num"><span class="p_illact">{ports_illact}</span></td>
+          {/eq}
+          <td class="num">{ports_errdis}</td>
+        </tr>
+        {/filterhost}
+      {/result}
+
+    {! {#result grp=grp}
+      {@select}
+        {@eq key=grp value="all" /}
+        {@eq key=group value=grp /}
+        {@any}
+        <tr>
+          <td class="host">
+            <span class="lnk">{host}</span>{~s}
+            {?stale}<span class="warn">!</span>{/stale}
+          </td>
+          <td>{vtp_domain}</td>
+          <td>{descr}</td>
+          <td class="num">{ports_total}</td>
+          <td class="num">{ports_patched}</td>
+          <td class="num">{ports_active}</td>
+          <td class="num"><span class="p_illact">{ports_illact}</span></td>
+          <td class="num">{ports_errdis}</td>
+        </tr>
+        {/any}
+      {/select}
+    {/result} !}
+
+  </tbody>
+
+</table>

@@ -1,0 +1,49 @@
+<h1>Search Tool</h1>
+
+
+<table>
+
+<tr>
+<td>Site:</td>
+<td>
+<select name="site">
+<option value="any">-any-</option>
+</select></td>
+</tr>
+
+<tr>
+<td>Outlet:</td>
+<td><input type="text" name="outcp" size="16" maxlength="16"></td>
+</tr>
+
+<tr>
+<td>Switch Name:</td>
+<td><input type="text" name="host" size="16" maxlength="16"></td>
+</tr>
+
+<tr>
+<td>Port Name:</td>
+<td><input type="text" name="portname" size="16" maxlength="16"></td>
+</tr>
+
+<tr>
+<td>MAC Address:</td>
+<td><input type="text" name="mac" size="17" maxlength="17"></td>
+</tr>
+
+<tr>
+<td>IP Address:</td>
+<td><input type="text" name="ip" size="17" maxlength="17"></td>
+</tr>
+
+<tr>
+<td></td>
+<td>
+  <button id="submit">Submit</button>
+  <button id="reset">Reset</button>
+</td>
+</tr>
+
+</table>
+
+<div id="result"></div>

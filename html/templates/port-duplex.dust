@@ -1,0 +1,4 @@
+<td>
+{@eq key=duplex value=2}<span class="port_full">full</span>{/eq}
+{@eq key=duplex value=1}<span class="port_half">half</span>{/eq}
+</td>

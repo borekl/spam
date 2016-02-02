@@ -1,0 +1,7 @@
+<td>
+  {?outlet}
+  {outlet}/{cp}
+  {:else}
+  {cp}
+  {/outlet}
+</td>

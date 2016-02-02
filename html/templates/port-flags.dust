@@ -1,0 +1,53 @@
+<td>
+  {#flags}
+
+  {?cdp}
+  <div class="ptflag fl_cdp">C</div>
+  {:else}
+  <div class="ptflag fl_none">-</div>
+  {/cdp}
+
+  {?stp_pfast}
+  <div class="ptflag fl_pfast">F</div>
+  {:else}
+  <div class="ptflag fl_none">-</div>
+  {/stp_pfast}
+
+  {?stp_root}
+  <div class="ptflag fl_str">F</div>
+  {:else}
+  <div class="ptflag fl_none">-</div>
+  {/stp_root}
+  
+  {?tr_any}
+  <div class="ptflag fl_trunk">q</div>
+  {:else}
+  <div class="ptflag fl_none">-</div>
+  {/tr_any}
+
+  {?mab_success}
+  <div class="ptflag fl_mab">M</div>
+  {:else}
+    {?dot1x_fauth}
+    <div class="ptflag fl_xfauth">x</div>
+    {:else}
+      {?dot1x_unauth}
+      <div class="ptflag fl_xunauth">X</div>
+      {:else}
+        {?dot1x_authok}
+        <div class="ptflag fl_xauth">X</div>
+        {:else}
+        <div class="ptflag fl_none">-</div>
+        {/dot1x_authok}
+      {/dot1x_unauth}
+    {/dot1x_fauth}
+  {/mab_success}
+
+  {?poe_power}
+  <div class="ptflag fl_poepw">E</div>
+  {:else}
+  <div class="ptflag fl_none">-</div>
+  {/poe_power}
+
+  {/flags}
+</td>

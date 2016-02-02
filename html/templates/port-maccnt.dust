@@ -1,0 +1,3 @@
+<td class="num">
+  {@gt key=maccnt value=0}{maccnt}{/gt}
+</td>

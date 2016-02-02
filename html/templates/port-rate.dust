@@ -1,0 +1,11 @@
+<td class="num">
+{@eq key=status value=1}
+  {@select key=rate}
+    {@eq value=10}10M{/eq}
+    {@eq value=100}100M{/eq}
+    {@eq value=1000}1G{/eq}
+    {@eq value=4294}10G{/eq}
+    {@default}?{/default}
+  {/select}
+{/eq}
+</td>
