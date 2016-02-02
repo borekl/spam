@@ -296,7 +296,7 @@ $(document).ready(function()
     }
     $('#search').val('');
     $('#status').css("display","block");
-    $.get('spam-backend.cgi', { q: "ppmap", id: csite }, function(jdata) {
+    $.get('spam-backend-old.cgi', { q: "ppmap", id: csite }, function(jdata) {
       // FIXME: check return status in jdatata.status (ok, error)
       ppcols = jdata.col_max;
       pprows = jdata.row_max;

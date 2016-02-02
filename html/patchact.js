@@ -43,7 +43,7 @@ function patchact(jdata)
 
 
 $(document).ready(function() {
-  $.get('spam-backend.cgi', { q: "patchact" }, function(jdata) {
+  $.get('spam-backend-old.cgi', { q: "patchact" }, function(jdata) {
     if(jdata.status == 'ok') { patchact(jdata); }
   });
 });

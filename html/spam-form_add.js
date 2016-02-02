@@ -125,7 +125,7 @@ function site_change()
   var site = $(this).val();
   var jq_table = $('table');
   
-  $.get('spam-backend.cgi', { q: "usecp", site: site }, function(x) {
+  $.get('spam-backend-old.cgi', { q: "usecp", site: site }, function(x) {
     var col4 = jq_table.find('th').eq(4).text();
     if(col4 == 'cp' && x.data == 0) {
       // remove table column 'cp'
