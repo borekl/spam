@@ -4,16 +4,39 @@
 
 <head>
   <title>Switch Ports Activity Monitor</title>
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="stylesheet" href="default.css" type="text/css">
+  <link rel="stylesheet" href="spinner.css" type="text/css">
+  <script type="text/javascript" src="jquery.js"></script>
+  <script type="text/javascript" src="bundle.js" charset="utf-8"></script>
 </head>
 
-<frameset cols="180, 1*" border=0>
-  <frame src="menu.html" noresize>
-  <frame name="main" src="view.cgi?view=swlist" noresize>
-</frameset>
 
-<noframes>
-<p>Frames cabable browser required</p>
-</noframes>
+<body>
+
+<div id="sidebar">
+
+  <div class="cover">
+    <span>S</span>&#8239;WITCH
+     <br><span>P</span>&#8239;ORTS
+     <br><span>A</span>&#8239;CTIVITY
+     <br><span>M</span>&#8239;ONITOR
+  </div>
+
+  <div class="menu selected" id="swlist">SWITCH LIST<div></div></div>
+  <div class="menu" id="srctool">SEARCH TOOL<div></div></div>
+  <div class="menu" id="addpatch">ADD PATCHES</div>
+  <div class="menu" id="swdetect">SWITCH DETECTION</div>
+  <div class="menu" id="ppmap">PATCH PANEL MAP</div>
+  <div class="menu" id="about">ABOUT SPAM</div>
+  <div style="height : auto;"></div>
+  <div id="loginfo">
+    Logged as <span id="login"></span>
+  </div>
+</div>
+
+
+<div id="content"></div>
+
+</body>
 
 </html>

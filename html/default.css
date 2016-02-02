@@ -1,0 +1,381 @@
+/*----------------------------------------------------------------------------
+   BODY
+ ----------------------------------------------------------------------------*/
+
+body {
+  font-family : sans-serif;
+  font-family : "Trebuchet MS", "Tahoma", sans-serif;
+}
+
+/*----------------------------------------------------------------------------
+   GENERIC
+ ----------------------------------------------------------------------------*/
+
+table, th, td {
+  border-collapse : collapse;
+  border : none;
+}
+
+td.num {
+  text-align : right;
+}
+
+span.lnk:hover {
+  text-decoration : underline;
+  -moz-user-select : none;
+  user-select : none;
+  cursor : pointer;
+  color : blue;
+}
+
+span.warn {
+  font-weight : bold;
+  color : red;
+}
+
+p.error {
+  font-size : large;
+  color : red; 
+}
+
+p.success {
+  font-size : large;
+  color : green; 
+}
+
+.nodisp {
+  display : none;
+}
+
+/*----------------------------------------------------------------------------
+   SIDEBAR
+ ----------------------------------------------------------------------------*/
+
+div#sidebar {
+  background-color : #444;
+  position : fixed;
+  top : 0;
+  left : 0;
+  height : 100%;
+  width : 10em;
+  color : white;
+}
+
+
+div.menu {
+  font-size : smaller;
+  font-weight : bold;
+  text-align : left;
+  padding : 4% 9%;
+  cursor : pointer;
+  user-select : none;
+  -moz-user-select : none;
+}
+
+div.menu.selected {
+  border-right : 0.5em solid #F60;
+}
+
+div.menu:hover {
+  background-color : #777;
+  border-right : 0.5em solid #F60;
+  text-decoration : underline;
+}
+
+div.cover {
+  font-size : 1.4em;
+  font-weight : bold;
+  color : #AAA;
+  padding-left : 9%;
+  margin-top : 1em;
+  margin-bottom : 1em;
+}
+
+div.cover span {
+  color : #F60;
+  text-shadow : 0px 0px 2px #F60;
+}
+
+div#loginfo {
+  display : none;
+  padding-left : 9%;
+  font-size : smaller;
+  /*margin-top : 2em;*/
+  color : #888;
+  height : 1em;
+  position : absolute;
+  bottom: 1em;
+}
+
+div#loginfo span {
+  color : white;
+}
+
+/*----------------------------------------------------------------------------
+   CONTENT PANE
+ ----------------------------------------------------------------------------*/
+
+div#content {
+    margin-left : 11em;
+}
+
+/*----------------------------------------------------------------------------
+   SWITCH LIST
+ ----------------------------------------------------------------------------*/
+
+table#swlist {
+  /*width : 60em;*/
+}
+
+table#swlist tbody tr:nth-child(even) {
+  background-color : #fec;
+}
+
+table#swlist td,th {
+  padding : 0.2em;
+}
+
+table#swlist thead {
+  background : #F60;
+  color : white;
+}
+
+td.host {
+  font-weight : bold;
+}
+
+div#swgroups {
+  padding-bottom : 0.1em;
+}
+
+div#swgroups span {
+  padding : 0.2em;
+  padding-left : 0.8em;
+  padding-right :0.8em;
+  font-size : small;
+}
+
+span.swgrp.selected {
+  background-color : #F60;
+}
+
+span.p_illact {
+  font-weight : bold;
+  color : red;
+}
+
+/*----------------------------------------------------------------------------
+   PORT LIST
+ ----------------------------------------------------------------------------*/
+
+/*--- switch summary information ---*/
+
+div#swinfo {
+  /*margin-top : 1em;*/
+  margin-bottom : 2em;
+  width : 100%;
+  background-color : #eee;
+  font-size : small;
+}
+
+th.swinfo {
+  padding : 0em;
+  padding-right : 1em;
+  text-align: left;
+  font-weight : normal;
+}
+
+/*----------------------------------------------------------------------------
+   PORT LIST / SEARCH LISTING
+ ----------------------------------------------------------------------------*/
+
+table.list td.modinfo {
+  font-weight : bold;
+  font-size : medium;
+  background-color : #bbb;
+  padding : 0.2em;
+}
+
+table.list td.modinfo span.modsn {
+  font-size : 66%;
+  color : #444;
+  margin-left : 0.4em;
+}
+
+table.list {
+  font-size : small;
+}
+
+table.list th {
+  text-align : left;
+}
+
+table.list td {
+  padding-left : 0.2em;
+  padding-right : 0.5em;
+}
+
+table.list thead {
+  background : #F60;
+  color : white;
+}
+
+table.list tbody tr:nth-child(even) {
+  background-color : #fec;
+}
+
+table.list tbody tr:hover {
+  background-color : #ddd;
+}
+
+/*--- portname styles ---*/
+
+span.port_inv {
+  font-weight : bold;
+  font-color : white;
+}
+
+span.port_up {
+  color : green;
+  font-weight : bold;
+}
+
+span.port_down {
+  color : red;
+  font-weight : bold;
+}
+
+td.port_disa {
+  background-color : black;
+  color : white;
+  font-weight : bold;
+}
+
+span.port_unreg {
+  color : white;
+  background-color : red;
+  font-weight : bold;
+}
+
+span.port_full {
+  color : blue;
+}
+
+span.port_half {
+  color : #777;
+}
+
+
+/*--- host ---*/
+
+span.lst-host {
+  font-weight : bold;
+}
+
+/*--- inactivity period ---*/
+
+span.inact30d {
+  font-weight : bold;
+}
+
+span.inact1h {
+  color : rgba(0,0,0,0.5);
+}
+
+/*--- port flags ---*/
+
+div.ptflag {
+  font-family :      monospace;
+  font-weight :      bold;
+  display :          inline-block;
+  text-align :       center;
+  vertical-align :   middle;
+}
+
+div.fl_none    { color : #888; }
+div.fl_cdp     { color : black; }
+div.fl_pfast   { color : blue; }
+div.fl_str     { color : rgb(200,100,0); }
+div.fl_trunk   { color : red; }
+div.fl_poepw   { color : green; }
+div.fl_xunauth { color : red; }
+div.fl_xauth   { color : green; }
+div.fl_xfauth  { color : #777; }
+div.fl_mab     { color : blue; }
+
+
+/*----------------------------------------------------------------------------
+   SEARCH TOOL
+ ----------------------------------------------------------------------------*/
+
+div#result {
+  margin-top : 2em;
+}
+
+p.srcsummary {
+  font-size : larger;
+}
+
+p.srcsummary span {
+  color : blue;
+}
+
+
+/*----------------------------------------------------------------------------
+   ADD PATCHES
+ ----------------------------------------------------------------------------*/
+
+table.addpatch {
+    clear: left;
+}
+
+table.addpatch td {
+    /* background-color: #888; */
+    /* color: white; */
+    border : 4px solid #888;
+    padding : 0.2em;
+}
+
+table.addpatch th {
+    background-color: #888;
+    color: white;
+    font-size: small;
+    border : 4px solid #888;
+}
+
+div.addp_site {
+    /* background-color: #888; */
+    float: left;
+    border : 4px solid #888;
+    border-bottom : none;
+    padding-bottom : 0.2em;
+  padding-right : 0.2em;
+}
+
+table.addpatch input { 
+  border : none;
+}
+
+div.addp_site select { 
+  border : none;
+}
+
+div.addp_buttons {
+  margin-top : 1em;
+}
+
+span.err {
+  color : red;
+}
+
+td.valid {
+  background-color : #cfc;
+}
+
+td.invalid {
+ background-color : #fcc;
+}
+
+input {
+  background-color : rgba(255,255,255,0);
+}
