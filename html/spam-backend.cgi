@@ -185,7 +185,9 @@ sub sql_show_query
   my ($qry, $vals) = @_;
 
   for(my $i = 0; $i < scalar(@$vals); $i++) {
-    $qry =~ s/\?/$vals->[$i]/;
+    my $val = $vals->[$i];
+    $val = "'$val'" if $val !~ /^\d+$/;
+    $qry =~ s/\?/$val/;
   }
 
   return $qry;
