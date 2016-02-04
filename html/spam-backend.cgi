@@ -223,11 +223,7 @@ sub sql_select
   
   if($debug) { 
     $re{'debug'} = 1; 
-    $re{'query'} = sprintf(
-      '%s (%s)', 
-      $query, 
-      join(',', map { "'$_'" } @$args)
-    );
+    $re{'query'} = sql_show_query($query, $args);
   }
 
   eval { #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
