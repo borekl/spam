@@ -1276,8 +1276,10 @@ if(!ref($cfg)) {
 
 #--- debugging mode ----------------------------------------------------------
 
-(undef, $debug) = user_access_evaluate('debug');
-$js->pretty(1) if $debug;
+if($#ARGV == -1) {
+  (undef, $debug) = user_access_evaluate('debug');
+  $js->pretty(1) if $debug;
+}
 
 #=============================================================================
 #=== central dispatch ========================================================
