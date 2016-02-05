@@ -223,8 +223,8 @@ sub sql_select
 
   #--- some debugging info
   
-  if($debug) { 
-    $re{'debug'} = 1; 
+  if($debug) {
+    $re{'debug'} = 1;
     $re{'query'} = sql_show_query($query, $args);
   }
 
@@ -484,8 +484,8 @@ sub normalize_mac
 
 #=============================================================================
 # Perform normalization of what user enteres in Search Tool form. This
-# normalization can be suppressed by entering ' (typewriter apostrophe) as
-# the first character of the value.
+# normalization can be suppressed by entering ' (U+0027 APOSTROPHE) or
+# = (U+003D EQUALS SIGN) as the first character of the value.
 #=============================================================================
 
 sub normalize_search
@@ -500,9 +500,10 @@ sub normalize_search
   for my $k (keys %$parm_in) {
     my $val = $parm_in->{$k};
     
-    # apostrophe suppresses the normalization
-    if(substr($val, 0, 1) eq q{'}) {
-      $parm_out{$k} = substr($val, 1);
+    # leading apostrophe or equals sign suppresses the normalization;
+    # lone apostrophe or equals sign are still considered normal text
+    if($val =~ /^['=]./) {
+      $parm_out{$k} = $val;
       next;
     }
     
@@ -693,14 +694,21 @@ sub search_hwinfo_interleave
 
 #=============================================================================
 # Function to determine searching for switch portname from user input.
-# It returns list consiting of a  SQL conditional and string scalar.
+# It pushes SQL conditionals and their values into two fields used to build
+# the WHERE statement.
+#
+# Supported searches:
+# - exact match ("Gi1/1", "Eth113/1/20")
+# - match ignoring iftype ("1/1", "113/1/20")
 #=============================================================================
 
 sub search_portname
 {
   #--- arguments
   
-  my $portname = shift;
+  my $cond = shift;      # 1. SQL WHERE condition element arrayref
+  my $args = shift;      # 2. SQL WHERE placeholder value arrayref
+  my $portname = shift;  # 3. field value
   
   #--- portname without interface type (tail-anchored match)
   
@@ -708,59 +716,83 @@ sub search_portname
     $portname =~ /^\d+\/\d+$/ ||
     $portname =~ /^\d+\/\d+\/\d+$/
   ) {
-    $portname .= '$';
-    return ('portname ~ ?', $portname);
+    $portname = sprintf('[^\d/]%s$', $portname);
+    push(@$cond, 'portname ~ ?');
   }
   
   #--- portname with interface type (exact match)
+
+  else {
+    push(@$cond, 'portname = ?');
+  }
+
+  #--- finish
   
-  return ('portname = ?', $portname);
+  push(@$args, $portname);
 }
 
 
 
 #=============================================================================
 # Function to determine how we match IPv4 addresses.
+#
+# Supported searches:
+# - CIDR format ("1.2.3.4/24")
+# - wildcard format ("1.2.3.*")
+# - exact match ("1.2.3.0")
 #=============================================================================
 
 sub search_ip
 {
   #--- arguments
   
-  my $ip = shift;
+  my $cond = shift;      # 1. SQL WHERE condition element arrayref
+  my $args = shift;      # 2. SQL WHERE placeholder value arrayref
+  my $ip = shift;        # 3. field value
   
   #--- CIDR format
   
   if($ip =~ /^\d+\.\d+\.\d+\.\d+\/\d+$/) {
-    return ('ip << ?', $ip);
+    push(@$cond, 'ip << ?');
   }
   
   #--- wildcard format
   
-  if(
+  elsif(
     $ip =~ /^([*\d]+\.){1,3}[*\d]+$/ ||
     $ip =~ /^[*\d]+\.*+$/
   ) {
     $ip =~ s/\*/.*/g;
-    return ('ip::text ~ ?', $ip);
+    push(@$cond, 'ip::text ~ ?');
   }
   
   #--- default (exact match)
-  
-  return ('ip = ?', $ip);
-}
 
+  else {  
+    push(@$cond, 'ip = ?');
+  }
+
+  #--- finish
+    
+  push(@$args, $ip);
+}
 
 
 #=============================================================================
 # Function to determine how we match MAC
+#
+# Supported searches:
+# - wildcard match ("00:21:ab:*")
+# - exact match ("00:21:ab:34:3a:4f")
 #=============================================================================
 
 sub search_mac
 {
   #--- arguments
   
-  my $mac = shift;
+  my $cond = shift;      # 1. SQL WHERE condition element arrayref
+  my $args = shift;      # 2. SQL WHERE placeholder value arrayref
+  my $mac = shift;       # 3. field value
   
   #--- wildcard match
   
@@ -772,12 +804,74 @@ sub search_mac
       $mac = $mac . '$';
     }
     $mac =~ s/\*/.*/g;
-    return ('mac::text ~ ?', $mac);
+    push(@$cond, 'mac::text ~ ?');
   }
   
   #--- exact match
   
-  return ('mac = ?', $mac);
+  else {
+    push(@$cond, 'mac = ?');
+  }
+
+  #--- finish
+  
+  push(@$args, $mac);
+}
+
+
+
+#=============================================================================
+# Search for outlet/cp.
+#
+# Supported searches:
+# - regexp case-insensitive search ("/^.*17 [AB]$")
+# - exact search ("=2017 A")
+# - substring case-insensitive search ("2017", "'2017 A")
+#=============================================================================
+
+sub search_outcp
+{
+  #--- arguments
+  
+  my $cond = shift;      # 1. SQL WHERE condition element arrayref
+  my $args = shift;      # 2. SQL WHERE placeholder value arrayref
+  my $outcp = shift;     # 3. field value
+  
+  #--- remove leading apostrophe, if it exists; it was relevant during
+  #--- field normalization
+  
+  if($outcp =~ /^'(.+)/) {
+    $outcp = $1;
+  }
+  
+  #--- regexp search
+  
+  if($outcp =~ /^\/(.+)/) {
+    $outcp = $1;
+    push(@$cond, '( outlet ~* ? OR cp ~* ? )');
+  }
+
+  #--- exact search
+  
+  elsif($outcp =~ /^=(.+)/) {
+    $outcp = $1;
+    push(@$cond, '( outlet = ? OR cp = ? )');
+  }
+    
+  #--- substring search
+  # is there simpler way of doing substring search in PgSQL?
+  
+  else {
+    push(
+      @$cond, 
+      '( position(lower(?) in lower(outlet))::boolean OR ' .
+      'position(lower(?) in lower(cp))::boolean )'
+    );
+  }
+  
+  #--- finish
+  
+  push(@$args, ($outcp) x 2);
 }
 
 
@@ -868,26 +962,18 @@ sub sql_search
     $view = 'v_search_status';
   }
   
-  #--- conditions
+  #--- SQL WHERE conditions
   
   for my $k (qw(site outcp host portname mac ip)) {
     if(exists $par->{$k} && $par->{$k}) {
       if($k eq 'outcp') {
-        push(@cond, '(cp = ? OR outlet = ?)');
-        push(@args, $par->{'outcp'});
-        push(@args, $par->{'outcp'});
+        search_outcp(\@cond, \@args, $par->{$k});
       } elsif($k eq 'portname') {
-        my @a = search_portname($par->{$k});
-        push(@cond, $a[0]);
-        push(@args, $a[1]);
+        search_portname(\@cond, \@args, $par->{$k});
       } elsif($k eq 'ip') {
-        my @a = search_ip($par->{$k});
-        push(@cond, $a[0]);
-        push(@args, $a[1]);
+        search_ip(\@cond, \@args, $par->{$k});
       } elsif($k eq 'mac') {
-        my @a = search_mac($par->{$k});
-        push(@cond, $a[0]);
-        push(@args, $a[1]);
+        search_mac(\@cond, \@args, $par->{$k});
       } else {
         push(@cond, sprintf('%s = ?', $k));
         push(@args, $par->{$k});
