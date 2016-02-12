@@ -810,8 +810,8 @@ sub sql_status_update
 
       #--- DELETE
 
-      $q = q{DELETE FROM status WHERE = ? AND portname = ?};
-      push(@bind, $host, $k->[1]);
+      $q = q{DELETE FROM status WHERE host = ? AND portname = ?};
+      @bind = ($host, $k->[1]);
       
     } else {
     
@@ -1000,7 +1000,7 @@ sub sql_transaction
   for my $row (@$update) {
   
 ### DEBUG ###
-#printf("TRANSACTION>>>%s\n", join('|', @$row));
+#printf("TRANSACTION>>> %s\n", join('|', @$row));
 #############
 
     my $qry = ref($row) ? $row->[0] : $row;
