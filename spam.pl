@@ -508,16 +508,18 @@ sub poll_host
   if($getmactable) {
     if($platform ne 'c2620' && $platform ne 'c2800') { # dot1dTable not supported in 2600 (!?)
       tty_message("[$host] Getting bridging table (started)\n");
-      $ret = snmp_mac_table(
-                             $host,
-                             $ip,
-                             $community,
-                             $swdata{$host}{vlans},
-                             $swdata{$host}{cdpcache},
-                             sub {
-                               tty_message(sprintf("[%s] Getting bridging table (%d)\n", $host, $_[0])) if(($_[0] % 10) == 0);
-                             }
-                           );
+       $ret = snmp_mac_table(
+        $host,
+        $ip,
+        $community,
+        $swdata{$host}{vlans},
+        $swdata{$host}{cdpcache},
+        sub {
+          tty_message(
+            sprintf("[%s] Getting bridging table (%d)\n", $host, $_[0])) if (($_[0] % 10) == 0
+          );
+        }
+      );
       if(!defined $ret) {
         tty_message("[$host] Getting bridging table (failed)\n");
         return 'Failed to retrieve bridging table';
