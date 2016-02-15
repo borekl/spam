@@ -187,9 +187,7 @@ sub sql_load_status
     my $ifOperStatus = $ra->[1]; $ifOperStatus =~ y/10/12/;
     my $ifAdminStatus = $ra->[11]; $ifAdminStatus =~ y/10/12/;
     $swdata{$host}{dbStatus}{$ra->[0]} = [
-      $ifOperStatus, $ra->[2], $ra->[3], $ra->[4], $ra->[5], $ra->[6],
-      $ra->[7], $ra->[8], $ra->[9], $ra->[10], $ifAdminStatus, $ra->[12],
-      $ra->[13]
+      $ifOperStatus, @{$ra}[2..10], $ifAdminStatus, @{$ra}[12,13]
     ];
   }
   return undef;
