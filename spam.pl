@@ -1453,13 +1453,10 @@ sub sql_switch_info_update
     else {
       
       $q = q{UPDATE swstat SET %s,chg_when = current_timestamp WHERE host = ?};
-      @fields = (
-        'location = ?', 'ports_total = ?', 'ports_active = ?',
-        'ports_patched = ?', 'ports_illact = ?',
-        'ports_errdis = ?', 'ports_inact = ?',
-        'ports_used = ?', 'boot_time = ?',
-        'vtp_domain = ?', 'vtp_mode = ?',
-        'platform = ?'
+      @fields = map { $_ . ' = ?' } (
+        'location', 'ports_total', 'ports_active', 'ports_patched', 'ports_illact',
+        'ports_errdis', 'ports_inact', 'ports_used', 'boot_time', 'vtp_domain',
+        'vtp_mode', 'platform'
       );
       @args = (
         $stat->{syslocation} =~ s/'/''/r,
