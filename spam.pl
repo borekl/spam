@@ -1550,30 +1550,33 @@ sub html_vlan_list
 sub maintenance
 {
   my $dbh = dbconn('spam');
-  my ($q, $t, $t1, $r);
+  my ($t, $r);
 
-  #--- prepare ---
+  #--- prepare
 
-  if(!ref($dbh)) { return "Cannot connect to database (spam)"; }
+  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
   $t = time();
 
-  #--- arptable purging ---
-
-  $t1 = $cfg->{arptableage};
-  $q = "DELETE FROM arptable WHERE ($t - date_part('epoch', lastchk)) > $t1";
-  $dbh->do($q) || return 'Cannot delete from database (spam)';
-
-  #--- mactable purging ---
+  #--- arptable purging
   
-  $t1 = $cfg->{mactableage};
-  $q = "DELETE FROM mactable WHERE ($t - date_part('epoch', lastchk)) > $t1";
-  $dbh->do($q) || return 'Cannot delete from database (spam)';
+  $dbh->do(
+    q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
+    undef, $t, $cfg->{'arptableage'}
+  ) or return 'Cannot delete from database (spam)';
+  
+  #--- mactable purging
+  
+  $dbh->do(
+    q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
+    undef, $t, $cfg->{'mactableage'}
+  ) or return 'Cannot delete from database (spam)';
 
-  #--- status table purging ---
+  #--- status table purging
 
-  $t1 = 7776000; # = 90 days
-  $q = "DELETE FROM status WHERE ($t - date_part('epoch', lastchk)) > $t1";
-  $dbh->do($q) || return 'Cannot delete from database (spam)';
+  $dbh->do(
+    q{DELETE FROM status WHERE (? - date_part('epoch', lastchk)) > ?},
+    undef, $t, 7776000 # 90 days
+  ) or return 'Cannot delete from database (spam)';
 
   #--- swstat table purging ---
 
