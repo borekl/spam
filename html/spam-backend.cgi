@@ -13,6 +13,7 @@
 #=== pragmas =================================================================
 
 use strict;
+use warnings;
 use integer;
 
 
@@ -82,40 +83,6 @@ sub remove_undefs
       delete $h->{$key}
     }
   }
-}
-
-
-
-#=============================================================================
-# Evaluate user's access, this function does checks for overrides.
-#
-# Arguments: 1. access right name
-#            2. user id
-# Returns:   1. undef on success, error message otherwise
-#            2. 0|1 -> fail|pass
-#=============================================================================
-
-sub user_access_evaluate
-{
-  my ($access, $user) = @_;
-  my $v;
-
-  #--- sanitize arguments
-
-  if(!$access) { return 'Required argument missing'; }
-  $user = $ENV{REMOTE_USER} if !$user;
-  $user = lc($user);
-  $access = lc($access);
-
-  #--- query
-
-  my $sth = $db_ondb->prepare(qq{SELECT authorize_user(?,'spam',?)::int});
-  my $r = $sth->execute($user, $access);
-  if(!$r) {
-    return sprintf('Database query failed (ondb, %s)', $sth->errstr());
-  }
-  ($v) = $sth->fetchrow_array();
-  return (undef, $v);
 }
 
 
@@ -335,7 +302,7 @@ sub mangle_location
   #--- field 0: should be 5-letter site code
   
   $site = $l[0] if $l[0];
-  $site =~ s/^(\S{5}).*$/\1/;
+  $site =~ s/^(\S{5}).*$/$1/;
   
   #--- field 3: "shop Sxx"
   
@@ -418,13 +385,13 @@ sub normalize_outcp
   $outcp = uc($outcp);
   
   # "N/N/N" -> "N.N.N"
-  $outcp =~ s/(\d+)\/(\d+)\/(\d+)/\1.\2.\3/;
+  $outcp =~ s/(\d+)\/(\d+)\/(\d+)/$1.$2.$3/;
   
   # "-N A"
-  $outcp =~ s/^(.*\d)\s*([A-Z])$/\1 \2/;
+  $outcp =~ s/^(.*\d)\s*([A-Z])$/$1 $2/;
   
   # "A N-"
-  $outcp =~ s/^([A-Z]+)\s*(\d.*)$/\1 \2/;
+  $outcp =~ s/^([A-Z]+)\s*(\d.*)$/$1 $2/;
   
   return $outcp;
 }
@@ -1321,6 +1288,7 @@ if($args{'r'}) {
 } else {
   $req = $q->param('r');
 }
+$req //= '';
 
 #--- define argument fetching function
 
