@@ -76,12 +76,10 @@ BEGIN
 
 sub remove_undefs
 {
-  my $h = shift;
+  my ($h) = @_;
   
-  for my $key (keys %$h) {
-    if(!defined($h->{$key})) {
-      delete $h->{$key}
-    }
+  while(my ($key, $value) = each %$h) {
+    delete $h->{$key} if !defined($value);
   }
 }
 
