@@ -149,12 +149,24 @@ sub sql_show_query
 {
   my ($qry, $vals) = @_;
 
+  #---  handle $vals being single scalar or undefined
+  
+  if($vals && !ref($vals)) {
+    $vals = [ $vals ];
+  } elsif(!$vals) {
+    $vals = [];
+  }
+  
+  #--- do the placeholders replacement
+  
   for(my $i = 0; $i < scalar(@$vals); $i++) {
     my $val = $vals->[$i];
     $val = "'$val'" if $val !~ /^\d+$/;
     $qry =~ s/\?/$val/;
   }
 
+  #--- finish
+  
   return $qry;
 }
 
