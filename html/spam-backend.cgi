@@ -161,7 +161,11 @@ sub sql_show_query
   
   for(my $i = 0; $i < scalar(@$vals); $i++) {
     my $val = $vals->[$i];
-    $val = "'$val'" if $val !~ /^\d+$/;
+    if(defined $val) {
+      $val = "'$val'" if $val !~ /^\d+$/;
+    } else {
+      $val = 'NULL';
+    }
     $qry =~ s/\?/$val/;
   }
 
