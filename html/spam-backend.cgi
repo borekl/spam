@@ -86,6 +86,42 @@ sub remove_undefs
 
 
 #=============================================================================
+# Return JSON boolean value of an argument.
+#=============================================================================
+
+sub js_bool
+{
+  return $_[0] ? JSON::true : JSON::false;
+}
+
+
+
+#=============================================================================
+# Function to push values into multiple arrays with single function call.
+# The arrays are supplied to this function as list of arrayrefs and function
+# that will push values to all the arrays at once is returned. This exists
+# to make preparing database quieries simpler and more readable (since this
+# entails creating arrays of field names and values).
+#=============================================================================
+
+sub multipush
+{
+  my @arrays;
+  
+  for my $ary (@_) {
+    push(@arrays, $ary);
+  }
+  
+  return sub {
+    for(my $i = 0; $i < scalar(@_); $i++) {
+      push(@{$arrays[$i]}, $_[$i]);
+    }
+  };
+}
+
+
+
+#=============================================================================
 # Parse PostgreSQL error messages, returning them in structured form:
 #
 # lines      -- array -- individual lines of the error message
@@ -1041,32 +1077,32 @@ sub sql_aux_data
 
 sub addp_normalize
 {
-  my $arg = shift;
-  my %re = ( 'arg' => $arg );
+  my ($type, $value) = @_;
 
-  $arg->{'val'} =~ s/^\s+|\s+$//g;
+  $value =~ s/^\s+|\s+$//g;
   
-  if($arg->{'type'} eq 'cp' || $arg->{'type'} eq 'outlet') {
-    $re{'result'} = normalize_outcp($arg->{'val'});
+  if($type eq 'cp' || $type eq 'ou') {
+    return normalize_outcp($value);
   }
 
-  print $js->encode(\%re);  
+  return undef;  
 }
 
 
 
 #==========================================================================
-# Used by Add Patches form to inquire whether given site uses cp's or not.
+# Used by Add Patches form to inquire whether given site uses outlets not.
+# Most sites don't use outlets.
 #==========================================================================
  
-sub backend_usecp
+sub backend_useoutlet
 {
   my $site = shift;
   my %re = ( 'arg' => { 'site' => $site } );
     
   $re{'result'} = sql_site_uses_cp($site);
   $re{'status'} = 'ok';
-  print $js->encode(\%re);
+  return \%re;
 }
 
 
@@ -1160,21 +1196,58 @@ sub backend_swport
   #--- finish
 
   $re{'status'} = 'ok';
-  print $js->encode(\%re);
+  return \%re;
 }
 
 
 
 #==========================================================================
-# Add Patches form executive.
+# Function that tries to find and return cp that is associated with
+# an outlet.
+#==========================================================================
+
+sub sql_get_cp_by_outlet
+{
+  #--- arguments
+  
+  my (
+    $site,
+    $outlet
+  ) = @_;
+  
+  #--- perform the query
+  
+  my $r = sql_select(
+    'spam',
+    'SELECT * FROM out2cp WHERE site = ? AND outlet = ?',
+    [ $site, $outlet ],
+    undef, 1, 0
+  );
+  
+  #--- process the result
+  
+  if($r->{'status'} eq 'ok') {
+    return ($r->{'result'}[0]{'cp'}, $r);
+  } else {
+    return undef;
+  }
+}
+
+
+
+#==========================================================================
+# Add Patches form executive. The $arg parameter contains the form data
+# as key-value pairs.
 #==========================================================================
 
 sub sql_add_patches
 {
   #--- arguments
   
-  my $arg = shift;          # form fields from client
-  my $site = shift;         # site the form was submited for
+  my (
+    $arg,                   # 1. form fields from client (hashref)
+    $site                   # 2. site the form was submited for
+  ) = @_;
     
   #--- other variables
   
@@ -1184,15 +1257,163 @@ sub sql_add_patches
   
   #--- init
 
-  $re{'debug'} = 1 if $debug;
+  $re{'debug'} = $debug;
   $re{'function'} = 'sql_add_patches';
+  $re{'result'} = [];
+
+  #--- are we using outlets for this site?
+  
+  $re{'useoutlet'} = do {
+    my $useoutlet = backend_useoutlet($site);
+    js_bool($useoutlet->{'status'} eq 'ok' && $useoutlet->{'result'});
+  };
+  
+  #--- function to store/access form data
+  
+  # aux function to store/retrieve the form data while keeping them in
+  # a structure suitable for client-side JS
+    
+  my $form = sub {
+    my ($row, $type, $val) = @_;
+    my $store = $re{'result'};
+    my $name = sprintf('addp_%s%02d', $type, $row);
+
+    if(defined $val) {
+      # $val is non-empty hashref, add the keys
+      if(ref($val) && %$val) {
+        for my $k (keys %$val) {
+          $store->[$row]{$type}{$k} = $val->{$k};
+        }
+        $store->[$row]{$type}{'name'} = $name;
+        return $store->[$row]{$type};
+      } 
+      # $val is empty-hashref, remove the 'type' node entirely
+      elsif(ref($val) && !%$val) {
+        delete $store->[$row]{$type};
+      } 
+      # $val is scalar, return value for given type/key
+      else {
+        return $store->[$row]{$type}{$val};
+      }
+    } 
+    # $val is undef, return the whole type-hashref
+    else {
+      if(!$store->[$row]) {
+        $store->[$row]{$type} = {};
+      }
+      return $store->[$row]{$type};
+    }
+  };
+  
+  #--- normalization and validation, pass 1
+  
+  # Following is done in this section:
+  #
+  # 1. normalize cp/outlet values (so that values that get into the datbase
+  #    hove some chance of being sane)
+  # 2. check whether host (switch) actually exists
+  # 3. check whether switch port exists and turn it into its normal form
+  #    (users need only to enter the numeric part, not the iftype prefix)
+  #
+  # The result is array of hashrefs in $re{'result'}, each hashref has
+  # following keys: --FIX ME--
+  #
+  #   name  -- the HTML input name attribute
+  #   value -- the normalized value
+  #   valid -- boolean whether we think the vale is valid; invalid value is
+  #            handled as error in the client and the user must reenter it
+  
+  for(my $row_no = 0;; $row_no++) {
+  
+  #--- get values, finish if no more values
+  
+    my $v = sprintf('%02d', $row_no);
+    my $form_sw = $arg->{"addp_sw$v"};
+    my $form_pt = $arg->{"addp_pt$v"};
+    my $form_cp = $arg->{"addp_cp$v"};
+    my $form_ou = $arg->{"addp_ou$v"};
+    last if !($form_sw || $form_pt || $form_cp || $form_ou);
+
+  #--- get switch/port feedback
+
+    my $s = backend_swport($site, $form_sw, $form_pt);
+    if($s->{'status'} ne 'ok') { $s = undef; }
+
+  #--- switch
+
+    if($s && $form_sw && $s->{'result'}{'host'}) {
+      $form->($row_no, 'sw', {
+        'value' => $s->{'result'}{'host'},
+        'valid' => js_bool($s->{'result'}{'exists'}{'host'})
+      });
+    }
+
+  #--- portname
+
+    if($s && $form_pt && $s->{'result'}{'portname'}) {
+      $form->($row_no, 'pt', {
+        'value' => $s->{'result'}{'portname'},
+        'valid' => js_bool($s->{'result'}{'exists'}{'portname'})
+      });
+    }
+
+  #--- cp
+
+    if($form_cp) {
+      my $cp_norm = addp_normalize('cp', $form_cp);
+      $form->($row_no, 'cp', {
+        'value' => $cp_norm,
+        'valid' => js_bool($cp_norm)
+      });
+    }
+
+  #--- outlet
+
+    if($form_ou && $re{'useoutlet'}) {
+      my $ou_norm = addp_normalize('ou', $form_ou);
+      $form->($row_no, 'ou', {
+        'value' => $ou_norm,
+        'valid' => js_bool($ou_norm)
+      });
+    }
+
+  }
+
+  #--- validation, pass 2
+
+  # fill in cp where user entered outlet; delete outlet entirely if that site
+  # does not use outlet; if users enters both outlet than the db-provided value
+  # of cp overrides the user supplied one
+
+  for(my $row_no = 0; $row_no < scalar(@{$re{'result'}}); $row_no++) {
+    my $outlet = $form->($row_no, 'ou');
+
+    if($re{'useoutlet'} && $outlet->{'value'}) {
+      my ($r_cp, $ret) = sql_get_cp_by_outlet($site, $outlet->{'value'});
+      if($r_cp) {
+        $form->($row_no, 'cp', {
+          value => $r_cp,
+          valid => JSON::true
+        });
+        $form->($row_no, 'ou', { valid => JSON::true });
+      } else {
+        $form->($row_no, 'cp', {
+          value => undef,
+          valid => JSON::false
+        });
+        $form->($row_no, 'ou', { valid => JSON::true });
+      }
+    } else {
+      $form->($row_no, 'ou', {});
+    }
+  }
 
   #--- eval loop start
-  
+
   eval {
-    
+
   #--- begin transaction
-  
+
     $r = $dbh->begin_work();
     if(!$r) {
       $re{'status'} = 'error';
@@ -1203,49 +1424,54 @@ sub sql_add_patches
     }
 
   #--- loop over form rows
-  
-    for(my $i = 0; $i < scalar(@$arg); $i++) {
-      my ($qry, @fields, @vals);
-      for my $k (keys $arg->[$i]) {
-        if($k eq 'sw') {
-          push(@fields, 'host');
-        } elsif($k eq 'pt') {
-          push(@fields, 'portname');
-        } elsif($k eq 'cp') {
-          push(@fields, 'cp');
-        }
-        push(@vals, $arg->[$i]{$k});
-      }
-      
-      push(@fields, 'site');
-      push(@vals, $site);
-      
-      push(@fields, 'chg_who');
-      push(@vals, $ENV{'REMOTE_USER'});
 
-      push(@fields, 'chg_where');
-      push(@vals, $ENV{REMOTE_ADDR});
-            
-      $qry = sprintf(
+    for(
+      my ($i, $n) = (0, scalar(@{$re{'result'}})); 
+      $i < $n;
+      $i++
+    ) {
+      my (@fields, @values);
+      my $pushdb = multipush(\@fields, \@values);
+      my $row = $re{'result'}[$i];
+      
+      $pushdb->('host',      $form->($i, 'sw', 'value'));
+      $pushdb->('portname',  $form->($i, 'pt', 'value'));
+      $pushdb->('cp',        $form->($i, 'cp', 'value'));
+      $pushdb->('site',      $site);
+      $pushdb->('chg_who',   $ENV{'REMOTE_USER'}) if $ENV{'REMOTE_USER'};
+      $pushdb->('chg_where', $ENV{'REMOTE_ADDR'}) if $ENV{'REMOTE_ADDR'};
+
+      my $qry = sprintf(
         'INSERT INTO porttable ( %s ) VALUES ( %s )',
         join(',', @fields),
         join(',', ('?') x scalar(@fields))
       );
-      
-      $r = $dbh->do($qry, undef, @vals);
+
+      my $r = $dbh->do($qry, undef, @values);
       if(!$r) {
         $re{'errwhy'} = 'Failed to insert data into database';
         $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
-        $re{'query'} = sql_show_query($qry, \@vals);
+        $re{'query'} = sql_show_query($qry, \@values);
         $re{'formrow'} = $i;
+
+        # interpret the error
+        if($re{'errdb'}{'constraint'} eq 'porttable_pkey') {
+          $form->($i, 'pt', { 
+            'valid' => JSON::false, 
+            'err' => 'Port already in use'
+          });
+        }
+
+        # abort        
         die "ABORT\n";
       }
-    } 
+
+    }
 
   #--- eval loop end
-  
+
   };
-  
+
   if($@) {
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
@@ -1263,9 +1489,9 @@ sub sql_add_patches
     }
     $re{'status'} = 'ok';
   }
-  
+
   #--- finish
-  
+
   print $js->encode(\%re);
 }
 
@@ -1345,7 +1571,7 @@ if(!ref($cfg)) {
 #--- debugging mode ----------------------------------------------------------
 
 if($#ARGV == -1) {
-  (undef, $debug) = user_access_evaluate('debug');
+  (undef, $debug) = user_access_evaluate($ENV{'REMOTE_USER'}, 'debug');
   $js->pretty(1) if $debug;
 }
 
@@ -1377,27 +1603,11 @@ if($req eq 'search') {
   sql_search(\%par);
 }
 
-#--- normalize form field ---------------------------------------------------
-
-# this is used by the Add Patches form to interactively verify/normalize
-# user entry
-
-if($req eq 'addpnorm') {
-  my %par;
-  @par{'type','val'} = &$arg('type','val');
-  addp_normalize(\%par);
-}
-
 #--- use cp inquiry ---------------------------------------------------------
 
 if($req eq 'usecp') {
-  backend_usecp(&$arg('site'));
-}
-
-#--- switch/port inquiry ----------------------------------------------------
-
-if($req eq 'swport') {
-  backend_swport(&$arg('site', 'host', 'portname'));
+  my $re = backend_useoutlet(&$arg('site'));
+  print $js->encode($re);
 }
 
 #--- auxiliary data ---------------------------------------------------------
@@ -1409,19 +1619,16 @@ if($req eq 'aux') {
 #--- add patches -------------------------------------------------------------
 
 if($req eq 'addpatch') {
-  my @names = $q->param();
-  my @args;
-  for my $k (@names) {
-    $k =~ /^addp_([a-z]{2})(\d{2})$/ && do {
-      $args[$2]{$1} = $q->param($k);
-    };
-  }
-  sql_add_patches(\@args, $q->param('site')) if scalar(@args) > 0;
+  my @names = %args ? keys %args : $q->param();
+  my %form;
+  for my $k (@names) { ($form{$k}) = $arg->($k); }
+  sql_add_patches(\%form, $arg->('site'));
 }
 
 #--- default -----------------------------------------------------------------
 
 print $js->encode({
   'userid' => $ENV{'REMOTE_USER'},
-  'status' => 'ok'
+  'status' => 'ok',
+  'debug'  => $debug
 }) if !$req;
