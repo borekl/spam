@@ -328,6 +328,7 @@ function add_patches()
   // Blur events trigger validation/normalization of user-entered form values
   // Note: blur/focus events do not bubble up
   
+      if(0) { /* DISABLED HANDLING OF BLUR EVENTS */
       $('input').on('blur', function(evt) {
 
         var 
@@ -405,6 +406,7 @@ function add_patches()
           $(_this).parent().removeClass('valid');
         }
       });
+      } /* END OF BLUR EVENTS */
 
   //--- switching between cp/outlet and cp modes -----------------------------
   
@@ -465,8 +467,13 @@ function add_patches()
         // do nothing if we don't have valid row
         if(!target) { return; }
         // find the status message TD
-        var el = $(target).children('td').last().children('span');
-        el.removeClass().text(mesg);
+        var el = $(target).children('td').last().children('span'),
+            tx = el.html();
+        if(tx && mesg) {
+          el.removeClass().html(tx + '<br>' + mesg);
+        } else {
+          el.removeClass().html(mesg);
+        }
         if(cl) { el.addClass(cl); }      
       });
       
@@ -494,38 +501,63 @@ function add_patches()
   // NOTE: currently simplified version without any validation
     
       $('button[name=addp_submit]').on('click', function(evt) {
-        var arg = { r: 'addpatch' };
         
+        // object to hold the POST data for the backend query
+        var arg = { 
+          r: 'addpatch',
+          site: $('select[name=addp_site]').val()
+        };
+        console.log("submit: addp_site = %s", arg.site);
+        
+        // move form data into arg object
         $('table.addpatch').find('input').each(function(idx) {
-          if($(this).val()) {
-            console.log("submit: %s = %s", $(this).attr('name'), $(this).val());
-            arg[$(this).attr('name')] = $(this).val();
-          }
+          arg[$(this).attr('name')] = $(this).val();
         });
-        arg.site = $('select[name=addp_site]').val();
-        
+
+        // backend query
         $.post(backend, arg, function(data) {
-          if('status' in data) {
-            $('div#addp_mesg p').addClass('nodisp');
-            if(data.status == 'error') {
-              $('div#addp_mesg p.error').removeClass('nodisp');
-              if(typeof data.formrow !== 'undefined') {
-                var errmsg = 'failed to save';
-                if(data.errdb) {
-                  if(data.errdb.type == 'dupkey' && data.errdb.constraint == 'porttable_pkey') {
-                    errmsg = 'duplicate port';
-                  }
-                  if(data.errdb.type == 'nullval') {
-                    errmsg = 'no value in field "' + data.errdb.field + '"';
-                  }
+          
+          // display feedback data from backend; this is run even when the
+          // actual database transaction fails; the data from backends are:
+          //  * normalized field values
+          //  * validation result
+          //  * error messages for validation failures
+
+          $('table.addpatch tbody').find('tr').each(function() {
+            $(this).trigger('statmsg', '');
+          });
+          if('result' in data) {
+            data.result.forEach(function(val, idx) {
+              for(var field in val) {
+                var jq_input = $('input[name=' + val[field].name + ']');
+                jq_input.val(val[field].value);
+                if(val[field].err) {
+                  jq_input.trigger('statmsg', val[field].err);
                 }
-                $('table.addpatch tbody tr').eq(data.formrow).trigger('statmsg', [ errmsg, 'err']);
+                if(!val[field].valid) {
+                  jq_input.parent().addClass('invalid');
+                } else {
+                  jq_input.parent().removeClass('invalid');
+                }
               }
-            } else {
-              $('table.addpatch').trigger('reset');
-              $('div#addp_mesg p.success').removeClass('nodisp');
-            }
+            });
           }
+          
+          // general error message
+
+          $('#addp_mesg p').addClass('nodisp');
+          if('status' in data && data.status == 'error') {
+            $('#addp_mesg p.error span').text(data.errmsg.toLowerCase());
+            $('#addp_mesg p.error').removeClass('nodisp');
+          }
+          
+          // success
+          
+          if('status' in data && data.status == 'ok') {
+            $('table.addpatch').trigger('reset');
+            $('#addp_mesg p.success').removeClass('nodisp');
+          }
+          
         }, 'json');
         
         evt.preventDefault();

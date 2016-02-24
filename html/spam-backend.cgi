@@ -1081,6 +1081,11 @@ sub addp_normalize
 
   $value =~ s/^\s+|\s+$//g;
   
+  # 'undef' is a special value
+  if($type eq 'cp' && lc($value) eq 'undef') {
+    return 'undef';
+  }
+  
   if($type eq 'cp' || $type eq 'ou') {
     return normalize_outcp($value);
   }
@@ -1338,23 +1343,32 @@ sub sql_add_patches
 
     my $s = backend_swport($site, $form_sw, $form_pt);
     if($s->{'status'} ne 'ok') { $s = undef; }
-
+    push(@{$re{'swport'}}, $s) if $debug;
+    
   #--- switch
 
-    if($s && $form_sw && $s->{'result'}{'host'}) {
+    if($form_sw) {
+      my $sw_valid = js_bool($s->{'result'}{'exists'}{'host'});
       $form->($row_no, 'sw', {
-        'value' => $s->{'result'}{'host'},
-        'valid' => js_bool($s->{'result'}{'exists'}{'host'})
+        'value' => $s->{'result'}{'host'} // $form_sw,
+        'valid' => $sw_valid
       });
+      $form->($row_no, 'sw', { 'err' => 'Unknown switch' })
+        if !$sw_valid;
     }
 
   #--- portname
 
-    if($s && $form_pt && $s->{'result'}{'portname'}) {
+    if($form_pt) {
+      my $pt_valid = js_bool($s->{'result'}{'exists'}{'portname'});
       $form->($row_no, 'pt', {
-        'value' => $s->{'result'}{'portname'},
-        'valid' => js_bool($s->{'result'}{'exists'}{'portname'})
+        'value' => $s->{'result'}{'portname'} // $form_pt,
+        'valid' => $pt_valid
       });
+      $form->($row_no, 'pt', { 'err' => 'Invalid switch port' }) 
+        if !$pt_valid;
+      $form->($row_no, 'pt', { 'err' => 'Cannot validate switch port' }) 
+        if !$pt_valid && !$s->{'result'}{'exists'}{'host'};
     }
 
   #--- cp
@@ -1401,13 +1415,30 @@ sub sql_add_patches
           value => undef,
           valid => JSON::false
         });
-        $form->($row_no, 'ou', { valid => JSON::true });
+        $form->($row_no, 'ou', { 
+          valid => JSON::false,
+          err => 'Outlet does not exist'
+        });
       }
     } else {
       $form->($row_no, 'ou', {});
     }
   }
 
+  #--- abort if validation resulted in at least one invalid form fields
+  
+  for(my $row_no = 0; $row_no < scalar(@{$re{'result'}}); $row_no++) {
+    for my $type (qw(sw pt cp)) {
+      if(!$form->($row_no, $type, 'valid')) {
+        $re{'status'} = 'error';
+        $re{'errmsg'} = 'Form validation failed';
+        $re{'errwhy'} = 'Invalid user entry, validation failed';
+        print $js->encode(\%re);
+        return;
+      }
+    }
+  }
+  
   #--- eval loop start
 
   eval {
@@ -1460,8 +1491,8 @@ sub sql_add_patches
             'valid' => JSON::false, 
             'err' => 'Port already in use'
           });
-        }
-
+        } 
+        
         # abort        
         die "ABORT\n";
       }

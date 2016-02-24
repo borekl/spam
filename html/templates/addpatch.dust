@@ -7,7 +7,7 @@
 <div id="addp_mesg">
 
   <p class="nodisp error">
-  Failed to save the data
+  Failed to save the data (<span></span>)
   </p>
 
   <p class="nodisp success">
