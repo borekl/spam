@@ -895,7 +895,16 @@ sub search_outcp
 
 #=============================================================================
 # Search the database, function that does the heavy lifting for the Search
-# Tool.
+# Tool. The database queries all use views, so they are not defined here. 
+#
+# Output:
+# ------
+# params -> raw        ... parameters as we got them from the front-end
+# params -> normalized ... parameters passed through server-side normalization
+# hwinfo               ... sql_get_hwinfo() output, list of known hw entities
+# swinfo               ... sql_get_swinfo() output, statistics about switch
+# search               ... result of the actual search (whole subtree)
+# search -> lines      ... number of result entries
 #=============================================================================
 
 sub sql_search
