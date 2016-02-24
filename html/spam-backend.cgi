@@ -28,7 +28,7 @@ use Data::Dumper;
 
 #=== globals =================================================================
 
-my $debug = 0;              # debugging flag, is set acc. to user's ondb entry
+my $debug = JSON::false;    # debugging flag, is set acc. to user's ondb entry
 my $cfg;                    # configuration from spam.cfg
 my $js;
 my %dbh;
@@ -240,8 +240,8 @@ sub sql_select
 
   #--- some debugging info
   
+  $re{'debug'} = $debug;
   if($debug) {
-    $re{'debug'} = 1;
     $re{'query'} = sql_show_query($query, $args);
   }
 
@@ -1553,7 +1553,7 @@ for my $arg (@ARGV) {
   $args{$x[0]} = $x[1] if $x[0];
 }
 if($args{'r'}) {
-  $debug = 1;
+  $debug = JSON::true;
   $js->pretty(1);
   $req = $args{'r'};
 } else {
@@ -1603,6 +1603,7 @@ if(!ref($cfg)) {
 
 if($#ARGV == -1) {
   (undef, $debug) = user_access_evaluate($ENV{'REMOTE_USER'}, 'debug');
+  $debug = $debug ? JSON::true : JSON::false;
   $js->pretty(1) if $debug;
 }
 
