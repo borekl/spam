@@ -106,6 +106,7 @@ function populate_select_sites(idx, el)
       }
       if(storage) {
         $(el).val(localStorage.getItem(storage));
+        $(el).trigger('change');
       }
       auxdata = aux;
     }
