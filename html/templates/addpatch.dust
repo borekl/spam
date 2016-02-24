@@ -16,7 +16,11 @@
 
 </div>
 
-{!---  site selector menu --------------------------------------------------!}
+{!--- update summary section -----------------------------------------------!}
+
+<div id="addp_updsum"></div>
+
+{!--- site selector menu ---------------------------------------------------!}
 
 <div class="addp_site">
   <select name="addp_site" data-storage="addpatchsite">

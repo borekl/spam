@@ -484,6 +484,7 @@ function add_patches()
         $(this).children('tbody').find('tr').find('input').val(undefined);
         $(this).children('tbody').find('td').removeClass();
         $('div#addp_mesg p').addClass('nodisp');
+        $('div#addp_updsum').empty();
         $('table.addpatch tbody tr').trigger('statmsg', '');
         evt.stopPropagation();
       });
@@ -556,6 +557,11 @@ function add_patches()
           if('status' in data && data.status == 'ok') {
             $('table.addpatch').trigger('reset');
             $('#addp_mesg p.success').removeClass('nodisp');
+            if(data.search.status == 'ok') {
+              dust.render('srcres', data, function(err, out) {
+                $('div#addp_updsum').html(out).find('p.srcsummary').remove();
+              });
+            }
           }
           
         }, 'json');

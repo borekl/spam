@@ -1250,6 +1250,55 @@ sub sql_get_cp_by_outlet
 
 
 #==========================================================================
+# This function collects information about entries affected by
+# sql_add_patches() function by querying the database using v_search_status
+# view.
+#==========================================================================
+
+sub sql_update_summary
+{
+  #--- arguments
+  
+  my (
+    $site,
+    $work_info
+  ) = @_;
+  
+  #--- other variables
+  
+  my $dbh = $dbh{'spam'};   # database handle
+  my %re;                   # return data
+  my @update_summary;       # result
+  
+  #--- loop over the work_info entries
+
+  my $sth = $dbh->prepare(
+    'SELECT * FROM v_search_status WHERE host = ? AND portname = ?'
+  );
+  while(my $entry = shift @$work_info) {
+    my $r = $sth->execute(@$entry);
+    if(!$r) {
+      $re{'status'} = 'error';
+      $re{'errmsg'} = 'Database error';
+      $re{'errwhy'} = 'Failed to retrieve update summary';
+      $re{'errdb'}  = pg_errmsg_parse($sth->errstr());
+      return \%re;
+    }
+    my ($row) = $sth->fetchrow_hashref();
+    $row->{'flags'} = port_flag_unpack($row->{'flags'});
+    push(@update_summary, $row);
+  }
+  
+  #--- finish
+  
+  $re{'status'} = 'ok';
+  $re{'result'} = \@update_summary;
+  return \%re;
+}
+
+
+
+#==========================================================================
 # Add Patches form executive. The $arg parameter contains the form data
 # as key-value pairs.
 #==========================================================================
@@ -1268,6 +1317,13 @@ sub sql_add_patches
   my $dbh = $dbh{'spam'};   # database handle
   my $r;                    # database return value
   my %re;                   # return structure (sent to client as JSON)
+
+  # list of (switch, portname) pairs used to collect information about
+  # porttable/status (through v_search_status view) entries that were
+  # affected by adding new patches; this is displayed to the user as
+  # instant feedback about what they have actually done.
+  
+  my @work_info;
   
   #--- init
 
@@ -1481,6 +1537,11 @@ sub sql_add_patches
       $pushdb->('chg_who',   $ENV{'REMOTE_USER'}) if $ENV{'REMOTE_USER'};
       $pushdb->('chg_where', $ENV{'REMOTE_ADDR'}) if $ENV{'REMOTE_ADDR'};
 
+      push(@work_info, [ 
+        $form->($i, 'sw', 'value'),
+        $form->($i, 'pt', 'value') 
+      ]);
+      
       my $qry = sprintf(
         'INSERT INTO porttable ( %s ) VALUES ( %s )',
         join(',', @fields),
@@ -1529,7 +1590,14 @@ sub sql_add_patches
     }
     $re{'status'} = 'ok';
   }
+  
+  #--- search affected switch/ports pairs using v_search_status view
+  #--- and return the info to backend, this is feedback for the user
+  #--- saved under the 'search' key because we're reusing the template
+  #--- from the Search Tool
 
+  $re{'search'} = sql_update_summary($site, \@work_info);
+  
   #--- finish
 
   print $js->encode(\%re);
