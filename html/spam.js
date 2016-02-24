@@ -265,8 +265,7 @@ function add_table_row(evt) {
     var n = $(this).find('input[name^="addp_sw"]').attr('name');
     $(new_row).find('input[name='+n+']').val(v);
     new_row.find('td').each(function(idx, el) {
-      var v = $(el).children('input').val();
-      if(!v) { $(el).removeClass(); }
+      if(idx != 0) { $(el).removeClass(); }
     });
     $(this).after(new_row).trigger('renumber');
   }
@@ -483,7 +482,7 @@ function add_patches()
       $('table.addpatch').on('reset', function(evt) {
         $(this).children('tbody').find('tr').not(':first').trigger('remove');
         $(this).children('tbody').find('tr').find('input').val(undefined);
-        $(this).children('tbody').find('td').removeClass();
+        $(this).children('tbody').find('td').not(':first').removeClass();
         $('div#addp_mesg p').addClass('nodisp');
         $('div#addp_updsum').empty();
         $('table.addpatch tbody tr').trigger('statmsg', '');
