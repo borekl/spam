@@ -11,6 +11,7 @@ var
   auxdata,
   modAddPatchesForm = require('./addpatches.js'),
   modSearchTool = require('./searchtool.js'),
+  modSwitchList = require('./swlist.js'),
   shared = {
     backend: 'spam-backend.cgi',
     pss: populate_select_sites
@@ -27,49 +28,6 @@ function populate_login_info(data)
     $('span#login').text(data.userid);
     $('div#loginfo').css('display', 'block');
   }
-}
-
-
-/*--------------------------------------------------------------------------*
-  Render port list
- *--------------------------------------------------------------------------*/
-
-function port_list(el)
-{
-  var 
-    host = $(this).text(),
-    arg = { r : "search", host: host };
-  
-  $('div#swlist div').addClass('timer');
-  $.get(shared.backend, arg, function(data) {
-    dust.render('switch', data, function(err, out) {
-      $('#content').html(out);
-      $('div#swlist div').removeClass('timer');
-    });    
-  });
-}
-
-
-/*--------------------------------------------------------------------------*
-  Render switch list from previously loaded data.
- *--------------------------------------------------------------------------*/
-
-function render_switch_list(data)
-{
-  dust.render('swlist', data, function(err, out) {
-    $('#content').html(out);
-    $('div#swgroups span.selected').removeClass('selected');
-    $('span[data-grp=' + data.grp + ']').toggleClass('selected');
-    $('div#swgroups span').on('click', function() {
-      data.grp = $(this).data('grp');
-      // persistently save switch group unless the current group is 'stl'
-      if(data.grp != 'stl') {
-        localStorage.setItem('swlistgrp', data.grp);
-      }
-      render_switch_list(data);
-    });
-    $('table#swlist tbody td.host span.lnk').on('click', port_list);
-  });
 }
 
 
@@ -115,26 +73,6 @@ function populate_select_sites(idx, el)
 }
 
 
-/*--------------------------------------------------------------------------*
-  Context helper for filtering switch list.
- *--------------------------------------------------------------------------*/
-
-function ctx_helper_filterhost(chunk, context, bodies, params)
-{
-  var grp = context.get('grp');
-
-  if(
-    grp == 'all'
-    || (grp == 'stl' && context.get('stale') == 1)
-    || context.get('group') == grp
-  ) {    
-    chunk.render(bodies.block, context);
-  }
-  
-  return chunk;
-}
-
-
 /*==========================================================================*
   === MAIN =================================================================
  *==========================================================================*/
@@ -153,16 +91,9 @@ $(document).ready(function()
   });
 
   //--- switch list
-    
-  $('div#swlist div').addClass('timer');
-  $.get(shared.backend, {r: 'swlist'}, function(data) {
-    var grp = localStorage.getItem('swlistgrp');
-    data.grp = grp ? grp : 'all';
-    data.filterhost = ctx_helper_filterhost;
-    $('div#swlist').on('click', function() { 
-      render_switch_list(data); 
-      $('div#swlist div').removeClass('timer');
-    }).click();
+
+  $('div#swlist').on('click', function() {
+    var switchList = new modSwitchList(shared);
   });
   
   //--- search tool
@@ -176,6 +107,11 @@ $(document).ready(function()
   $('div#addpatch').on('click', function() {
     var addPatchesForm = new modAddPatchesForm(shared);
   });
+  
+  //--- default page
+  
+  $('div#swlist').trigger('click');
+  
 });
 
 
