@@ -139,12 +139,20 @@ CREATE OR REPLACE VIEW v_search_status_raw AS
     status, adminstatus, flags, duplex, rate,
     location, vlan, p.chg_who AS chg_who,
     date_trunc('second', p.chg_when) AS chg_when,
-    extract(epoch from (lastchk - lastchg)) AS inact,
-    fmt_inactivity(lastchk - lastchg) AS inact_fmt
+    extract(epoch from (s.lastchk - s.lastchg)) AS inact,
+    fmt_inactivity(s.lastchk - s.lastchg) AS inact_fmt,
+    m.mac,
+    round(extract(epoch from (current_timestamp - m.lastchk))) AS mac_age,
+    fmt_inactivity(current_timestamp - m.lastchk) AS mac_age_fmt,
+    a.ip,
+    round(extract(epoch from (current_timestamp - a.lastchk))) AS ip_age,
+    fmt_inactivity(current_timestamp - a.lastchk) AS ip_age_fmt
   FROM
     status s 
     LEFT JOIN porttable p USING ( host, portname )
-    LEFT JOIN out2cp o USING ( cp, site );
+    LEFT JOIN out2cp o USING ( cp, site )
+    LEFT JOIN mactable m USING ( host, portname )
+    LEFT JOIN arptable a USING ( mac );
 
 GRANT SELECT ON v_search_status_raw TO swcgi;
 
