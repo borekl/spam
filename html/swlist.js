@@ -92,7 +92,7 @@ $.post(shared.backend, {r:'swlist'}, function(data) {
   $('div#swlist div').removeClass('timer');
 });
 
+
 /*--- end of module --------------------------------------------------------*/
 
 }
-
