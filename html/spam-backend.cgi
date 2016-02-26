@@ -22,13 +22,13 @@ use integer;
 use Cwd qw(abs_path);
 use CGI;
 use SPAMv2;
-use JSON;
+use JSON::MaybeXS;
 use Data::Dumper;
 
 
 #=== globals =================================================================
 
-my $debug = JSON::false;    # debugging flag, is set acc. to user's ondb entry
+my $debug = JSON->false;    # debugging flag, is set acc. to user's ondb entry
 my $cfg;                    # configuration from spam.cfg
 my $js;
 my %dbh;
@@ -56,7 +56,7 @@ BEGIN
     
   #--- misc init
 
-  $js = new JSON;
+  $js = new JSON::MaybeXS;
   binmode STDOUT, ":utf8";
   
   #--- database init
@@ -91,7 +91,7 @@ sub remove_undefs
 
 sub js_bool
 {
-  return $_[0] ? JSON::true : JSON::false;
+  return $_[0] ? JSON->true : JSON->false;
 }
 
 
@@ -1180,10 +1180,10 @@ sub backend_swport
       if(ref($r) && scalar(@{$r->{'result'}})) {
         $re{'result'}{'host'} = $r->{'result'}[0]{'host'};
         $re{'result'}{'portname'} = $r->{'result'}[0]{'portname'};
-        $re{'result'}{'exists'}{'host'} = JSON::true;
-        $re{'result'}{'exists'}{'portname'} = JSON::true;
+        $re{'result'}{'exists'}{'host'} = JSON->true;
+        $re{'result'}{'exists'}{'portname'} = JSON->true;
       } else {
-        $re{'result'}{'exists'}{'portname'} = JSON::false;
+        $re{'result'}{'exists'}{'portname'} = JSON->false;
       }
     }
   
@@ -1198,9 +1198,9 @@ sub backend_swport
       if(ref($r) && scalar(@{$r->{'result'}})) {
         $re{'result'}{'host'} = $r->{'result'}[0]{'host'};
         $re{'result'}{'portname'} = undef;
-        $re{'result'}{'exists'}{'host'} = JSON::true;
+        $re{'result'}{'exists'}{'host'} = JSON->true;
       } else {
-        $re{'result'}{'exists'}{'host'} = JSON::false;
+        $re{'result'}{'exists'}{'host'} = JSON->false;
         delete $re{'result'}{'exists'}{'portname'};
       }
     }
@@ -1472,16 +1472,16 @@ sub sql_add_patches
       if($r_cp) {
         $form->($row_no, 'cp', {
           value => $r_cp,
-          valid => JSON::true
+          valid => JSON->true
         });
-        $form->($row_no, 'ou', { valid => JSON::true });
+        $form->($row_no, 'ou', { valid => JSON->true });
       } else {
         $form->($row_no, 'cp', {
           value => undef,
-          valid => JSON::false
+          valid => JSON->false
         });
         $form->($row_no, 'ou', { 
-          valid => JSON::false,
+          valid => JSON->false,
           err => 'Outlet does not exist'
         });
       }
@@ -1558,7 +1558,7 @@ sub sql_add_patches
         # interpret the error
         if($re{'errdb'}{'constraint'} eq 'porttable_pkey') {
           $form->($i, 'pt', { 
-            'valid' => JSON::false, 
+            'valid' => JSON->false, 
             'err' => 'Port already in use'
           });
         } 
@@ -1630,7 +1630,7 @@ for my $arg (@ARGV) {
   $args{$x[0]} = $x[1] if $x[0];
 }
 if($args{'r'}) {
-  $debug = JSON::true;
+  $debug = JSON->true;
   $js->pretty(1);
   $req = $args{'r'};
 } else {
@@ -1680,7 +1680,7 @@ if(!ref($cfg)) {
 
 if($#ARGV == -1) {
   (undef, $debug) = user_access_evaluate($ENV{'REMOTE_USER'}, 'debug');
-  $debug = $debug ? JSON::true : JSON::false;
+  $debug = js_bool($debug);
   $js->pretty(1) if $debug;
 }
 
