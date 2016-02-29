@@ -225,8 +225,7 @@ sub sql_select
     $query,     # 2. SQL query
     $args,      # 3. list of args (arrayref or scalar)
     $func,      # 4. function called for each row (optional)
-    $norend,    # 5. don't output JSON but pass data structure (optional)
-    $aref       # 6. return arrayref instead of hashref
+    $aref       # 5. return arrayref instead of hashref
   ) = @_;
   
   if($args && !ref($args)) {
@@ -285,8 +284,7 @@ sub sql_select
 
   #--- finish
   
-  return \%re if $norend;
-  print $js->encode(\%re);
+  return \%re;
 }
 
 
@@ -578,7 +576,7 @@ sub sql_get_hwinfo
   my $local_re = sql_select(
     'spam', 
     'SELECT m, n, type, partnum, sn FROM hwinfo WHERE host = ?',
-    $host, undef, 1
+    $host
   );
   if($local_re->{'status'} eq 'ok') {
     $re->{'hwinfo'} = $local_re;
@@ -605,7 +603,7 @@ sub sql_get_swinfo
 
   my $local_re = sql_select(
     'spam', 'SELECT * FROM v_swinfo WHERE host = ?',
-    $host, undef, 1
+    $host
   );
   if($local_re->{'status'} eq 'ok') {
     $local_re->{'result'} = $local_re->{'result'}[0];
@@ -1021,7 +1019,7 @@ sub sql_search
   eval {
   
     $re{'search'} = sql_select(
-      'spam', "SELECT * FROM $view" . $where . $orderby, \@args, $plist, 1
+      'spam', "SELECT * FROM $view" . $where . $orderby, \@args, $plist
     );
     if($re{'search'}{'status'} ne 'ok') {
       die "$view query failed";
@@ -1052,7 +1050,7 @@ sub sql_search
     
   #--- finish
   
-  print $js->encode(\%re);
+  return \%re;
 }
 
 
@@ -1071,11 +1069,10 @@ sub sql_aux_data
     'SELECT code, description FROM site ORDER BY code',
     undef,
     undef,
-    1,
     1
   );
   
-  print $js->encode(\%re);
+  return \%re;
 }
 
 
@@ -1176,7 +1173,7 @@ sub backend_swport
         $port_arg = lc($port);
       }
 
-      my $r = sql_select('spam', $query, [ lc($site), lc($host), $port_arg ], undef, 1);
+      my $r = sql_select('spam', $query, [ lc($site), lc($host), $port_arg ], 1);
       if(ref($r) && scalar(@{$r->{'result'}})) {
         $re{'result'}{'host'} = $r->{'result'}[0]{'host'};
         $re{'result'}{'portname'} = $r->{'result'}[0]{'portname'};
@@ -1193,7 +1190,7 @@ sub backend_swport
       my $r = sql_select(
         'spam',
         'SELECT * FROM status WHERE substring(host for 3) = ? AND host = ? LIMIT 1',
-        [ lc($site), lc($host) ], undef, 1
+        [ lc($site), lc($host) ]
       );
       if(ref($r) && scalar(@{$r->{'result'}})) {
         $re{'result'}{'host'} = $r->{'result'}[0]{'host'};
@@ -1234,8 +1231,7 @@ sub sql_get_cp_by_outlet
   my $r = sql_select(
     'spam',
     'SELECT * FROM out2cp WHERE site = ? AND outlet = ?',
-    [ $site, $outlet ],
-    undef, 1, 0
+    [ $site, $outlet ]
   );
   
   #--- process the result
@@ -1498,8 +1494,7 @@ sub sql_add_patches
         $re{'status'} = 'error';
         $re{'errmsg'} = 'Form validation failed';
         $re{'errwhy'} = 'Invalid user entry, validation failed';
-        print $js->encode(\%re);
-        return;
+        return \%re;
       }
     }
   }
@@ -1600,7 +1595,7 @@ sub sql_add_patches
   
   #--- finish
 
-  print $js->encode(\%re);
+  return \%re;
 }
 
 
@@ -1691,7 +1686,9 @@ if($#ARGV == -1) {
 #--- switch list -------------------------------------------------------------
 
 if($req eq 'swlist') {
-  sql_select('spam', 'SELECT * FROM v_swinfo', [], \&mangle_swlist);
+  print $js->encode(
+    sql_select('spam', 'SELECT * FROM v_swinfo', [], \&mangle_swlist)
+  );
 }
 
 #--- port list ---------------------------------------------------------------
@@ -1709,20 +1706,19 @@ if($req eq 'search') {
     ($par{$k}) = &$arg($k);
   }
   remove_undefs(\%par);  
-  sql_search(\%par);
+  print $js->encode(sql_search(\%par));
 }
 
 #--- use cp inquiry ---------------------------------------------------------
 
 if($req eq 'usecp') {
-  my $re = backend_useoutlet(&$arg('site'));
-  print $js->encode($re);
+  print $js->encode(backend_useoutlet(&$arg('site')));
 }
 
 #--- auxiliary data ---------------------------------------------------------
 
 if($req eq 'aux') {
-  sql_aux_data();
+  print $js->encode(sql_aux_data());
 }
 
 #--- add patches -------------------------------------------------------------
@@ -1731,7 +1727,7 @@ if($req eq 'addpatch') {
   my @names = %args ? keys %args : $q->param();
   my %form;
   for my $k (@names) { ($form{$k}) = $arg->($k); }
-  sql_add_patches(\%form, $arg->('site'));
+  print $js->encode(sql_add_patches(\%form, $arg->('site')));
 }
 
 #--- default -----------------------------------------------------------------
