@@ -117,11 +117,13 @@
 
 <div class="pi-bottom-right">
 
-  <div class="pi-subsec">
-    <span class="pi-subhead">PATCH INFO</span><br>
-    Patched at {chg_when}<span class="pi-age">{chg_age_fmt}</span><br>
-    Patched by {chg_who}
-  </div>
+  {?chg_when}
+    <div class="pi-subsec">
+      <span class="pi-subhead">PATCH INFO</span><br>
+      Patched at {chg_when}<span class="pi-age">{chg_age_fmt}</span><br>
+      {?chg_who}Patched by {chg_who}{/chg_who}
+    </div>
+  {/chg_when}
 
   {?mac}
     <div class="pi-subsec">
