@@ -1,5 +1,6 @@
 <h1>Port list for <em>{swinfo.result.host}</em></h1>
 
+{!==========================================================================!}
 
 <div id="swinfo">
   {#swinfo.result}
@@ -24,8 +25,19 @@
 </div>
 
 
+{!==========================================================================
+  Following custom attributes are here to allow binding of the Port Info
+  code:
 
-<table class="list" id="portlist"> {!========================================!}
+  data-host ... defines what switch's ports does this table contain
+  data-portname ... define what table column contains portname              
+ ===========================================================================!}
+
+<table 
+  class="list" 
+  id="portlist" 
+  data-host="{swinfo.result.host}"
+  data-portname="0">
 
   <thead> {!-----------------------------------------------------------------!}
     <tr>
@@ -45,11 +57,11 @@
   <tbody> {!-----------------------------------------------------------------!}
 
   {#search.result}
+
+    {!--- module info ---!}
+
+    {?n}
     <tr>
-
-      {!--- module info ---!}
-
-      {?n}
       <td colspan=10 class="modinfo">
         {@eq key=m value=0}
           {n}. {partnum} <span class="modsn">{sn}</span>
@@ -57,8 +69,13 @@
           {m}/{n}. {partnum} <span class="modsn">{sn}</span>
         {/eq}
       </td>
-      {:else}
+    </tr>
+    {:else}
 
+    {! class 'portinfo' indicates that the Port Info module should process
+       clicks from these rows !}
+
+    <tr class="portinfo">
       {>"port-port" /}
       {>"port-duplex" /}
       {>"port-rate" /}
@@ -69,10 +86,9 @@
       {>"port-outlet" /}
       {>"port-inactivity" /}
       {>"port-description" /}      
-
-      {/n}
-
     </tr>
+    {/n}
+
   {/search.result}
 
   </tbody>

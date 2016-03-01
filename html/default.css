@@ -385,3 +385,122 @@ input {
 div#addp_updsum {
   margin-bottom : 1em;
 }
+
+
+/*---------------------------------------------------------------------------
+   PORT INFO
+ ---------------------------------------------------------------------------*/
+
+tr.pi {
+  background : white !important;
+  border-top : 0.2em solid #888;
+  border-bottom : 0.2em solid #888;
+}
+
+.pi-grayed {
+  color : #888;
+}
+
+span.pi-bigtext {
+  font-size : 200%;
+  font-weight : bold;
+}
+
+span.pi-subhead {
+  text-transform : uppercase;
+  font-size : smaller;
+  font-weight : bold;
+}
+
+div.pi-top {
+  display : flex;
+  flex-direction : row;
+}
+
+div.pi-bottom {
+  display : flex;
+  flex-direction : row;
+  border-top : 1px dotted #888;
+}
+
+div.pi-subsec {
+  margin : 0.5em 1em;
+}
+
+/*--- "port" section -------------------------------------------------------*/
+
+div.pi-port {
+  padding : 0.5em 1em;
+  margin-bottom : 1em;
+}
+
+span.pi-block {
+  color : white;
+  padding : 0 0.3em;
+  font-weight : bold;
+  border-radius : 2px;
+}
+
+span.pi-default {
+  background-color : black;
+}
+
+span.pi-rate-100m {
+  background-color : blue;
+}
+
+span.pi-rate-1g {
+  background-color : green;
+}
+
+span.pi-rate-10g {
+  background-color : #c06;
+}
+
+span.pi-rate-unk {
+  background-color : red;
+}
+
+span.pi-full {
+  background-color : green;
+}
+
+span.pi-half {
+  background-color : black;
+}
+
+span.pi-portdown {
+  color : red;
+}
+
+span.pi-portup {
+  color : green;
+}
+
+/*--- "outlet" section -----------------------------------------------------*/
+
+div.pi-outlet {
+  padding : 0.5em 1em;
+  margin-bottom : 1em;
+  border-left : 1px dotted #888;
+}
+
+/*--- "info" section -------------------------------------------------------*/
+
+div.pi-bottom-left {
+  padding-top : 0.5em;
+  width : 50%;
+}
+
+/*--- "addresses" section --------------------------------------------------*/
+
+div.pi-bottom-right {
+  padding-top : 0.5em;
+  padding-left : 1em;
+}
+
+span.pi-age {
+  color : #888;
+  font-size : 75%;
+  margin-left : 0.8em;
+}

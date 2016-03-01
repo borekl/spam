@@ -1,0 +1,150 @@
+{!==========================================================================!
+  SWITCH PORTS ACTIVITY MONITOR / Port Info
+ !==========================================================================!}
+
+{#search.result}
+
+<div class="pi-container"> {!-----------------------------------------------!}
+
+<div class="pi-top"> {!-----------------------------------------------------!}
+
+{!--- port section ---------------------------------------------------------!}
+
+<div class="pi-port">
+
+  {!--- hostname !}
+  <span class="pi-bigtext pi-grayed">{params.normalized.host}</span>
+  &nbsp;&nbsp;
+
+  {!--- portname !}
+  {@eq key=adminstatus value=0}
+    <span class="pi-bigtext">{portname}</span>
+  {:else}
+    {@eq key=status value=1}
+      <span class="pi-bigtext pi-portup">{portname}</span>
+    {:else}
+      <span class="pi-bigtext pi-portdown">{portname}</span>
+    {/eq}
+  {/eq}
+  <br>
+
+  {!--- link rate !}
+  {@eq key=status value=1}
+    {@select key=rate}
+      {@eq value=10}<span class="pi-block pi-default">10M</span>{/eq}
+      {@eq value=100}<span class="pi-block pi-rate-100m">100M</span>{/eq}
+      {@eq value=1000}<span class="pi-block pi-rate-1g">1G</span>{/eq}
+      {@eq value=4294}<span class="pi-block pi-rate-10g">10G</span>{/eq}
+      {@default}<span class="pi-block pi-rate-unk">?</span>{/default}
+    {/select}
+    {~s}
+  {/eq}
+
+  {!--- duplex !}
+  {@eq key=duplex value=2}<span class="pi-block pi-full">full</span>{/eq}
+  {@eq key=duplex value=1}<span class="pi-block pi-half">half</span>{/eq}
+
+  {!--- vlan !}
+  {?vlan}
+    {~s}
+    <span class="pi-block pi-default">VLAN {vlan}</span> {~s}
+  {/vlan}
+
+</div>
+
+{!--- outlet section -------------------------------------------------------!}
+
+<div class="pi-outlet">
+  <span class="pi-bigtext">
+  {cp}
+  {?outlet}
+    {~s} <span class="pi-grayed">/</span> {~s} {outlet}
+  {/outlet}
+  </span>
+  {?descr}
+    <br>{descr}
+  {/descr}
+</div> 
+
+</div> {!--- pi-top --------------------------------------------------------!} 
+
+<div class="pi-bottom"> {!--- pi-bottom ------------------------------------!}
+
+{!--- info section ---------------------------------------------------------!}
+
+<div class="pi-bottom-left">
+
+  <div class="pi-subsec">
+    <span class="pi-subhead">LAST ACTIVITY</span><br>
+    {inact_date}
+    {?inact_fmt}
+      <span class="pi-age">{inact_fmt}</span>
+    {/inact_fmt}
+  </div>
+
+  <div class="pi-subsec">
+    <span class="pi-subhead">LAST CHECK</span><br>
+    {lastchk_date}
+    {?lastchk_age_fmt}
+      <span class="pi-age">{lastchk_age_fmt}</span>
+    {/lastchk_age_fmt}
+  </div>
+
+  {?flags}
+    <div class="pi-subsec">
+      <span class="pi-subhead">FLAGS</span>
+      {#flags}
+        {?cdp}          <br> Receiving CDP          {/cdp}
+        {?stp_pfast}    <br> STP fast start mode    {/stp_pfast}
+        {?stp_root}     <br> STP root port          {/stp_root}
+        {?tr_dot1q}     <br> 802.1q trunk           {/tr_dot1q}
+        {?tr_isl}       <br> ISL trunk              {/tr_isl}
+        {?tr_unk}       <br> Unknown type trunk     {/tr_unk}
+        {?poe_power}    <br> PoE supplying power    {/poe_power}
+        {?dot1x_fauth}  <br> Always authorized      {/dot1x_fauth}
+        {?dot1x_fuauth} <br> Always unauthorized    {/dot1x_fuauth}
+        {?dot1x_auto}   <br> Authorization required {/dot1x_auto}
+        {?dot1x_authok} <br> 802.1x Authorized      {/dot1x_authok}
+        {?dot1x_unauth} <br> 802.1x Not authorized  {/dot1x_unauth}
+        {?mab_success}  <br> MAC bypass mode        {/mab_success}
+      {/flags}
+    </div>
+  {/flags}
+
+</div>
+
+{!--- right-hand section ---------------------------------------------------!}
+
+<div class="pi-bottom-right">
+
+  <div class="pi-subsec">
+    <span class="pi-subhead">PATCH INFO</span><br>
+    Patched at {chg_when}<span class="pi-age">{chg_age_fmt}</span><br>
+    Patched by {chg_who}
+  </div>
+
+  {?mac}
+    <div class="pi-subsec">
+      <span class="pi-subhead">MAC ADDRESSES</span>
+      {#mac}
+        <br>{addr}<span class="pi-age">{age_fmt}</span>
+      {/mac}
+    </div>
+  {/mac}
+
+  {?ip}
+    <div class="pi-subsec">
+      <span class="pi-subhead">IP ADDRESSES</span>
+      {#ip}
+        <br>{addr}<span class="pi-age">{age_fmt}</span>
+      {/ip}
+    </div>
+  {/ip}
+
+</div>
+
+</div> {!--- pi-bottom -----------------------------------------------------!}
+
+</div> {!--- pi-container --------------------------------------------------!}
+
+{/search.result}

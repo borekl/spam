@@ -937,6 +937,7 @@ sub sql_search
     remove_undefs($row);
     # unpack port flags into a hash
     $row->{'flags'} = port_flag_unpack($row->{'flags'});
+    delete $row->{'flags'} if !%{$row->{'flags'}};
     # "knownports" feature
     if(
       exists $row->{'host'} &&
@@ -1051,6 +1052,88 @@ sub sql_search
   #--- finish
   
   return \%re;
+}
+
+
+
+#=============================================================================
+# Function to supply data to the Port Info feature. It basically does standard
+# sql_search(), but then does additional processing of the result before its
+# returned to the client.
+#=============================================================================
+
+sub sql_portinfo
+{
+  #--- arguments
+  
+  my (
+    $site,
+    $host,
+    $portname
+  ) = @_;
+  
+  #--- other variables
+  
+  my $re;
+  my %arg = ( 
+    'site' => $site, 
+    'host' => $host, 
+    'portname' => $portname
+  );
+  
+  #--- get data from db
+  
+  $re = sql_search(\%arg);
+  if($re->{'status'} eq 'ok') {
+  
+  #--- do some reprocessing
+  
+  # point of this step is to collate multiple MAC and IP addresses and
+  # put them into single row in the response
+  
+    my (@mac, @ip);
+    my $idx = 0;
+  
+    for my $row (@{$re->{'search'}{'result'}}) {
+
+      if($row->{'mac'}) {
+        push(@mac, {
+          'addr'    => $row->{'mac'},
+          'age'     => $row->{'mac_age'},
+          'age_fmt' => $row->{'mac_age_fmt'},
+          'idx'     => $idx
+        });
+      }
+      
+      if($row->{'ip'}) {
+        push(@ip, {
+          'addr'    => $row->{'ip'},
+          'age'     => $row->{'ip_age'},
+          'age_fmt' => $row->{'ip_age_fmt'},
+          'idx'     => $idx
+        });
+      }
+      
+      $idx++;
+    }
+  
+  # get rid of the result rows
+  
+    $re->{'search'}{'result'} = $re->{'search'}{'result'}[0];
+
+  # replace mac/ip keys with what we have collated
+  
+    $re->{'search'}{'result'}{'mac'} = \@mac;
+    $re->{'search'}{'result'}{'ip'} = \@ip;
+    for my $k (qw(mac_age mac_age_fmt ip_age ip_age_fmt)) { 
+      delete $re->{'search'}{'result'}{$k};
+    }
+  
+  }
+  
+  #--- finish
+  
+  return $re;
 }
 
 
@@ -1707,6 +1790,14 @@ if($req eq 'search') {
   }
   remove_undefs(\%par);  
   print $js->encode(sql_search(\%par));
+}
+
+#--- port info --------------------------------------------------------------
+
+if($req eq 'portinfo') {
+  print $js->encode(
+    sql_portinfo($arg->('site'), $arg->('host'), $arg->('portname'))
+  );
 }
 
 #--- use cp inquiry ---------------------------------------------------------

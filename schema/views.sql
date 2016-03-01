@@ -130,17 +130,27 @@ GRANT SELECT ON v_search_outlet TO swcgi;
 -- directly.
 ----------------------------------------------------------------------------
 
-DROP VIEW IF EXISTS v_search_status_raw;
+DROP VIEW IF EXISTS v_search_status_raw CASCADE;
 
 CREATE OR REPLACE VIEW v_search_status_raw AS
   SELECT
-    COALESCE(p.site, substring(host from 1 for 3)) as site,
+    COALESCE(p.site, substring(host from 1 for 3)) AS site,
     host, portname, cp, outlet, descr,
     status, adminstatus, flags, duplex, rate,
-    location, vlan, p.chg_who AS chg_who,
-    date_trunc('second', p.chg_when) AS chg_when,
+    location, vlan,
+    -- patching record
+    p.chg_who AS chg_who,
+    to_char(p.chg_when, 'FMHH24:MM, FMMonth FMDD, YYYY') AS chg_when,
+    fmt_inactivity(current_timestamp - p.chg_when) AS chg_age_fmt,
+    -- port inactivity
     extract(epoch from (s.lastchk - s.lastchg)) AS inact,
     fmt_inactivity(s.lastchk - s.lastchg) AS inact_fmt,
+    to_char(s.lastchg, 'FMHH24:MM, FMMonth FMDD, YYYY') AS inact_date,
+    --- port last check 
+    extract(epoch from (current_timestamp - s.lastchk)) AS lastchk_age,
+    fmt_inactivity(current_timestamp - s.lastchk) AS lastchk_age_fmt,
+    to_char(s.lastchk, 'FMHH24:MM, FMMonth FMDD, YYYY') AS lastchk_date,
+    ---
     m.mac,
     round(extract(epoch from (current_timestamp - m.lastchk))) AS mac_age,
     fmt_inactivity(current_timestamp - m.lastchk) AS mac_age_fmt,
