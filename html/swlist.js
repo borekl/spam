@@ -45,7 +45,7 @@ function portList(el)
 {
   var
     host = $(this).text(),
-    arg = { r : "search", host: host };
+    arg = { r : "search", host: host, mode: "portlist" };
 
   $('div#swlist div').addClass('timer');
   $.get(shared.backend, arg, function(data) {

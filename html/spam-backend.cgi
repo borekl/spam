@@ -895,6 +895,13 @@ sub search_outcp
 # Search the database, function that does the heavy lifting for the Search
 # Tool. The database queries all use views, so they are not defined here. 
 #
+# Apart from parameters coming from user input, there's special key 'view'
+# that allows implicitly selecting view; this is needed when sql_search()
+# is used internally.
+#
+# Another special field is 'mode', that is used signal additional information
+# from client to view-selection code. 'view' always takes precedence, though.
+#
 # Output:
 # ------
 # params -> raw        ... parameters as we got them from the front-end
@@ -974,7 +981,13 @@ sub sql_search
   
   #--- decide what view to use
 
-  if($par->{'host'} || $par->{'portname'}) {
+  if($par->{'view'}) {
+    $view = $par->{'view'};
+  }
+  elsif($par->{'mode'} eq 'portlist') {
+    $view = $re{'hwinfo'} ? 'v_port_list_mod' : 'v_port_list';
+  }
+  elsif($par->{'host'} || $par->{'portname'}) {
     $view = $re{'hwinfo'} ? 'v_search_status_mod' : 'v_search_status';
   }
   elsif($par->{'outcp'}) {
@@ -1078,7 +1091,8 @@ sub sql_portinfo
   my %arg = ( 
     'site' => $site, 
     'host' => $host, 
-    'portname' => $portname
+    'portname' => $portname,
+    'view' => 'v_portinfo'
   );
   
   #--- get data from db
@@ -1778,7 +1792,7 @@ if($req eq 'swlist') {
 
 if($req eq 'search') {
   my %par;
-  for my $k (qw(site outcp host portname mac ip sortby)) {
+  for my $k (qw(site outcp host portname mac ip sortby mode)) {
     ($par{$k}) = &$arg($k);
   }
   remove_undefs(\%par);  

@@ -143,59 +143,140 @@ CREATE OR REPLACE VIEW v_search_status_raw AS
     to_char(p.chg_when, 'FMHH24:MM, FMMonth FMDD, YYYY') AS chg_when,
     fmt_inactivity(current_timestamp - p.chg_when) AS chg_age_fmt,
     -- port inactivity
-    extract(epoch from (s.lastchk - s.lastchg)) AS inact,
+    extract(epoch from (s.lastchk - s.lastchg))::int AS inact,
     fmt_inactivity(s.lastchk - s.lastchg) AS inact_fmt,
     to_char(s.lastchg, 'FMHH24:MM, FMMonth FMDD, YYYY') AS inact_date,
     --- port last check 
-    extract(epoch from (current_timestamp - s.lastchk)) AS lastchk_age,
+    extract(epoch from (current_timestamp - s.lastchk))::int AS lastchk_age,
     fmt_inactivity(current_timestamp - s.lastchk) AS lastchk_age_fmt,
-    to_char(s.lastchk, 'FMHH24:MM, FMMonth FMDD, YYYY') AS lastchk_date,
-    ---
-    m.mac,
-    round(extract(epoch from (current_timestamp - m.lastchk))) AS mac_age,
-    fmt_inactivity(current_timestamp - m.lastchk) AS mac_age_fmt,
-    a.ip,
-    round(extract(epoch from (current_timestamp - a.lastchk))) AS ip_age,
-    fmt_inactivity(current_timestamp - a.lastchk) AS ip_age_fmt
+    to_char(s.lastchk, 'FMHH24:MM, FMMonth FMDD, YYYY') AS lastchk_date
   FROM
     status s 
     LEFT JOIN porttable p USING ( host, portname )
-    LEFT JOIN out2cp o USING ( cp, site )
-    LEFT JOIN mactable m USING ( host, portname )
-    LEFT JOIN arptable a USING ( mac );
+    LEFT JOIN out2cp o USING ( cp, site );
 
 GRANT SELECT ON v_search_status_raw TO swcgi;
 
 
 ----------------------------------------------------------------------------
--- Derivation of previous view with sorting applied for non-modular switches
+-- Derivation of previous view with sorting applied for non-modular
+-- switches; used for Port List.
+----------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS v_port_list;
+
+CREATE OR REPLACE VIEW v_port_list AS
+  SELECT 
+    *,
+    ( SELECT count(mac) 
+      FROM mactable 
+      WHERE v.host = host AND v.portname = portname AND active = 't'
+    ) AS maccnt
+  FROM 
+    v_search_status_raw v
+  ORDER BY 
+    host,
+    substring(portname from '^[a-zA-Z]+'),
+    port_order(portname);
+
+GRANT SELECT ON v_port_list TO swcgi;
+
+
+----------------------------------------------------------------------------
+-- Derivation of previous view with sorting applied for modular switches;
+-- used for Port List.
+----------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS v_port_list_mod;
+
+CREATE OR REPLACE VIEW v_port_list_mod AS
+  SELECT 
+    *,
+    ( SELECT count(mac) 
+      FROM mactable 
+      WHERE v.host = host AND v.portname = portname AND active = 't'
+    ) AS maccnt
+  FROM 
+    v_search_status_raw v
+  ORDER BY 
+    host,
+    port_order(portname);
+
+GRANT SELECT ON v_port_list_mod TO swcgi;
+
+
+----------------------------------------------------------------------------
+-- View with mactable/arptable linked in.
+----------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS v_search_status_full CASCADE;
+
+CREATE OR REPLACE VIEW v_search_status_full AS
+  SELECT 
+    -- part view fields
+    v.*,
+    -- mac fields
+    m.mac,
+    extract(epoch from (current_timestamp - m.lastchk))::int AS mac_age,
+    fmt_inactivity(current_timestamp - m.lastchk) AS mac_age_fmt,
+    -- arptable fields
+    a.ip,
+    extract(epoch from (current_timestamp - a.lastchk))::int AS ip_age,
+    fmt_inactivity(current_timestamp - a.lastchk) AS ip_age_fmt
+  FROM v_search_status_raw v
+  LEFT JOIN mactable m USING ( host, portname )
+  LEFT JOIN arptable a USING ( mac );
+
+GRANT SELECT ON v_search_status_full TO swcgi;
+
+
+----------------------------------------------------------------------------
+-- View for Search Tool.
 ----------------------------------------------------------------------------
 
 DROP VIEW IF EXISTS v_search_status;
 
 CREATE OR REPLACE VIEW v_search_status AS
-  SELECT * FROM v_search_status_raw
+  SELECT *
+  FROM v_search_status_full
   ORDER BY 
     host,
     substring(portname from '^[a-zA-Z]+'),
     port_order(portname);
 
 GRANT SELECT ON v_search_status TO swcgi;
-
+  
 
 ----------------------------------------------------------------------------
--- Derivation of previous view with sorting applied for modular switches
+-- View for Search Tool.
 ----------------------------------------------------------------------------
 
 DROP VIEW IF EXISTS v_search_status_mod;
 
 CREATE OR REPLACE VIEW v_search_status_mod AS
-  SELECT * FROM v_search_status_raw
+  SELECT *
+  FROM v_search_status_full
   ORDER BY
     host, 
     port_order(portname);
 
 GRANT SELECT ON v_search_status_mod TO swcgi;
+
+
+----------------------------------------------------------------------------
+-- View for Port Info; this is expected to be invoked only for
+-- defined (host, portname).
+----------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS v_portinfo;
+
+CREATE OR REPLACE VIEW v_portinfo AS
+  SELECT *
+  FROM v_search_status_full
+  ORDER BY
+    mac_age ASC;
+
+GRANT SELECT ON v_portinfo TO swcgi;
 
 
 ----------------------------------------------------------------------------
@@ -221,5 +302,3 @@ CREATE OR REPLACE VIEW v_search_mac AS
     LEFT JOIN out2cp o USING ( cp, site );
 
 GRANT SELECT ON v_search_mac TO swcgi;
-
-
