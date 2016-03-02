@@ -93,19 +93,19 @@ $(document).ready(function()
   //--- switch list
 
   $('div#swlist').on('click', function() {
-    var switchList = new modSwitchList(shared);
+    new modSwitchList(shared);
   });
   
   //--- search tool
   
   $('div#srctool').on('click', function() {
-    var searchTool = new modSearchTool(shared);
+    new modSearchTool(shared);
   });
   
   //--- add patches
   
   $('div#addpatch').on('click', function() {
-    var addPatchesForm = new modAddPatchesForm(shared);
+    new modAddPatchesForm(shared);
   });
   
   //--- default page
