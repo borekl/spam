@@ -52,7 +52,7 @@ function portList(el)
     dust.render('switch', data, function(err, out) {
       $('#content').html(out);
       $('div#swlist div').removeClass('timer');
-      var portInfo = new modPortInfo(shared, 'table#portlist');
+      new modPortInfo(shared, 'table#portlist');
     });
   });
 }
