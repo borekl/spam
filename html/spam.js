@@ -18,6 +18,19 @@ var
   };
 
 
+
+/*--------------------------------------------------------------------------*
+  isInteger polyfill.
+ *--------------------------------------------------------------------------*/
+
+Number.isInteger = Number.isInteger || function(value) {
+  return typeof value === "number" && 
+    isFinite(value) && 
+    Math.floor(value) === value;
+};
+
+
+
 /*--------------------------------------------------------------------------*
   This function populates the "Logged as <login>" message in the sidebar. 
  *--------------------------------------------------------------------------*/
