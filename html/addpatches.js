@@ -14,7 +14,8 @@ function addPatchesForm(shared) {
 var
   that = this,
   jq_table,
-  jq_tbody;
+  jq_tbody,
+  modPortInfo = require('./portinfo.js');
 
 
 /*--------------------------------------------------------------------------*
@@ -247,6 +248,7 @@ function formSubmit(evt)
       if(data.search.status == 'ok') {
         dust.render('srcres', data, function(err, out) {
           $('div#addp_updsum').html(out).find('p.srcsummary').remove();
+          new modPortInfo(shared, 'table#srcres');
         });
       }
     }
