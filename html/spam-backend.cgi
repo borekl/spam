@@ -1774,13 +1774,6 @@ if($req eq 'swlist') {
   );
 }
 
-#--- port list ---------------------------------------------------------------
-
-if($req eq 'switch') {
-  my $host = $q->param('host') // $args{'host'};
-  sql_port_list($host);
-}
-
 #--- search tool -------------------------------------------------------------
 
 if($req eq 'search') {
