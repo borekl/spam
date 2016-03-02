@@ -19,7 +19,11 @@
 
 {!--- table heading --------------------------------------------------------!}
 
-<table class="list" id="srcres">
+<table 
+  id="srcres"
+  class="list"
+  data-host="1"
+  data-portname="2">
 
 <thead>
 
@@ -48,7 +52,11 @@
 
   {?n}
   {:else}
-  <tr>
+
+  {! Class portinfo directs Port Info module to receive clicks from these
+     rows !}
+
+  <tr class="portinfo">
   
     <td>
     {site}

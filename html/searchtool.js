@@ -13,7 +13,8 @@ function searchTool(shared) {
  *--------------------------------------------------------------------------*/
 
 var
-  that = this;
+  that = this,
+  modPortinfo = require('./portinfo.js');
 
 
 /*--------------------------------------------------------------------------*
@@ -68,6 +69,7 @@ function submitSearch(evt)
     } else {
       dust.render('srcres', search, function(err, out) {
         $('div#result').html(out);
+        new modPortInfo(shared, 'table#srcres');
       });
     }
     $('div#srctool div').removeClass('timer');
