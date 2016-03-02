@@ -1,5 +1,19 @@
 /*==========================================================================*
   SWITCH PORTS ACTIVITY MONITOR / Port Info
+  
+  The UI to display extended port information. The constructor is called 
+  with a selector that should resolve into a single table, that holds
+  Port List, Search Tool or Add Patches result tables. Every TR that
+  can display extended port info via this module must have class "portinfo".
+  
+  The table must have two custom attributes:
+  
+  "data-host"
+  contains either hostname of the switch itself; or number of column
+  where hostname should be taken from
+  
+  "data-portname"
+  contains number of column containing portname
  *==========================================================================*/
  
 
@@ -17,7 +31,8 @@ var
   jq_table,       // TABLE we are servicing
   jq_tbody,       // TABLE's TBODY we are servicing
   host,           // switch hostname the current table shows
-  pname_col,      // what column contains portname
+  pn_col,         // what column contains portname
+  hn_col,         // what column contains hostname
   ncols;          // how many colums do regular rows in this table have
 
 
@@ -28,11 +43,18 @@ var
 function portInfoShow()
 {
   var 
-    portname = $(this).children().eq(0).text(),
+    portname = $(this).children().eq(pn_col).text(),
+    hostname = host,
     jq_row_orig,  // original table row
     jq_row_pi,    // new table row with the Port Info display
     jq_td_pi,     // new row's inner TD
     srcdata = {}  // data for backend query
+
+  //--- get hostname of the switch
+  
+  if(!hostname) {
+    hostname = $(this).children().eq(hn_col).text();
+  }
 
   // close any previous instance on the same table
 
@@ -50,7 +72,7 @@ function portInfoShow()
   
   // retrieve data from backend & render
 
-  srcdata = {r: 'portinfo', host:host, portname: portname }
+  srcdata = {r: 'portinfo', host:hostname, portname: portname }
   $.post(shared.backend, srcdata, function(result) {
     dust.render('portinfo', result, function(err, out) {
       jq_td_pi.html(out);
@@ -70,12 +92,21 @@ function portInfoShow()
   Initialization.
  *--------------------------------------------------------------------------*/
 
+//--- get TABLE and TBODY refs ready
+
 jq_table = $(mount);
+if(jq_table.length != 1) { return; }
 jq_tbody = jq_table.find('tbody');
 
+//--- resolve input data
+
 host = jq_table.data('host');
-pi_col = Number(jq_table.data('portinfo'));
+hn_col = Number(host);
+if(Number.isInteger(hn_col)) { host = undefined; }
+pn_col = Number(jq_table.data('portname'));
 ncols = jq_tbody.find('tr.portinfo:first').children().length;
+
+//--- hook into click anywhere in the body
 
 jq_table.on('click', function(evt) {
   var jq_target_tr = $(evt.target).parents('tr');
