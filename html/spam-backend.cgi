@@ -1256,7 +1256,7 @@ sub backend_swport
         $port_arg = lc($port);
       }
 
-      my $r = sql_select('spam', $query, [ lc($site), lc($host), $port_arg ], 1);
+      my $r = sql_select('spam', $query, [ lc($site), lc($host), $port_arg ]);
       if(ref($r) && scalar(@{$r->{'result'}})) {
         $re{'result'}{'host'} = $r->{'result'}[0]{'host'};
         $re{'result'}{'portname'} = $r->{'result'}[0]{'portname'};
