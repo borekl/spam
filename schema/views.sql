@@ -184,7 +184,7 @@ GRANT SELECT ON v_search_status TO swcgi;
 
 
 ----------------------------------------------------------------------------
--- Derivation of previous view with sorting applied for non-modular switches
+-- Derivation of previous view with sorting applied for modular switches
 ----------------------------------------------------------------------------
 
 DROP VIEW IF EXISTS v_search_status_mod;
