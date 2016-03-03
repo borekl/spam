@@ -58,7 +58,7 @@ function portInfoShow()
 
   // close any previous instance on the same table
 
-  jq_tbody.find('div.pi-container').each(function() { 
+  jq_tbody.find('button[name="pi-close"]').each(function() { 
     $(this).trigger('click'); 
   });
 
