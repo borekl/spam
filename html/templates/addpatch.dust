@@ -65,7 +65,7 @@
   </td>
   <td>
     <button class="addp" name="addp_ad00">+</button> {~s}
-    <button class="addp" name="addp_dl00">–</button>
+    <button class="addp" name="addp_dl00">−</button>
   </td>
   <td><span></span></td>
 </tr>
