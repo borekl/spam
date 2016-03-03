@@ -147,6 +147,12 @@
 
 </div> {!--- pi-bottom -----------------------------------------------------!}
 
+<div class="pi-actions"> {!--- pi-actions ----------------------------------!}
+
+  <button name="pi-close" class="close svg-cross">CLOSE</button>
+
+</div> {!--- pi-actions ----------------------------------------------------!}
+
 </div> {!--- pi-container --------------------------------------------------!}
 
 {/search.result}

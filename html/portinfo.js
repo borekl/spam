@@ -70,21 +70,27 @@ function portInfoShow()
   jq_td_pi = jq_row_pi.children('td');
   jq_row_orig = $(this).detach();
   
+  // close the Port Info with a button
+
+  function bind_close() {
+    jq_td_pi.find('button[name="pi-close"]').on('click', function(evt) {
+      console.log("Closing Port Info (%s)", evt.target.tagName);
+      jq_row_orig.insertAfter(jq_row_pi);
+      jq_row_pi.remove();
+      evt.stopPropagation();
+    });
+  }
+
   // retrieve data from backend & render
 
   srcdata = {r: 'portinfo', host:hostname, portname: portname }
   $.post(shared.backend, srcdata, function(result) {
     dust.render('portinfo', result, function(err, out) {
       jq_td_pi.html(out);
+      bind_close();
     });
   });
 
-  // close the Port Info view upon click anywhere within it
-
-  jq_td_pi.on('click', function(evt) {
-    jq_row_orig.insertAfter(jq_row_pi);
-    jq_row_pi.remove();
-  });
 }
 
 

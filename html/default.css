@@ -104,6 +104,11 @@ button.addp {
   width : 2em;
 }
 
+button.close {
+  background-color : #333;
+  padding-left : 1.8em;
+}
+
 /*----------------------------------------------------------------------------
    SIDEBAR
  ----------------------------------------------------------------------------*/
@@ -560,4 +565,12 @@ span.pi-age {
   color : #888;
   font-size : 75%;
   margin-left : 0.8em;
+}
+
+/*--- "actions" section ----------------------------------------------------*/
+
+div.pi-actions {
+  border-top : 1px dotted #888;
+  text-align : right;
+  padding : 0.8em 1em;
 }
