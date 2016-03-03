@@ -550,14 +550,12 @@ div.pi-outlet {
 /*--- "info" section -------------------------------------------------------*/
 
 div.pi-bottom-left {
-  padding-top : 0.5em;
   width : 50%;
 }
 
 /*--- "addresses" section --------------------------------------------------*/
 
 div.pi-bottom-right {
-  padding-top : 0.5em;
   padding-left : 1em;
 }
 
