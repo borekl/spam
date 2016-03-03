@@ -37,10 +37,14 @@
 </tr>
 
 <tr>
+<td>&nbsp</td>
+</tr>
+
+<tr>
 <td></td>
 <td>
-  <button id="submit">Submit</button>
-  <button id="reset">Reset</button>
+  <button class="svg-check submit" id="submit">SUBMIT</button> {~s}
+  <button class="svg-cross reset" id="reset">RESET</button>
 </td>
 </tr>
 

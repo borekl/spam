@@ -64,8 +64,8 @@
     <input name="addp_ou00" maxlength="16" size="16">
   </td>
   <td>
-    <button name="addp_ad00">+</button>
-    <button name="addp_dl00">–</button>
+    <button class="addp" name="addp_ad00">+</button> {~s}
+    <button class="addp" name="addp_dl00">–</button>
   </td>
   <td><span></span></td>
 </tr>
@@ -77,6 +77,6 @@
 {!--- submit/reset buttons -------------------------------------------------!}
 
 <div class="addp_buttons">
-<button type="submit" name="addp_submit">Submit</button>
-<button type="reset" name="addp_reset">Reset</button>
+<button type="submit" name="addp_submit" class="svg-check submit">SUBMIT</button> {~s}
+<button type="reset" name="addp_reset" class="svg-cross reset">RESET</button>
 </div>
