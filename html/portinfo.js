@@ -58,8 +58,8 @@ function portInfoShow()
 
   // close any previous instance on the same table
 
-  jq_tbody.find('button[name="pi-close"]').each(function() { 
-    $(this).trigger('click'); 
+  jq_tbody.find('div.pi-container').each(function() { 
+    $(this).trigger('dismiss'); 
   });
 
   // create new row and detach the old one
@@ -73,10 +73,13 @@ function portInfoShow()
   // close the Port Info with a button
 
   function bind_close() {
-    jq_td_pi.find('button[name="pi-close"]').on('click', function(evt) {
-      console.log("Closing Port Info (%s)", evt.target.tagName);
+    jq_td_pi.on('dismiss', function(evt) {
       jq_row_orig.insertAfter(jq_row_pi);
       jq_row_pi.remove();
+      evt.stopPropagation();
+    });
+    jq_td_pi.find('button[name="pi-close"]').on('click', function(evt) {
+      $(this).trigger('dismiss');
       evt.stopPropagation();
     });
   }
