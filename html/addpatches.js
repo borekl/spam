@@ -282,7 +282,8 @@ dust.render('addpatch', {}, function(err, out) {
   jq_table
     .on('renumber', renumberTable)
     .on('addpmode', switchMode)
-    .on('statmsg', rowStatusMessage);
+    .on('statmsg', rowStatusMessage)
+    .on('reset', formReset);
 
   // callback for site SELECT
 
