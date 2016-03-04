@@ -122,7 +122,6 @@ function changeSite(evt)
 {
   var site = $(this).val();
 
-  console.log("site changed to %s", site);
   if(site) { localStorage.setItem('addpatchsite', site); }
   $.get(shared.backend, { r : 'usecp', site: $(this).val() }, function(data) {
     if(data.status == 'ok') {
