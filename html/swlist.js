@@ -47,11 +47,11 @@ function portList(el)
     host = $(this).text(),
     arg = { r : "search", host: host, mode: "portlist" };
 
-  $('div#swlist div').addClass('timer');
+  $('div#swlist').addClass('spinner');
   $.get(shared.backend, arg, function(data) {
     dust.render('switch', data, function(err, out) {
       $('#content').html(out);
-      $('div#swlist div').removeClass('timer');
+      $('div#swlist').removeClass('spinner');
       new modPortInfo(shared, 'table#portlist');
     });
   });
@@ -85,13 +85,13 @@ function renderSwitchList(data)
   Initialization.
  *--------------------------------------------------------------------------*/
 
-$('div#swlist div').addClass('timer');
+$('div#swlist').addClass('spinner');
 $.post(shared.backend, {r:'swlist'}, function(data) {
   var grp = localStorage.getItem('swlistgrp');
   data.grp = grp ? grp : 'all';
   data.filterhost = ctxHelperFilterhost;
   renderSwitchList(data);
-  $('div#swlist div').removeClass('timer');
+  $('div#swlist').removeClass('spinner');
 });
 
 

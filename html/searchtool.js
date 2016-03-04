@@ -49,7 +49,7 @@ function submitSearch(evt)
   
   //--- submit form data to backend, get results back
   
-  $('div#srctool div').addClass('timer');
+  $('div#srctool').addClass('spinner');
   $.get(shared.backend, form, function(search) {
   
   //--- replace form field values with normalized values supplied by the
@@ -72,7 +72,7 @@ function submitSearch(evt)
         new modPortInfo(shared, 'table#srcres');
       });
     }
-    $('div#srctool div').removeClass('timer');
+    $('div#srctool').removeClass('spinner');
 
   });
 }

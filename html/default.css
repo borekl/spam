@@ -51,9 +51,11 @@ span.areyousure {
   font-weight : bold;
 }
 
-div.spinner {
-  text-align : center;
-  margin : 2em;
+.menu.spinner {
+  background-image : url(assets/spin-white.svgz);
+  background-size : 1.5em;
+  background-repeat : no-repeat;
+  background-position : 9em 50%, right;
 }
 
 /*----------------------------------------------------------------------------
@@ -506,6 +508,11 @@ div.pi-bottom {
 
 div.pi-subsec {
   margin : 0.5em 1em;
+}
+
+div.pi-spinner {
+  text-align : center;
+  margin : 2em;
 }
 
 /*--- "port" section -------------------------------------------------------*/

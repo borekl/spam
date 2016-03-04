@@ -34,7 +34,7 @@ var
   pn_col,         // what column contains portname
   hn_col,         // what column contains hostname
   ncols,          // how many colums do regular rows in this table have
-  spin = '<div class="spinner"><img src="assets/spin.svg"></div>';
+  spin = '<div class="pi-spinner"><img src="assets/spin-black.svgz"></div>';
 
 
 /*--------------------------------------------------------------------------*
