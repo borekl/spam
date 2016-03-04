@@ -38,7 +38,41 @@ var
 
 
 /*--------------------------------------------------------------------------*
-  Display the port info; this points to the row that invoked this.
+  Function to implement "Are you sure (y/n)?" message. Intended to be
+  wrapped around an event handler:
+
+    .on('click', are_you_sure('message', original_callback));
+
+  This should probably be spun off to its separate module or into main.
+ *--------------------------------------------------------------------------*/
+
+function are_you_sure(mesg, callback)
+{
+  var
+    jq_parent, jq_saved,
+    msg = { msg: mesg };
+
+  jq_parent = $(this).parent();
+  jq_saved = jq_parent.children().detach();
+  dust.render('areyousure', msg, function(err, out) {
+    jq_parent.html(out);
+
+    jq_parent.find('button').on('click', function(evt) {
+      var name = $(evt.target).attr('name');
+      if(name == 'yes') {
+        callback();
+      }
+      jq_parent.empty();
+      jq_parent.append(jq_saved);
+    });
+
+  });
+}
+
+
+/*--------------------------------------------------------------------------*
+  Display the port info; this points to the row that invoked this. "this" is
+  the clicked TR element.
  *--------------------------------------------------------------------------*/
 
 function portInfoShow()
@@ -59,9 +93,7 @@ function portInfoShow()
 
   // close any previous instance on the same table
 
-  jq_tbody.find('div.pi-container').each(function() { 
-    $(this).trigger('dismiss'); 
-  });
+  jq_tbody.find('div.pi-container').trigger('dismiss');
 
   // create new row and detach the old one
 
@@ -85,6 +117,46 @@ function portInfoShow()
     });
   }
 
+  // expose and bind the "Remove Patch" button if 'cp' exists
+  // FIXME. THIS IS UGLY, HOW TO DO THIS IN A MORE SANE WAY?
+
+  function bind_remove(r) {
+    if('cp' in r.search.result) {
+      jq_button = jq_td_pi.find('button[name="pi-delete"]');
+      jq_button.removeClass('nodisp').on('click', function() {
+        are_you_sure.call(
+          jq_button.get(),
+          'delete the patch from database',
+          function() {
+            jq_out = $('div.pi-outlet span')
+            jq_out.css('opacity', '0.5');
+            $.post(shared.backend, {
+              r: 'delpatch',
+              host: r.search.result.host,
+              portname: r.search.result.portname
+            }, function(delres) {
+              if(delres.status == 'ok') {
+                jq_button.addClass('nodisp');
+                jq_out.empty();
+              } else {
+                jq_out.css('opacity', '1');
+                $('div.pi-actions').toggleClass('nodisp');
+                $('span.pi-errmsg')
+                .text(
+                  'Patch was not removed becase of an error'
+                );
+                $('button[name="pi-fail"]').on('click', function() {
+                  $('div.pi-actions').toggleClass('nodisp');
+                  $(this).off('click');
+                });
+              }
+            });
+          }
+        );
+      });
+    }
+  }
+
   // retrieve data from backend & render
 
   srcdata = {r: 'portinfo', host:hostname, portname: portname }
@@ -92,6 +164,7 @@ function portInfoShow()
     dust.render('portinfo', result, function(err, out) {
       jq_td_pi.html(out);
       bind_close();
+      bind_remove(result);
     });
   });
 

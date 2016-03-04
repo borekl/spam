@@ -1698,6 +1698,49 @@ sub sql_add_patches
 
 
 #=============================================================================
+# Function to delete (individual) patches.
+#=============================================================================
+
+sub sql_del_patch
+{
+  #--- variables
+  
+  my ($host, $portname) = @_;
+  my $dbh = dbconn('spam');
+  my (%re, $qry, $r);
+  
+  #--- init
+  
+  $re{'function'} = 'sql_del_patch';
+  $re{'debug'} = $debug;
+  
+  #--- perform query
+  
+  $qry = 'DELETE FROM porttable WHERE host = ? AND portname = ?';
+  $re{'query'} = sql_show_query($qry, [ $host, $portname ]);
+  $r = $dbh->do($qry, undef, $host, $portname);
+  $re{'dbrv'} = $r;
+  if(!defined $r) {
+    $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
+    $re{'errwhy'} = 'Failed to remove database row';
+    $re{'status'} = 'error';
+    $re{'errmsg'} = 'Database error';
+  } elsif($r <= 0) {
+    $re{'errwhy'} = 'Failed to remove database row';
+    $re{'status'} = 'error';
+    $re{'errmsg'} = 'Database error';
+  } else {
+    $re{'status'} = 'ok';
+  }
+  
+  #--- finish
+  
+  return \%re;
+}
+
+
+
+#=============================================================================
 #===   __  __    _    ___ _   _   ============================================
 #===  |  \/  |  / \  |_ _| \ | |  ============================================
 #===  | |\/| | / _ \  | ||  \| |  ============================================
@@ -1826,6 +1869,12 @@ if($req eq 'addpatch') {
   my %form;
   for my $k (@names) { ($form{$k}) = $arg->($k); }
   print $js->encode(sql_add_patches(\%form, $arg->('site')));
+}
+
+#--- remove patch ------------------------------------------------------------
+
+if($req eq 'delpatch') {
+  print $js->encode(sql_del_patch($arg->('host'), $arg->('portname')));
 }
 
 #--- default -----------------------------------------------------------------

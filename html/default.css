@@ -47,6 +47,10 @@ p.success {
   display : none;
 }
 
+span.areyousure {
+  font-weight : bold;
+}
+
 div.spinner {
   text-align : center;
   margin : 2em;
@@ -111,6 +115,16 @@ button.addp {
 
 button.close {
   background-color : #333;
+  padding-left : 1.8em;
+}
+
+button.delete {
+  background-color : red;
+  padding-left : 1.8em;
+}
+
+button.fail {
+  background-color : red;
   padding-left : 1.8em;
 }
 
@@ -576,4 +590,9 @@ div.pi-actions {
   border-top : 1px dotted #888;
   text-align : right;
   padding : 0.8em 1em;
+}
+
+span.pi-errmsg {
+  font-weight : bold;
+  color : #800;
 }

@@ -149,7 +149,16 @@
 
 <div class="pi-actions"> {!--- pi-actions ----------------------------------!}
 
+  <button name="pi-delete" class="delete svg-dustbin nodisp">REMOVE PATCH</button>
+  <span>{~s}</span>
   <button name="pi-close" class="close svg-cross">CLOSE</button>
+
+</div>
+
+<div class="pi-actions nodisp">
+
+  <span class="pi-errmsg"></span> {~s}
+  <button name="pi-fail" class="fail svg-cross">GOT IT</button>
 
 </div> {!--- pi-actions ----------------------------------------------------!}
 

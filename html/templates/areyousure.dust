@@ -1,0 +1,6 @@
+{!--- template for the "are you sure" wrapper function ----------------------!}
+
+<span class="areyousure">Are you sure to {msg}?</span> {~s}
+<button name="yes" class="svg-check submit">YES</button>
+{~s}
+<button name="no" class="svg-cross reset">NO</button>
