@@ -33,7 +33,8 @@ var
   host,           // switch hostname the current table shows
   pn_col,         // what column contains portname
   hn_col,         // what column contains hostname
-  ncols;          // how many colums do regular rows in this table have
+  ncols,          // how many colums do regular rows in this table have
+  spin = '<div class="spinner"><img src="assets/spin.svg"></div>';
 
 
 /*--------------------------------------------------------------------------*
@@ -65,7 +66,7 @@ function portInfoShow()
   // create new row and detach the old one
 
   jq_row_pi = 
-    $('<tr class="pi"><td colspan="'+ncols+'"></td></tr>')
+    $('<tr class="pi"><td colspan="'+ncols+'">'+spin+'</td></tr>')
     .insertAfter(this);
   jq_td_pi = jq_row_pi.children('td');
   jq_row_orig = $(this).detach();
