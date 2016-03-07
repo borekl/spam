@@ -15,7 +15,7 @@
   "data-portname"
   contains number of column containing portname
  *==========================================================================*/
- 
+
 
 module.exports = portInfo;
 
@@ -28,12 +28,13 @@ function portInfo(shared, mount) {
 
 var
   that = this,
-  jq_table,       // TABLE we are servicing
-  jq_tbody,       // TABLE's TBODY we are servicing
-  host,           // switch hostname the current table shows
-  pn_col,         // what column contains portname
-  hn_col,         // what column contains hostname
-  ncols,          // how many colums do regular rows in this table have
+  jq_table,        // TABLE we are servicing
+  jq_tbody,        // TABLE's TBODY we are servicing
+  host,            // switch hostname the current table shows
+  pn_col,          // what column contains portname
+  hn_col,          // what column contains hostname
+  ncols,           // how many colums do regular rows in this table have
+  refresh = false, // refresh the portlist (after deleting a patch)
   spin = '<div class="pi-spinner"><img src="assets/spin-black.svgz"></div>';
 
 
@@ -110,6 +111,7 @@ function portInfoShow()
       jq_row_orig.insertAfter(jq_row_pi);
       jq_row_pi.remove();
       evt.stopPropagation();
+      if(refresh) { $('table.list').trigger('refresh'); }
     });
     jq_td_pi.find('button[name="pi-close"]').on('click', function(evt) {
       $(this).trigger('dismiss');
@@ -138,6 +140,7 @@ function portInfoShow()
               if(delres.status == 'ok') {
                 jq_button.addClass('nodisp');
                 jq_out.empty();
+                refresh = true;
               } else {
                 jq_out.css('opacity', '1');
                 $('div.pi-actions').toggleClass('nodisp');

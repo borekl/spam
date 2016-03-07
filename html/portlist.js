@@ -26,11 +26,29 @@ var
   that = this,
   modPortInfo = require('./portinfo.js'),
   jq_mount,
+  jq_port_list,
   myCfg = Object.create(cfg);
 
 
 /*--------------------------------------------------------------------------*
-  Initialization.
+  Refresh handler
+ *--------------------------------------------------------------------------*/
+
+function refreshPortList()
+{
+  if('beRequest' in myCfg) {
+    $.post(shared.backend, myCfg.beRequest, function(r) {
+      myCfg.beResponse = r;
+      processPortList();
+    });
+  } else if('beResponse' in myCfg) {
+    processPortList();
+  }
+}
+
+
+/*--------------------------------------------------------------------------*
+  Render the port list and set up the handlers.
  *--------------------------------------------------------------------------*/
 
 function processPortList()
@@ -41,8 +59,18 @@ function processPortList()
     dust.render(myCfg.template, r, function(err, out) {
       jq_mount = $(myCfg.mount);
       jq_mount.html(out);
-      new modPortInfo(shared, jq_mount.find('table.list'));
-      success(r);
+      jq_port_list = jq_mount.find('table.list')
+      new modPortInfo(shared, jq_port_list);
+
+      //--- refresh handler
+
+      jq_port_list.on('refresh', refreshPortList);
+
+      //--- invoke callback
+
+      if($.isFunction(success)) {
+        success(r);
+      }
     });
   }
 }
