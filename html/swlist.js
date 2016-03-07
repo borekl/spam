@@ -13,8 +13,9 @@ function switchList(shared) {
  *--------------------------------------------------------------------------*/
 
 var
-  that = this;
-  modPortInfo = require('./portinfo.js');
+  that = this,
+  modPortList = require('./portlist.js');
+  //modPortInfo = require('./portinfo.js');
 
 
 /*--------------------------------------------------------------------------*
@@ -48,13 +49,10 @@ function portList(el)
     arg = { r : "search", host: host, mode: "portlist" };
 
   $('div#swlist').addClass('spinner');
-  $.get(shared.backend, arg, function(data) {
-    dust.render('switch', data, function(err, out) {
-      $('#content').html(out);
-      $('div#swlist').removeClass('spinner');
-      new modPortInfo(shared, 'table#portlist');
-    });
-  });
+  new modPortList(
+    shared, { beRequest: arg, mount: '#content', template: 'switch' }, 
+    function() { $('div#swlist').removeClass('spinner'); }
+  );
 }
 
 

@@ -14,7 +14,8 @@ function searchTool(shared) {
 
 var
   that = this,
-  modPortinfo = require('./portinfo.js');
+  modPortList = require('./portlist.js'),
+  portList;
 
 
 /*--------------------------------------------------------------------------*
@@ -46,11 +47,13 @@ function submitSearch(evt)
       form[name] = val;
     }
   });
-  
+
   //--- submit form data to backend, get results back
   
   $('div#srctool').addClass('spinner');
-  $.get(shared.backend, form, function(search) {
+  portList = new modPortList(
+    shared, { beRequest: form, mount: 'div#result', template: 'srcres' },
+    function(search) {
   
   //--- replace form field values with normalized values supplied by the
   //--- backend, using ' as the first character in the form field inhibits
@@ -60,17 +63,6 @@ function submitSearch(evt)
       if(search.params.raw[field].substr(0,1) != "'") {
         $('input[name=' + field  + ']').val(search.params.normalized[field]);
       }
-    }
-
-  //--- display the result
-
-    if(search.status == 'error') {
-      alert('Search Fail!');
-    } else {
-      dust.render('srcres', search, function(err, out) {
-        $('div#result').html(out);
-        new modPortInfo(shared, 'table#srcres');
-      });
     }
     $('div#srctool').removeClass('spinner');
 

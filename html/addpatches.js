@@ -15,7 +15,7 @@ var
   that = this,
   jq_table,
   jq_tbody,
-  modPortInfo = require('./portinfo.js');
+  modPortList = require('./portlist.js');
 
 
 /*--------------------------------------------------------------------------*
@@ -245,10 +245,10 @@ function formSubmit(evt)
       jq_table.trigger('reset');
       $('#addp_mesg p.success').removeClass('nodisp');
       if(data.search.status == 'ok') {
-        dust.render('srcres', data, function(err, out) {
-          $('div#addp_updsum').html(out).find('p.srcsummary').remove();
-          new modPortInfo(shared, 'table#srcres');
-        });
+        new modPortList(
+          shared, { beResponse: data, mount: 'div#addp_updsum', template: 'srcres' },
+          function() { $('div#addp_updsum p.srcsummary').remove(); }
+        );
       }
     }
   }, 'json');
