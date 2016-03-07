@@ -61,17 +61,6 @@ if('beResponse' in myCfg && myCfg.beResponse) {
   });
 }
 
-/*$.post(shared.backend, data, function(r) {
-  if('status' in r && r.status == 'ok') {
-    dust.render(template, r, function(err, out) {
-      jq_mount = $(mount);
-      jq_mount.html(out);
-      new modPortInfo(shared, jq_mount.find('table.list'));
-      success(r);
-    });
-  }
-});*/
-
 /*--- end of module --------------------------------------------------------*/
 
 }
