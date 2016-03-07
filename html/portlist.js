@@ -10,6 +10,7 @@
   cfg.beResponse   ... response from backend
   cfg.mount        ... selector, DOM element or jQuery object
   cfg.template     ... dust.js template to be rendered
+  cfg.spinner      ... element to add 'spinner' class to it
  *==========================================================================*/
 
 
@@ -83,9 +84,11 @@ function processPortList()
 if('beResponse' in myCfg && myCfg.beResponse) {
   processPortList();
 } else {
+  if(myCfg.spinner) { $(myCfg.spinner).addClass('spinner'); }
   $.post(shared.backend, myCfg.beRequest, function(r) {
     myCfg.beResponse = r;
     processPortList();
+    if(myCfg.spinner) { $(myCfg.spinner).removeClass('spinner'); }
   });
 }
 

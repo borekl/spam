@@ -48,10 +48,14 @@ function portList(el)
     host = $(this).text(),
     arg = { r : "search", host: host, mode: "portlist" };
 
-  $('div#swlist').addClass('spinner');
   new modPortList(
-    shared, { beRequest: arg, mount: '#content', template: 'switch' }, 
-    function() { $('div#swlist').removeClass('spinner'); }
+    shared, 
+    { 
+      beRequest: arg, 
+      mount: '#content', 
+      template: 'switch', 
+      spinner: 'div#swlist' 
+    }
   );
 }
 
