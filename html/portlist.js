@@ -35,7 +35,7 @@ var
   Refresh handler
  *--------------------------------------------------------------------------*/
 
-function refreshPortList()
+this.refreshPortList = function()
 {
   if('beRequest' in myCfg) {
     $.post(shared.backend, myCfg.beRequest, function(r) {
@@ -61,11 +61,7 @@ function processPortList()
       jq_mount = $(myCfg.mount);
       jq_mount.html(out);
       jq_port_list = jq_mount.find('table.list')
-      new modPortInfo(shared, jq_port_list);
-
-      //--- refresh handler
-
-      jq_port_list.on('refresh', refreshPortList);
+      new modPortInfo(shared, jq_port_list, that);
 
       //--- invoke callback
 

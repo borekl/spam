@@ -14,12 +14,16 @@
   
   "data-portname"
   contains number of column containing portname
+  
+  FIXME: Removing/adding patch triggers refresh in the portlist, but
+  currently this refresh happens only after the Port Info is closed; ie.
+  merely opening another Port Info on another port won't refresh the table.
  *==========================================================================*/
 
 
 module.exports = portInfo;
 
-function portInfo(shared, mount) {
+function portInfo(shared, mount, portlist) {
 
 
 /*--------------------------------------------------------------------------*
@@ -30,12 +34,17 @@ var
   that = this,
   jq_table,        // TABLE we are servicing
   jq_tbody,        // TABLE's TBODY we are servicing
+  jq_row_orig,     // this holds the original DOM table row replaced with pi
+  jq_row_pi,       // new table row with the Port Info display
+  jq_td_pi,        // new row's inner TD
+  srcdata = {},    // data for backend query
   host,            // switch hostname the current table shows
   pn_col,          // what column contains portname
   hn_col,          // what column contains hostname
-  ncols,           // how many colums do regular rows in this table have
+  ncols,           // how many columns do regular rows in this table have
   refresh = false, // refresh the portlist (after deleting a patch)
   spin = '<div class="pi-spinner"><img src="assets/spin-black.svgz"></div>';
+                   // spinner HTML to be displayed before the data load
 
 
 /*--------------------------------------------------------------------------*
@@ -72,6 +81,21 @@ function are_you_sure(mesg, callback)
 
 
 /*--------------------------------------------------------------------------*
+  Dismiss the Port Info display.
+ *--------------------------------------------------------------------------*/
+
+function portInfoDismiss(evt)
+{
+  if(jq_row_orig) {
+    jq_row_orig.insertAfter(jq_row_pi);
+    jq_row_pi.remove();
+    if(evt) { evt.stopPropagation(); }
+    jq_row_orig = undefined;
+  }
+}
+
+
+/*--------------------------------------------------------------------------*
   Display the port info; this points to the row that invoked this. "this" is
   the clicked TR element.
  *--------------------------------------------------------------------------*/
@@ -80,11 +104,7 @@ function portInfoShow()
 {
   var 
     portname = $(this).children().eq(pn_col).text(),
-    hostname = host,
-    jq_row_orig,  // original table row
-    jq_row_pi,    // new table row with the Port Info display
-    jq_td_pi,     // new row's inner TD
-    srcdata = {}  // data for backend query
+    hostname = host;
 
   //--- get hostname of the switch
   
@@ -94,7 +114,7 @@ function portInfoShow()
 
   // close any previous instance on the same table
 
-  jq_tbody.find('div.pi-container').trigger('dismiss');
+  portInfoDismiss();
 
   // create new row and detach the old one
 
@@ -107,14 +127,9 @@ function portInfoShow()
   // close the Port Info with a button
 
   function bind_close() {
-    jq_td_pi.on('dismiss', function(evt) {
-      jq_row_orig.insertAfter(jq_row_pi);
-      jq_row_pi.remove();
-      evt.stopPropagation();
-      if(refresh) { $('table.list').trigger('refresh'); }
-    });
     jq_td_pi.find('button[name="pi-close"]').on('click', function(evt) {
-      $(this).trigger('dismiss');
+      portInfoDismiss();
+      if(refresh) { portlist.refreshPortList(); }
       evt.stopPropagation();
     });
   }
@@ -124,13 +139,13 @@ function portInfoShow()
 
   function bind_remove(r) {
     if('cp' in r.search.result) {
-      jq_button = jq_td_pi.find('button[name="pi-delete"]');
+      var jq_button = jq_td_pi.find('button[name="pi-delete"]');
       jq_button.removeClass('nodisp').on('click', function() {
         are_you_sure.call(
           jq_button.get(),
           'delete the patch from database',
           function() {
-            jq_out = $('div.pi-outlet span')
+            jq_out = $('div.pi-outlet span');
             jq_out.css('opacity', '0.5');
             $.post(shared.backend, {
               r: 'delpatch',
@@ -141,12 +156,14 @@ function portInfoShow()
                 jq_button.addClass('nodisp');
                 jq_out.empty();
                 refresh = true;
+                delete r.search.result.cp;
+                bind_patch(r);
               } else {
                 jq_out.css('opacity', '1');
                 $('div.pi-actions').toggleClass('nodisp');
                 $('span.pi-errmsg')
                 .text(
-                  'Patch was not removed becase of an error'
+                  'Patch was not removed because of an error'
                 );
                 $('button[name="pi-fail"]').on('click', function() {
                   $('div.pi-actions').toggleClass('nodisp');
@@ -160,6 +177,17 @@ function portInfoShow()
     }
   }
 
+  // expose and bind the  "Patch This" button if 'cp' does not exist
+  
+  function bind_patch(r) {
+    if(!('cp' in r.search.result)) {
+      var jq_button = jq_td_pi.find('button[name="pi-patch"]');
+      jq_button.removeClass('nodisp').off('click').on('click', function() {
+        alert('UNIMPLEMENTED');
+      });
+    }
+  }
+  
   // retrieve data from backend & render
 
   srcdata = {r: 'portinfo', host:hostname, portname: portname }
@@ -168,6 +196,7 @@ function portInfoShow()
       jq_td_pi.html(out);
       bind_close();
       bind_remove(result);
+      bind_patch(result);
     });
   });
 
@@ -178,7 +207,8 @@ function portInfoShow()
   Initialization.
  *--------------------------------------------------------------------------*/
 
-//--- get TABLE and TBODY refs ready
+//--- get TABLE and TBODY refs ready, ensure the 'mount' resolves to exactly
+//--- one element
 
 jq_table = $(mount);
 if(jq_table.length != 1) { return; }
