@@ -79,7 +79,7 @@ dust.render('search', {}, function(err, out)
   //--- render initial content
 
   $('#content').html(out);
-  $('select[name=site]').each(shared.pss);
+  $('select[name=site]').each(shared.populate_select_sites);
   
   //--- bind submit/reset buttons
   

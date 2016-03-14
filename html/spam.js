@@ -13,8 +13,7 @@ var
   modSearchTool = require('./searchtool.js'),
   modSwitchList = require('./swlist.js'),
   shared = {
-    backend: 'spam-backend.cgi',
-    pss: populate_select_sites
+    backend: 'spam-backend.cgi'
   };
 
 
@@ -50,15 +49,14 @@ function populate_login_info(data)
   in Web Storage.
  *--------------------------------------------------------------------------*/
 
-function populate_select_sites(idx, el)
+shared.populate_select_sites = function(idx, el, success)
 {
   //--- function to perform the actual creation of OPTION elements
   
   var populate = function(aux) {
     var 
       sites,
-      jq_option,
-      storage = $(el).data('storage');
+      jq_option;
     
     if(aux.sites.status == 'ok') {
       sites = aux.sites.result;
@@ -68,11 +66,8 @@ function populate_select_sites(idx, el)
                     .text(sites[i][0]+' / '+sites[i][1]);
         $(el).append(jq_option);
       }
-      if(storage) {
-        $(el).val(localStorage.getItem(storage));
-        $(el).trigger('change');
-      }
       auxdata = aux;
+      if(success) { success(idx, el); }
     }
   };
 
@@ -82,6 +77,22 @@ function populate_select_sites(idx, el)
     populate(auxdata);
   } else {  
     $.get(shared.backend, {r: 'aux'}, populate, 'json');
+  }
+}
+
+
+/*--------------------------------------------------------------------------*
+  Set element's value from localStorage using data-storage custom attribute
+  as the key.
+ *--------------------------------------------------------------------------*/
+
+shared.set_value_from_storage = function(el)
+{
+  var
+    storage = $(el).data('storage');
+  
+  if(storage) {
+    $(el).val(localStorage.getItem(storage));
   }
 }
 
