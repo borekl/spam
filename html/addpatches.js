@@ -1,10 +1,13 @@
-/* Attempt at a module for Add Patches form module
- * """""""""""""""""""""""""""""""""""""""""""""""
- */
+/*==========================================================================*
+  SWITCH PORTS ACTIVITY MONITOR / Add patches
+  
+  The UI to facilitate adding patching into database.
+ *==========================================================================*/
+
  
 module.exports = addPatchesForm;
 
-function addPatchesForm(shared) {
+function addPatchesForm(shared, prefill) {
 
 
 /*--------------------------------------------------------------------------*
@@ -268,7 +271,34 @@ dust.render('addpatch', {}, function(err, out) {
   jq_table = $('table.addpatch'),
   jq_tbody = $('table.addpatch tbody');
   
-  $('select[name=addp_site]').each(shared.pss);
+  // populate 'site' SELECT
+
+  $('select[name=addp_site]').each(function(idx, el) {
+    shared.populate_select_sites(idx, el, function(idx, el) {
+      if(prefill && 'site' in prefill) {
+        $(el).val(prefill.site);
+      } else {
+        shared.set_value_from_storage(el);
+      }
+    });
+  });
+
+  // prefill
+  
+  if(prefill) {
+    if('host' in prefill) {
+      $('input[name=addp_sw00]').val(prefill.host);
+    }
+    if('portname' in prefill) {
+      $('input[name=addp_pt00]').val(prefill.portname);
+    }
+    if('cp' in prefill) {
+      $('input[name=addp_cp00]').val(prefill.cp);
+    }
+    if('outlet' in prefill) {
+      $('input[name=addp_ou00]').val(prefill.outlet);
+    }
+  }
   
   // callbacks for table rows
   
