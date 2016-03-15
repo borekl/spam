@@ -32,15 +32,14 @@ function portInfo(shared, mount, portlist) {
 
 var
   that = this,
+  modAddPatchesForm = require('./addpatches.js'),
   jq_table,        // TABLE we are servicing
   jq_tbody,        // TABLE's TBODY we are servicing
   jq_row_orig,     // this holds the original DOM table row replaced with pi
   jq_row_pi,       // new table row with the Port Info display
   jq_td_pi,        // new row's inner TD
   srcdata = {},    // data for backend query
-  host,            // switch hostname the current table shows
-  pn_col,          // what column contains portname
-  hn_col,          // what column contains hostname
+  tabinfo = {},    // table data (supplied in custom attributes)
   ncols,           // how many columns do regular rows in this table have
   refresh = false, // refresh the portlist (after deleting a patch)
   spin = '<div class="pi-spinner"><img src="assets/spin-black.svgz"></div>';
@@ -103,13 +102,13 @@ function portInfoDismiss(evt)
 function portInfoShow()
 {
   var 
-    portname = $(this).children().eq(pn_col).text(),
-    hostname = host;
+    portname = $(this).children().eq(tabinfo.portname).text(),
+    hostname = tabinfo.host;
 
   //--- get hostname of the switch
   
-  if(!hostname) {
-    hostname = $(this).children().eq(hn_col).text();
+  if(Number.isInteger(hostname)) {
+    hostname = $(this).children().eq(tabinfo.host).text();
   }
 
   // close any previous instance on the same table
@@ -183,7 +182,18 @@ function portInfoShow()
     if(!('cp' in r.search.result)) {
       var jq_button = jq_td_pi.find('button[name="pi-patch"]');
       jq_button.removeClass('nodisp').off('click').on('click', function() {
-        alert('UNIMPLEMENTED');
+        var values = {}, v;
+        ['host', 'portname', 'cp', 'outlet'].forEach(function(k, i) {
+          if(k in tabinfo) {
+            v = jq_row_orig.children().eq(tabinfo[k]).text();
+            if(v) { values[k] = v; }
+          }
+        });
+        if(!('host' in values)) {
+          values.host = jq_table.data('host');
+        }
+        values.site = values.host.substr(0, 3);
+        new modAddPatchesForm(shared, values);
       });
     }
   }
@@ -216,10 +226,15 @@ jq_tbody = jq_table.find('tbody');
 
 //--- resolve input data
 
-host = jq_table.data('host');
-hn_col = Number(host);
-if(Number.isInteger(hn_col)) { host = undefined; }
-pn_col = Number(jq_table.data('portname'));
+['host', 'portname', 'cp', 'outlet'].forEach(function(k, i) {
+  var n = Number(jq_table.data(k));
+  if(Number.isInteger(n)) {
+    tabinfo[k] = n;
+  }
+});
+if(!('host' in tabinfo)) {
+  tabinfo.host = jq_table.data('host');
+}
 ncols = jq_tbody.find('tr.portinfo:first').children().length;
 
 //--- hook into click anywhere in the body

@@ -31,13 +31,17 @@
 
   data-host ... defines what switch's ports does this table contain
   data-portname ... define what table column contains portname              
+  data-cp ... define what table column contains cp
+  data-outlet ... define what table column contains outlet
  ===========================================================================!}
 
 <table 
   class="list" 
   id="portlist" 
   data-host="{swinfo.result.host}"
-  data-portname="0">
+  data-portname="0"
+  data-cp="6"
+  data-outlet="7">
 
   <thead> {!-----------------------------------------------------------------!}
     <tr>
