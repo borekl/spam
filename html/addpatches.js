@@ -177,7 +177,7 @@ function formReset(evt)
 {
   jq_tbody.find('tr').not(':first').trigger('remove');
   jq_tbody.find('tr').find('input').val(undefined);
-  jq_tbody.children('tbody').find('td').not(':first').removeClass();
+  jq_tbody.find('td').not(':first').removeClass();
   $('div#addp_mesg p').addClass('nodisp');
   $('div#addp_updsum').empty();
   $('table.addpatch tbody tr').trigger('statmsg', '');
