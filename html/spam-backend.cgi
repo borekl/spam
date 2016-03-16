@@ -1694,6 +1694,8 @@ sub sql_add_patches
 
   };
 
+  #--- error processing
+
   if($@) {
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
@@ -1717,7 +1719,23 @@ sub sql_add_patches
   #--- saved under the 'search' key because we're reusing the template
   #--- from the Search Tool
 
-  $re{'search'} = sql_update_summary($site, \@work_info);
+  if(@work_info) {
+    $re{'search'} = sql_update_summary($site, \@work_info);
+  }
+  
+  #--- in case of error caused by duplicate portname, perform
+  #--- collect update summary, which will cause the conflicting
+  #--- entry to be displayed to the user
+  
+  if(
+    $re{'errdb'}{'type'} eq 'dupkey' 
+    && $re{'errdb'}{'constraint'} eq 'porttable_pkey'
+  ) {
+    $re{'search'} = sql_update_summary(
+      $site, 
+      [[ $re{'errdb'}{'conflict'}{'host'}, $re{'errdb'}{'conflict'}{'portname'} ]]
+    );
+  }
   
   #--- finish
 

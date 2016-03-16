@@ -259,13 +259,23 @@ function formSubmit(evt)
     if('status' in data && data.status == 'ok') {
       jq_table.trigger('reset');
       $('#addp_mesg p.success').removeClass('nodisp');
-      if(data.search.status == 'ok') {
+      /*if(data.search.status == 'ok') {
         new modPortList(
           shared, { beResponse: data, mount: 'div#addp_updsum', template: 'srcres' },
           function() { $('div#addp_updsum p.srcsummary').remove(); }
         );
-      }
+      }*/
     }
+    
+    // display update summary/conflicting row(s)
+    
+    if('search' in data && data.search.status == 'ok') {
+      new modPortList(
+        shared, { beResponse: data, mount: 'div#addp_updsum', template: 'srcres' },
+        function() { $('div#addp_updsum p.srcsummary').remove(); }
+      );
+    }
+    
   }, 'json');
 
 }

@@ -56,7 +56,7 @@ function processPortList()
 {
   var r = myCfg.beResponse;
   
-  if('status' in r && r.status == 'ok') {
+  if('search' in r && r.search.status == 'ok') {
     dust.render(myCfg.template, r, function(err, out) {
       jq_mount = $(myCfg.mount);
       jq_mount.html(out);
