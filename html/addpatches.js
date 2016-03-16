@@ -271,6 +271,10 @@ dust.render('addpatch', {}, function(err, out) {
   jq_table = $('table.addpatch'),
   jq_tbody = $('table.addpatch tbody');
   
+  // callback for site SELECT
+
+  $('select[name=addp_site]').on('change', changeSite)
+
   // populate 'site' SELECT
 
   $('select[name=addp_site]').each(function(idx, el) {
@@ -313,10 +317,6 @@ dust.render('addpatch', {}, function(err, out) {
     .on('addpmode', switchMode)
     .on('statmsg', rowStatusMessage)
     .on('reset', formReset);
-
-  // callback for site SELECT
-
-  $('select[name=addp_site]').on('change', changeSite)
 
   // callbacks for +/- buttons
   
