@@ -276,7 +276,7 @@ dust.render('addpatch', {}, function(err, out) {
   $('select[name=addp_site]').each(function(idx, el) {
     shared.populate_select_sites(idx, el, function(idx, el) {
       if(prefill && 'site' in prefill) {
-        $(el).val(prefill.site);
+        $(el).val(prefill.site).trigger('change');
       } else {
         shared.set_value_from_storage(el);
       }

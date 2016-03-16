@@ -93,6 +93,7 @@ shared.set_value_from_storage = function(el)
   
   if(storage) {
     $(el).val(localStorage.getItem(storage));
+    $(el).trigger('change');
   }
 }
 
