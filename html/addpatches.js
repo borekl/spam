@@ -18,6 +18,7 @@ var
   that = this,
   jq_table,
   jq_tbody,
+  site_mode = shared.site_mode,
   modPortList = require('./portlist.js');
 
 
@@ -123,18 +124,29 @@ function switchMode(evt, mode)
 
 function changeSite(evt)
 {
-  var site = $(this).val();
+  var 
+    site = $(this).val(),
+    set_mode;
+    
+  set_mode = function(outlet) {
+    if(outlet) {
+      $('table.addpatch').trigger('addpmode', ['outlet']);
+    } else {
+      $('table.addpatch').trigger('addpmode', ['cponly']);
+    }
+  };
 
   if(site) { localStorage.setItem('addpatchsite', site); }
-  $.get(shared.backend, { r : 'usecp', site: $(this).val() }, function(data) {
-    if(data.status == 'ok') {
-      if(data.result) {
-        $('table.addpatch').trigger('addpmode', ['outlet']);
-      } else {
-        $('table.addpatch').trigger('addpmode', ['cponly']);
+  if(site in site_mode) {
+    set_mode(site_mode[site]);
+  } else {
+    $.get(shared.backend, { r : 'usecp', site: $(this).val() }, function(data) {
+      if(data.status == 'ok') {
+        site_mode[site] = data.result;
+        set_mode(site_mode[site]);
       }
-    }
-  });
+    });
+  }
 }
 
 
@@ -271,22 +283,6 @@ dust.render('addpatch', {}, function(err, out) {
   jq_table = $('table.addpatch'),
   jq_tbody = $('table.addpatch tbody');
   
-  // callback for site SELECT
-
-  $('select[name=addp_site]').on('change', changeSite)
-
-  // populate 'site' SELECT
-
-  $('select[name=addp_site]').each(function(idx, el) {
-    shared.populate_select_sites(idx, el, function(idx, el) {
-      if(prefill && 'site' in prefill) {
-        $(el).val(prefill.site).trigger('change');
-      } else {
-        shared.set_value_from_storage(el);
-      }
-    });
-  });
-
   // prefill
   
   if(prefill) {
@@ -317,6 +313,22 @@ dust.render('addpatch', {}, function(err, out) {
     .on('addpmode', switchMode)
     .on('statmsg', rowStatusMessage)
     .on('reset', formReset);
+
+  // callback for site SELECT
+
+  $('select[name=addp_site]').on('change', changeSite)
+
+  // populate 'site' SELECT
+
+  $('select[name=addp_site]').each(function(idx, el) {
+    shared.populate_select_sites(idx, el, function(idx, el) {
+      if(prefill && 'site' in prefill) {
+        $(el).val(prefill.site).trigger('change');
+      } else {
+        shared.set_value_from_storage(el);
+      }
+    });
+  });
 
   // callbacks for +/- buttons
   
