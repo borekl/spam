@@ -67,7 +67,7 @@ shared.populate_select_sites = function(idx, el, success)
         $(el).append(jq_option);
       }
       auxdata = aux;
-      if(success) { success(idx, el); }
+      if($.isFunction(success)) { success(idx, el); }
     }
   };
 
