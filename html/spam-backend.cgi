@@ -122,13 +122,36 @@ sub multipush
 
 
 #=============================================================================
-# Parse PostgreSQL error messages, returning them in structured form:
+# Parse PostgreSQL error messages, returning them in structured form,
+# explanation by an example:
 #
-# lines      -- array -- individual lines of the error message
-# error      -- strg  -- error message
-# detail     -- strg  -- detail information about the error
-# type       -- strg  -- error short code (dupkey)
-# constraint -- strg  -- name of constraint violated
+# "errdb" : {
+#
+#   //--- extracted error message
+#   "error" : "duplicate key value violates unique constraint \"porttable_pkey\"",
+#
+#   //--- extracted detail message
+#   "detail" : "Key (host, portname)=(stos76, Fa0/10) already exists.",
+#
+#   //--- the whole message from db parsed into lines
+#   "lines" : [
+#     "ERROR:  duplicate key value violates unique constraint \"porttable_pkey\"",
+#     "DETAIL:  Key (host, portname)=(stos76, Fa0/10) already exists."
+#   ],
+#
+#   //--- constraint name
+#   "constraint" : "porttable_pkey",
+#
+#   //--- short-word type of the error/conflict
+#   "type" : "dupkey",
+#
+#   //--- (for type=dupkey) this contains field=value pairs of the constraint
+#   //--- that are in conflict
+#   "conflict" : {
+#     "portname" : "Fa0/10",
+#     "host" : "stos76"
+#   }
+# }
 #=============================================================================
 
 sub pg_errmsg_parse
@@ -158,6 +181,12 @@ sub pg_errmsg_parse
   $re{'error'} =~ /^duplicate key value .* constraint "(\w+)"/ && do {
     $re{'type'} = 'dupkey';
     $re{'constraint'} = $1;
+    
+    $re{'detail'} =~ /^Key \((.+)\)=\((.+)\) already exists\.$/;
+    my ($fields, $values) = ($1, $2);
+    my @fields = split(/,\s/, $fields);
+    my @values = split(/,\s/, $values);
+    @{$re{'conflict'}}{@fields} = @values if @fields;
   };
   
   #--- ERROR: not-null constraint violation
