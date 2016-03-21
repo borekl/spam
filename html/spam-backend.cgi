@@ -579,7 +579,9 @@ sub sql_get_hwinfo
   
   my $local_re = sql_select(
     'spam', 
-    'SELECT m, n, type, partnum, sn FROM hwinfo WHERE host = ?',
+    "SELECT m, n, type, partnum, sn, location
+     FROM hwinfo LEFT JOIN modwire USING ( host, m, n)
+     WHERE host = ?",
     $host
   );
   if($local_re->{'status'} eq 'ok') {

@@ -294,6 +294,13 @@ table.list td.modinfo span.modsn {
   margin-left : 0.4em;
 }
 
+table.list td.modinfo span.modwire {
+  color : #444;
+  margin-right : 0.4em;
+  float : right;
+  font-weight : normal;
+}
+
 table.list {
   font-size : small;
 }
