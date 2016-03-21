@@ -14,7 +14,7 @@
   {/stp_pfast}
 
   {?stp_root}
-  <div class="ptflag fl_str">F</div>
+  <div class="ptflag fl_str">R</div>
   {:else}
   <div class="ptflag fl_none">-</div>
   {/stp_root}

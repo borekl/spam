@@ -94,19 +94,71 @@
     <div class="pi-subsec">
       <span class="pi-subhead">FLAGS</span>
       {#flags}
-        {?cdp}          <br> Receiving CDP          {/cdp}
-        {?stp_pfast}    <br> STP fast start mode    {/stp_pfast}
-        {?stp_root}     <br> STP root port          {/stp_root}
-        {?tr_dot1q}     <br> 802.1q trunk           {/tr_dot1q}
-        {?tr_isl}       <br> ISL trunk              {/tr_isl}
-        {?tr_unk}       <br> Unknown type trunk     {/tr_unk}
-        {?poe_power}    <br> PoE supplying power    {/poe_power}
-        {?dot1x_fauth}  <br> Always authorized      {/dot1x_fauth}
-        {?dot1x_fuauth} <br> Always unauthorized    {/dot1x_fuauth}
-        {?dot1x_auto}   <br> Authorization required {/dot1x_auto}
-        {?dot1x_authok} <br> 802.1x Authorized      {/dot1x_authok}
-        {?dot1x_unauth} <br> 802.1x Not authorized  {/dot1x_unauth}
-        {?mab_success}  <br> MAC bypass mode        {/mab_success}
+
+        {?cdp}
+          <br><div class="ptflag fl_cdp">C</div> {~s}
+          Receiving CDP
+        {/cdp}
+
+        {?stp_pfast}
+          <br><div class="ptflag fl_pfast">F</div> {~s}
+          STP fast start mode
+        {/stp_pfast}
+
+        {?stp_root}     
+          <br><div class="ptflag fl_str">R</div> {~s}
+          STP root port
+        {/stp_root}
+
+        {?tr_dot1q}
+          <br><div class="ptflag fl_trunk">q</div> {~s}
+          802.1q trunk
+        {/tr_dot1q}
+
+        {?tr_isl}
+          <br><div class="ptflag fl_trunk">i</div> {~s}
+          ISL trunk
+        {/tr_isl}
+
+        {?tr_unk}
+          <br><div class="ptflag fl_trunk">?</div> {~s}
+          Unknown type trunk
+        {/tr_unk}
+
+        {?poe_power}
+          <br><div class="ptflag fl_poepw">E</div> {~s}
+          PoE supplying power
+        {/poe_power}
+
+        {?dot1x_fauth}
+          <br><div class="ptflag fl_xfauth">x</div> {~s}
+          Always authorized
+        {/dot1x_fauth}
+
+        {?dot1x_fuauth}
+          <br><div class="ptflag fl_none">&nbsp;</div> {~s}
+          Always unauthorized
+        {/dot1x_fuauth}
+
+        {?dot1x_auto}
+          <br> <div class="ptflag fl_none">X</div> {~s}
+          Authorization required
+        {/dot1x_auto}
+
+        {?dot1x_authok}
+          <br><div class="ptflag fl_xauth">X</div> {~s}
+          802.1x Authorized
+        {/dot1x_authok}
+
+        {?dot1x_unauth}
+          <br><div class="ptflag fl_xunauth">X</div> {~s}
+          802.1x Not authorized
+        {/dot1x_unauth}
+
+        {?mab_success}
+          <br><div class="ptflag fl_mab">M</div> {~s}
+          MAC bypass mode
+        {/mab_success}
       {/flags}
     </div>
   {/flags}
