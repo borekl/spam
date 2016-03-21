@@ -1669,6 +1669,8 @@ sub sql_add_patches
         join(',', ('?') x scalar(@fields))
       );
 
+    #--- insert into 'porttable'
+    
       my $r = $dbh->do($qry, undef, @values);
       if(!$r) {
         $re{'errwhy'} = 'Failed to insert data into database';
@@ -1688,6 +1690,26 @@ sub sql_add_patches
         die "ABORT\n";
       }
 
+    #--- update status so that the port appears fresh (ie. not inactive),
+    #--- this gives the user time to actually start using the port
+    
+      $qry = "UPDATE status 
+                SET 
+                  lastchg = current_timestamp, 
+                  lastchk = current_timestamp 
+                WHERE host = ? AND portname = ?";
+      
+      $r = $dbh->do(
+        $qry, undef, $form->($i, 'sw', 'value'), $form->($i, 'pt', 'value')
+      );
+      if(!$r) {
+        $re{'errwhy'} = 'Failed to update data in the database';
+        $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
+        $re{'query'} = sql_show_query($qry, \@values);
+        $re{'formrow'} = $i;
+        die "ABORT\n";
+      }
+    
     }
 
   #--- eval loop end
