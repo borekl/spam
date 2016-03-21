@@ -47,8 +47,12 @@
   {!--- vlan !}
   {?vlan}
     {~s}
-    <span class="pi-block pi-default">VLAN {vlan}</span> {~s}
+    <span class="pi-block pi-default">VLAN {vlan}</span>
   {/vlan}
+
+  {!--- ifindex !}
+  {~s}
+  <span class="pi-block pi-ifindex">{ifindex}</span>
 
 </div>
 

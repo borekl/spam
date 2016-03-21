@@ -566,6 +566,10 @@ span.pi-half {
   background-color : black;
 }
 
+span.pi-ifindex {
+  background : #aaa;
+}
+
 span.pi-portdown {
   color : red;
 }

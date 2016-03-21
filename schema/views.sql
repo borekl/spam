@@ -136,7 +136,7 @@ CREATE OR REPLACE VIEW v_search_status_raw AS
   SELECT
     COALESCE(p.site, substring(host from 1 for 3)) AS site,
     host, portname, cp, outlet, descr,
-    status, adminstatus, flags, duplex, rate,
+    status, adminstatus, flags, duplex, rate, ifindex,
     location, vlan,
     -- patching record
     p.chg_who AS chg_who,
