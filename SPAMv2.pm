@@ -32,6 +32,7 @@ use integer;
   load_port_table
   sql_sites
   sql_site_uses_cp
+  multipush
 );
 
 
@@ -546,6 +547,30 @@ sub sql_site_uses_cp
   if(!ref($dbh) || !$site) { return undef; }
   my $sth = $dbh->prepare($query);
   return int($sth->execute($site));
+}
+
+
+#=============================================================================
+# Function to push values into multiple arrays with single function call.
+# The arrays are supplied to this function as list of arrayrefs and function
+# that will push values to all the arrays at once is returned. This exists
+# to make preparing database quieries simpler and more readable (since this
+# entails creating arrays of field names and values).
+#=============================================================================
+
+sub multipush
+{
+  my @arrays;
+  
+  for my $ary (@_) {
+    push(@arrays, $ary);
+  }
+  
+  return sub {
+    for(my $i = 0; $i < scalar(@_); $i++) {
+      push(@{$arrays[$i]}, $_[$i]);
+    }
+  };
 }
 
 

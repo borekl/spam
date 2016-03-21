@@ -97,31 +97,6 @@ sub js_bool
 
 
 #=============================================================================
-# Function to push values into multiple arrays with single function call.
-# The arrays are supplied to this function as list of arrayrefs and function
-# that will push values to all the arrays at once is returned. This exists
-# to make preparing database quieries simpler and more readable (since this
-# entails creating arrays of field names and values).
-#=============================================================================
-
-sub multipush
-{
-  my @arrays;
-  
-  for my $ary (@_) {
-    push(@arrays, $ary);
-  }
-  
-  return sub {
-    for(my $i = 0; $i < scalar(@_); $i++) {
-      push(@{$arrays[$i]}, $_[$i]);
-    }
-  };
-}
-
-
-
-#=============================================================================
 # Parse PostgreSQL error messages, returning them in structured form,
 # explanation by an example:
 #
