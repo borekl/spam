@@ -134,6 +134,14 @@ $(document).ready(function()
     new modAddPatchesForm(shared);
   });
   
+  //--- about
+  
+  $('div#about').on('click', function() {
+    dust.render('about', {}, function(err, out) {
+      $('#content').html(out);
+    });
+  });
+  
   //--- default page
   
   $('div#swlist').trigger('click');
