@@ -105,6 +105,20 @@ shared.set_value_from_storage = function(el)
 
 $(document).ready(function() 
 {
+  var url, url_sel, url_arg;
+  
+  //--- process URL
+
+  // we implement semantic URLs to allow deep-linking to certain parts
+  // of the application; the semantic URL is enforced by following
+  // mod_rewrite rule:
+  //
+  // RewriteRule "^/spam-dev/[a-z]{2}/[^/]*$" "/spam-dev/" [PT,L]
+
+  url = document.location.pathname.split('/');
+  url_sel = url[2];
+  url_arg = url[3];
+    
   //--- fill in "logged as" display
   
   $.get(shared.backend, populate_login_info);
@@ -142,9 +156,19 @@ $(document).ready(function()
     });
   });
   
-  //--- default page
+  //--- go to specified page
   
-  $('div#swlist').trigger('click');
+  if(url_sel == 'sw' && !url_arg) {
+    $('div#swlist').trigger('click');
+  } else if(url_sel == 'sr') {
+    $('div#srctool').trigger('click');
+  } else if(url_sel == 'ap') {
+    $('div#addpatch').trigger('click');
+  } else if(url_sel == 'ab') {
+    $('div#about').trigger('click');
+  } else {
+    $('div#swlist').trigger('click');
+  }
   
 });
 
