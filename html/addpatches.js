@@ -342,13 +342,13 @@ dust.render('addpatch', {}, function(err, out) {
 
   // callbacks for +/- buttons
   
-  jq_tbody.find('button[name^="addp_dl"')
+  jq_tbody.find('button[name^="addp_dl"]')
   .on('click', function(evt) {
     $(this).trigger('remove');
     evt.preventDefault();
   });
   
-  jq_tbody.find('button[name^="addp_ad"')
+  jq_tbody.find('button[name^="addp_ad"]')
   .on('click', function(evt) {
      $(this).trigger('add');
      evt.preventDefault();
