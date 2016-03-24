@@ -140,7 +140,7 @@ function changeSite(evt)
   if(site in site_mode) {
     set_mode(site_mode[site]);
   } else {
-    $.get(shared.backend, { r : 'usecp', site: $(this).val() }, function(data) {
+    $.post(shared.backend, { r : 'usecp', site: $(this).val() }, function(data) {
       if(data.status == 'ok') {
         site_mode[site] = data.result;
         set_mode(site_mode[site]);
