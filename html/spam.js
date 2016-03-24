@@ -19,7 +19,7 @@ var
   selcodes = { 
     sw: 'swlist',
     sr: 'srctool',
-    ad: 'addpatch',
+    ap: 'addpatch',
     ab: 'about'
   };
 
