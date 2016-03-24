@@ -5,7 +5,7 @@
 
 module.exports = switchList;
 
-function switchList(shared) {
+function switchList(shared, state) {
 
 
 /*--------------------------------------------------------------------------*
@@ -78,7 +78,12 @@ function renderSwitchList(data)
       }
       renderSwitchList(data);
     });
-    $('table#swlist tbody td.host span.lnk').on('click', portList);
+    $('table#swlist tbody td.host span.lnk').on('click', function() {
+      var new_host = $(this).text();
+      state.host = new_host;
+      shared.dispatch(null, state);
+      portList.apply(this);
+    });
   });
 }
 
@@ -87,14 +92,31 @@ function renderSwitchList(data)
   Initialization.
  *--------------------------------------------------------------------------*/
 
-$('div#swlist').addClass('spinner');
-$.post(shared.backend, {r:'swlist'}, function(data) {
-  var grp = localStorage.getItem('swlistgrp');
-  data.grp = grp ? grp : 'all';
-  data.filterhost = ctxHelperFilterhost;
-  renderSwitchList(data);
-  $('div#swlist').removeClass('spinner');
-});
+if('arg' in state && state.arg) {
+  state.host = state.arg;
+  delete state.arg;
+}
+
+if(!state.host) {
+  $('div#swlist').addClass('spinner');
+  $.post(shared.backend, {r:'swlist'}, function(data) {
+    var grp = localStorage.getItem('swlistgrp');
+    data.grp = grp ? grp : 'all';
+    data.filterhost = ctxHelperFilterhost;
+    renderSwitchList(data);
+    $('div#swlist').removeClass('spinner');
+  });
+} else {
+  new modPortList(
+    shared, 
+    { 
+      beRequest: { r : "search", host: state.host, mode: "portlist" },
+      mount: '#content', 
+      template: 'switch', 
+      spinner: 'div#swlist' 
+    }
+  );
+}
 
 
 /*--- end of module --------------------------------------------------------*/

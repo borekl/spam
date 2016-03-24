@@ -7,7 +7,7 @@
  
 module.exports = addPatchesForm;
 
-function addPatchesForm(shared, prefill) {
+function addPatchesForm(shared, state) {
 
 
 /*--------------------------------------------------------------------------*
@@ -18,6 +18,7 @@ var
   that = this,
   jq_table,
   jq_tbody,
+  prefill,
   site_mode = shared.site_mode,
   modPortList = require('./portlist.js');
 
@@ -294,7 +295,10 @@ dust.render('addpatch', {}, function(err, out) {
   jq_tbody = $('table.addpatch tbody');
   
   // prefill
-  
+
+  if('values' in state) {
+    prefill = state.values;
+  }
   if(prefill) {
     if('host' in prefill) {
       $('input[name=addp_sw00]').val(prefill.host);

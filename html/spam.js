@@ -16,7 +16,27 @@ var
     backend: 'spam-backend.cgi',
     site_mode: {}  // cache of site mode values
   };
+  selcodes = { 
+    sw: 'swlist',
+    sr: 'srctool',
+    ad: 'addpatch',
+    ab: 'about'
+  };
 
+
+
+/*--------------------------------------------------------------------------*
+  isInteger polyfill.
+ *--------------------------------------------------------------------------*/
+
+shared.get_base = function(sel)
+{
+  var base = window.location.pathname.split('/').slice(0, 2).join('/') + '/';
+  if(sel) {
+    base += sel + '/';
+  }
+  return base;
+}
 
 
 /*--------------------------------------------------------------------------*
@@ -28,7 +48,6 @@ Number.isInteger = Number.isInteger || function(value) {
     isFinite(value) && 
     Math.floor(value) === value;
 };
-
 
 
 /*--------------------------------------------------------------------------*
@@ -99,13 +118,98 @@ shared.set_value_from_storage = function(el)
 }
 
 
+/*--------------------------------------------------------------------------*
+  Central dispatching. This function will invoke various parts of the
+  application based on URL or based on internal state as saved with
+  History API pushState/replaceState functions. The function is invoked
+  either as callback handler (for 'click' or 'popstate' events)
+ *--------------------------------------------------------------------------*/
+
+shared.dispatch = function(evt, state_in)
+{
+  var
+    state = state_in,
+    evt_type = evt ? evt.type : null,
+    selsh;
+
+  //--- if we are called as 'popstate' event handler, get the state from
+  //--- the event object; note that jQuery doesn't know anything about
+  //--- popstate, so we need to access the state property through the
+  //--- originalEvent
+
+  if(evt_type == 'popstate') {
+    state = evt.originalEvent.state;
+  }
+  
+  //--- if we are called as 'click' event handler, get the state.sel
+  //--- from target element's id attribute
+  
+  if(evt_type == 'click') {
+    state = {
+      sel: $(this).attr('id')
+    };
+  }
+  
+  //--- allows for supplying state.sel as two-letter short code;
+  //--- the mapping is defined in this file in selcodes
+  
+  if(!evt && state.sel.length == 2) {
+    state.sel = selcodes[state.sel];
+  }
+  
+  //--- debug
+  
+  if(state == null) {
+    return; 
+  }
+  
+  //--- central dispatch
+  
+  switch(state.sel) {
+
+    case 'swlist':
+      selsh = 'sw';
+      if(state.arg) { selsh += '/' + state.arg; }
+      if(state.host) { selsh += '/' + state.host; }
+      new modSwitchList(shared, state);
+      break;
+  
+    case 'srctool' :
+      selsh = 'sr';
+      new modSearchTool(shared, state);
+      break;
+
+    case 'addpatch':
+      selsh = 'ap';
+      new modAddPatchesForm(shared, state);
+      break;
+            
+    case 'about' : 
+      selsh = 'ab';
+      dust.render('about', {}, function(err, out) {
+        $('#content').html(out);
+      });
+      break;
+
+    default:
+      alert('Invalid dispatch selector: ' + state.sel);
+        
+  }
+  
+  if(selsh && evt_type != 'popstate') {
+    history.pushState(state, null, shared.get_base(selsh));
+  }
+}
+
+
+
 /*==========================================================================*
   === MAIN =================================================================
  *==========================================================================*/
 
 $(document).ready(function() 
 {
-  var url, url_sel, url_arg;
+  var url, state = {};
   
   //--- process URL
 
@@ -113,11 +217,11 @@ $(document).ready(function()
   // of the application; the semantic URL is enforced by following
   // mod_rewrite rule:
   //
-  // RewriteRule "^/spam-dev/[a-z]{2}/[^/]*$" "/spam-dev/" [PT,L]
+  // RewriteRule "^/spam/[a-z]{2}/[^/]*$" "/spam/" [PT,L]
 
   url = document.location.pathname.split('/');
-  url_sel = url[2];
-  url_arg = url[3];
+  state.sel = url[2];
+  state.arg = url[3];
     
   //--- fill in "logged as" display
   
@@ -130,45 +234,18 @@ $(document).ready(function()
     $(this).addClass('selected');
   });
 
-  //--- switch list
+  //--- handle menu clicks
 
-  $('div#swlist').on('click', function() {
-    new modSwitchList(shared);
-  });
+  $('div.menu').on('click', shared.dispatch);
+
+  //--- popstate handler
   
-  //--- search tool
-  
-  $('div#srctool').on('click', function() {
-    new modSearchTool(shared);
-  });
-  
-  //--- add patches
-  
-  $('div#addpatch').on('click', function() {
-    new modAddPatchesForm(shared);
-  });
-  
-  //--- about
-  
-  $('div#about').on('click', function() {
-    dust.render('about', {}, function(err, out) {
-      $('#content').html(out);
-    });
-  });
-  
-  //--- go to specified page
-  
-  if(url_sel == 'sw' && !url_arg) {
-    $('div#swlist').trigger('click');
-  } else if(url_sel == 'sr') {
-    $('div#srctool').trigger('click');
-  } else if(url_sel == 'ap') {
-    $('div#addpatch').trigger('click');
-  } else if(url_sel == 'ab') {
-    $('div#about').trigger('click');
-  } else {
-    $('div#swlist').trigger('click');
-  }
+  $(window).on('popstate', shared.dispatch);
+    
+  //--- go to URL-specified page
+
+  if(!state.sel) { state.sel = 'swlist'; }
+  shared.dispatch(null, state);
   
 });
 

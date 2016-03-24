@@ -193,7 +193,7 @@ function portInfoShow()
           values.host = jq_table.data('host');
         }
         values.site = values.host.substr(0, 3);
-        new modAddPatchesForm(shared, values);
+        shared.dispatch(null, { sel: 'addpatch', values: values });
       });
     }
   }
