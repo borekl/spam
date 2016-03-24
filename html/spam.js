@@ -222,13 +222,13 @@ $(document).ready(function()
   url = document.location.pathname.split('/');
   state.sel = url[2];
   state.arg = url[3];
-    
+
   //--- fill in "logged as" display
-  
+
   $.get(shared.backend, populate_login_info);
 
   //--- handle sidebar menu highlights
-  
+
   $('div.menu').on('click', function() {
     $('div.selected').removeClass('selected');
     $(this).addClass('selected');
@@ -239,9 +239,9 @@ $(document).ready(function()
   $('div.menu').on('click', shared.dispatch);
 
   //--- popstate handler
-  
+
   $(window).on('popstate', shared.dispatch);
-    
+
   //--- go to URL-specified page
 
   if(!state.sel) { state.sel = 'swlist'; }
