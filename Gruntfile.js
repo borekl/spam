@@ -25,7 +25,7 @@ module.exports = function(grunt)
        files: [
          { nonull: true, src: 'html/bundle.js', dest: '../prod/html/bundle.js' },
          { nonull: true, src: 'html/default.css', dest: '../prod/html/default.css' },
-         { nonull: true, src: 'html/index.html', dest: '../prod/html/index.html.css' },
+         { nonull: true, src: 'html/index.html', dest: '../prod/html/index.html' },
          { nonull: true, src: 'html/spam-backend.cgi', dest: '../prod/html/spam-backend.cgi' }
        ]
      },
@@ -36,6 +36,14 @@ module.exports = function(grunt)
          { nonull: true, src: 'SPAM_SNMP.pm', dest: '../prod/SPAM_SNMP.pm' }
        ]
      }
+   },
+
+   sed: {
+     www: {
+       pattern: 'spam-dev',
+       replacement: 'spam',
+       path: '../prod/html/index.html'
+     }
    }
 
  });
@@ -43,10 +51,10 @@ module.exports = function(grunt)
  grunt.loadNpmTasks("grunt-dustjs");
  grunt.loadNpmTasks("grunt-browserify");
  grunt.loadNpmTasks("grunt-contrib-copy");
+ grunt.loadNpmTasks('grunt-sed');
 
  grunt.registerTask('default', [ 'dustjs', 'browserify' ]);
- grunt.registerTask('dist-www', [ 'copy:www' ]);
+ grunt.registerTask('dist-www', [ 'copy:www', 'sed:www' ]);
  grunt.registerTask('dist-coll', [ 'copy:coll' ]);
- grunt.registerTask('dist', [ 'copy:www', 'copy:coll' ]);
+ grunt.registerTask('dist', [ 'copy:www', 'sed:www', 'copy:coll' ]);
 }
-
