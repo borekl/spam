@@ -190,15 +190,20 @@ sub sql_show_query
   my ($qry, $vals) = @_;
 
   #---  handle $vals being single scalar or undefined
-  
+
   if($vals && !ref($vals)) {
     $vals = [ $vals ];
   } elsif(!$vals) {
     $vals = [];
   }
-  
+
+  #--- squash extraneous whitespace, replace newlines
+
+  $qry =~ s/\n/ /g;
+  $qry =~ s/\s{2,}/ /g;
+
   #--- do the placeholders replacement
-  
+
   for(my $i = 0; $i < scalar(@$vals); $i++) {
     my $val = $vals->[$i];
     if(defined $val) {
@@ -210,7 +215,7 @@ sub sql_show_query
   }
 
   #--- finish
-  
+
   return $qry;
 }
 
