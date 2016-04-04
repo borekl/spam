@@ -210,7 +210,13 @@ shared.dispatch = function(evt, state_in)
 $(document).ready(function() 
 {
   var url, state = {};
-  
+
+  //--- jQuery AJAX setup
+
+  $.ajaxSetup({
+    url: shared.backend
+  });
+
   //--- process URL
 
   // we implement semantic URLs to allow deep-linking to certain parts

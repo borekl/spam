@@ -58,6 +58,10 @@ span.areyousure {
   background-position : 9.5em 50%, right;
 }
 
+.na {
+  opacity : 0.5;
+}
+
 /*----------------------------------------------------------------------------
    BUTTONS
  ----------------------------------------------------------------------------*/
@@ -294,12 +298,38 @@ table.list td.modinfo span.modsn {
   margin-left : 0.4em;
 }
 
-table.list td.modinfo span.modwire {
+/*--- module wiring info in modinfo header */
+
+span.modwire {
   color : #444;
   margin-right : 0.4em;
   float : right;
   font-weight : normal;
 }
+
+span.modwire:hover {
+  color : blue;
+  cursor : pointer;
+  text-decoration : underline;
+  opacity : 1;
+}
+
+img.spineditable {
+  height : 1.2em;
+  width : 1.2em;
+  float : right;
+  vertical-align : middle;
+}
+
+span.moderrmsg {
+  color : red;
+  margin-right : 0.4em;
+  float : right;
+  font-weight : normal;
+  cursor : pointer;
+}
+
+/*--- */
 
 table.list {
   font-size : small;

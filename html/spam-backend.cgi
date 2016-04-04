@@ -1792,6 +1792,102 @@ sub sql_del_patch
 
 
 #=============================================================================
+# Function to insert/update/delete modwire information (the modwire table, 
+# links linecards to wiring info, typically a patchpanel id).
+#=============================================================================
+
+sub sql_modwire
+{
+  #--- arguments
+
+  my ($host, $m, $n, $location) = @_;
+
+  #--- other variables
+
+  my $dbh = $dbh{'spam'};   # database handle
+  my %re;                   # return data
+  my $qry;                  # query
+  my $r;                    # query return value
+  my @fld;                  # query fields
+
+  #--- init
+
+  $re{'function'} = 'sql_modwire';
+  $re{'debug'} = $debug;
+  if(!defined($m)) { $m = 0; }
+
+  #--- eval
+
+  eval {
+
+  #--- deleting the entry
+
+    if(!$location) {
+      $qry = 'DELETE FROM modwire WHERE host = ? AND m = ? AND n = ?';
+      @fld = ( $host, $m, $n );
+      $re{'query'} = sql_show_query($qry, \@fld);
+      $r = $dbh->do($qry, undef, @fld);
+      $re{'dbrv'} = $r;
+      if(!$r) {
+        $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
+        $re{'errwhy'} = 'Failed to remove database row';
+        die;
+      } elsif($r <= 0) {
+        $re{'errwhy'} = 'Database row not found, nothing was deleted';
+        die;
+      }
+    }
+
+  #--- update/insert
+
+    else {
+      $qry = 
+        "UPDATE modwire 
+        SET location = ?, chg_who = ?, chg_where = ?, chg_when = now()
+        WHERE host = ? AND m = ? AND n = ?";
+      @fld = ($location, $ENV{REMOTE_USER}, $ENV{REMOTE_ADDR}, $host, $m, $n);
+      $re{'query'} = sql_show_query($qry, \@fld);
+      $r = $dbh->do($qry, undef, @fld);
+      $re{'dbrv'} = $r;
+      if(!$r) {
+        $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
+        $re{'errwhy'} = 'Failed to update database row';
+        die;
+      } elsif($r == 0) {
+        $qry =
+          "INSERT INTO modwire
+          ( host, m, n, location, chg_who, chg_where )
+          VALUES ( ?, ?, ?, ?, ?, ? )";
+        @fld = ($host, $m, $n, $location, $ENV{REMOTE_USER}, $ENV{REMOTE_ADDR});
+        $re{'query'} = sql_show_query($qry, \@fld);
+        $r = $dbh->do($qry, undef, @fld);
+        $re{'dbrv'} = $r;
+        if(!$r) {
+          $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
+          $re{'errwhy'} = 'Failed to insert database row';
+          die;
+        }
+      }
+    }
+
+  #--- eval end
+
+  };
+  if($@) {
+    $re{'status'} = 'error';
+    $re{'errmsg'} = 'Database error';
+  } else {
+    $re{'status'} = 'ok';
+  }
+
+  #--- finish
+
+  return \%re;  
+}
+
+
+
+#=============================================================================
 #===   __  __    _    ___ _   _   ============================================
 #===  |  \/  |  / \  |_ _| \ | |  ============================================
 #===  | |\/| | / _ \  | ||  \| |  ============================================
@@ -1926,6 +2022,14 @@ if($req eq 'addpatch') {
 
 if($req eq 'delpatch') {
   print $js->encode(sql_del_patch($arg->('host'), $arg->('portname')));
+}
+
+#--- add/update/remove modwire information -----------------------------------
+
+if($req eq 'modwire') {
+  print $js->encode(
+    sql_modwire($arg->('host'), $arg->('m'), $arg->('n'), $arg->('location'))
+  );
 }
 
 #--- default -----------------------------------------------------------------

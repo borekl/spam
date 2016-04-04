@@ -11,7 +11,10 @@ CREATE TABLE modwire (
   m          smallint              NOT NULL,  -- switch number (0 if not VSS)
   n          smallint              NOT NULL,  -- linecard number
   location   character varying(24),           -- free form description
+  chg_who    character varying(16),
+  chg_where  inet,
+  chg_when   timestamp with time zone DEFAULT current_timestamp,
   PRIMARY KEY (host, n)
 );
 
-GRANT SELECT ON modwire TO swcgi;
+GRANT SELECT, DELETE, INSERT, UPDATE ON modwire TO swcgi;

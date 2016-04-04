@@ -26,6 +26,7 @@ function portList(shared, cfg, success) {
 var
   that = this,
   modPortInfo = require('./portinfo.js'),
+  modEditable = require('./editable.js'),
   jq_mount,
   jq_port_list,
   myCfg = Object.create(cfg);
@@ -63,6 +64,45 @@ function processPortList()
       jq_port_list = jq_mount.find('table.list')
       new modPortInfo(shared, jq_port_list, that);
 
+      //--- bind editable to those module aux info fields
+      
+      $('span.modwire').on('click', function() {
+        var m, n, jq_td;
+        jq_td = $(this).parent();
+        m = jq_td.data('m');
+        n = jq_td.data('n');
+        new modEditable(shared, {
+          el: this,
+          size: 8,
+          spinclass: 'spineditable',
+          errclass: 'moderrmsg',
+          save: function(t) {
+            var 
+              deferred = $.Deferred(),
+              post = {
+                r: 'modwire', location: t, m: m, n: n,
+                host: myCfg.beRequest.host
+              };
+
+            $.ajax({
+              data: post,
+              success: function(data) {
+                if(data.status == 'ok') {
+                  deferred.resolve();
+                } else {
+                  deferred.reject(data.errmsg);
+                }
+              },
+              error: function() {
+                deferred.reject('Server failure');
+              }
+            });
+            
+            return deferred;
+          }
+        });
+      });
+      
       //--- invoke callback
 
       if($.isFunction(success)) {

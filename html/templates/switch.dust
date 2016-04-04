@@ -66,11 +66,15 @@
 
     {?n}
     <tr>
-      <td colspan=10 class="modinfo">
+      <td colspan=10 class="modinfo" data-m="{m}" data-n="{n}">
 
         {@eq key=m value=0}{n}.{:else}{m}/{n}.{/eq}
         {partnum} <span class="modsn">{sn}</span>
-        {?location}<span class="modwire">{location}</span>{/location}
+        {?location}
+          <span class="modwire">{location}</span>
+        {:else}
+          <span class="modwire na">N/A</span>
+        {/location}
 
       </td>
     </tr>
