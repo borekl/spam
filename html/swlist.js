@@ -15,7 +15,6 @@ function switchList(shared, state) {
 var
   that = this,
   modPortList = require('./portlist.js');
-  //modPortInfo = require('./portinfo.js');
 
 
 /*--------------------------------------------------------------------------*
