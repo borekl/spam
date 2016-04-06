@@ -24,6 +24,7 @@ var
 
 function resetSearch(evt)
 {
+  evt.preventDefault();
   $('div#result').empty();
   $('input').val('');
   $('select[name=site]').prop('selectedIndex', 0);
@@ -36,8 +37,12 @@ function resetSearch(evt)
 
 function submitSearch(evt)
 {
+  //--- no default FORM action
+
+  evt.preventDefault();
+
   //--- put form fields into an object
-  
+
   var form = { r: 'search' };
   $('input,select').each(function() {
     var 

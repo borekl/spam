@@ -1,5 +1,6 @@
 <h1>Search Tool</h1>
 
+<form>
 
 <table>
 
@@ -49,5 +50,7 @@
 </tr>
 
 </table>
+
+</form>
 
 <div id="result"></div>
