@@ -10,6 +10,7 @@
 package SPAMv2;
 require Exporter;
 use DBI;
+use JSON::MaybeXS;
 use integer;
 
 @ISA = qw(Exporter);
@@ -21,6 +22,7 @@ use integer;
   html_end
   html_fill_up
   load_config
+  load_config_json
   period
   site_conv
   speed_fmt
@@ -44,6 +46,25 @@ my %sites_cache;
 
 #--- configuration ---
 my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
+
+
+#===========================================================================
+# Load configuration from JSON file (with relaxed parsing rules, so comments
+# and trailing commas are allowed.
+#===========================================================================
+
+sub load_config_json
+{
+  my ($cfg_file) = @_;
+  my $json_input;
+  my $js = JSON->new()->relaxed(1);
+  
+  local $/;
+  open(my $fh, '<', $cfg_file) || return 'Cannot open configuration file';
+  $json_input = <$fh>;
+  
+  return $js->decode($json_input);
+}
 
 
 #===========================================================================
