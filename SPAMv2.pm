@@ -40,6 +40,9 @@ use integer;
 
 #=== variables =============================================================
 
+#--- configuration
+my $cfg;
+
 #--- Database connection parameters ---
 my (%dbconn);
 my %sites_cache;
@@ -55,6 +58,8 @@ my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
 
 sub load_config_json
 {
+  return $cfg if ref($cfg);
+  
   my ($cfg_file) = @_;
   my $json_input;
   my $js = JSON->new()->relaxed(1);
@@ -63,7 +68,7 @@ sub load_config_json
   open(my $fh, '<', $cfg_file) || return 'Cannot open configuration file';
   $json_input = <$fh>;
   
-  return $js->decode($json_input);
+  return $cfg = $js->decode($json_input);
 }
 
 
