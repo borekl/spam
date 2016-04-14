@@ -51,7 +51,7 @@ BEGIN
   
   my $cfg_file = sprintf(abs_path($0));
   $cfg_file =~ s/^(\/.+\/(?:prod|dev))\/.*$/$1/;
-  $cfg_file = sprintf('%s/spam.cfg', $cfg_file);
+  $cfg_file = sprintf('%s/spam.cfg.json', $cfg_file);
   $cfg = load_config($cfg_file);
     
   #--- misc init
@@ -61,10 +61,8 @@ BEGIN
   
   #--- database init
   
-  dbinit('spam', @{$cfg->{'dbconn'}{'spamui'}});
-  dbinit('ondb', @{$cfg->{'dbconn'}{'ondbui'}});
-  $dbh{'spam'} = $db_spam = dbconn('spam');
-  $dbh{'ondb'} = $db_ondb = dbconn('ondb');
+  $dbh{'spam'} = $db_spam = dbconn('spamui');
+  $dbh{'ondb'} = $db_ondb = dbconn('ondbui');
 }
 
 

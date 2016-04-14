@@ -9,6 +9,7 @@
 
 package SPAMv2;
 require Exporter;
+use Carp;
 use DBI;
 use JSON::MaybeXS;
 use integer;
@@ -22,7 +23,6 @@ use integer;
   html_end
   html_fill_up
   load_config
-  load_config_json
   period
   site_conv
   speed_fmt
@@ -44,7 +44,7 @@ use integer;
 my $cfg;
 
 #--- Database connection parameters ---
-my (%dbconn);
+my %dbconn;
 my %sites_cache;
 
 #--- configuration ---
@@ -56,7 +56,7 @@ my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
 # and trailing commas are allowed.
 #===========================================================================
 
-sub load_config_json
+sub load_config
 {
   return $cfg if ref($cfg);
   
@@ -69,51 +69,6 @@ sub load_config_json
   $json_input = <$fh>;
   
   return $cfg = $js->decode($json_input);
-}
-
-
-#===========================================================================
-# Load configuration from external file
-#===========================================================================
-
-sub load_config
-{
-  my ($cfg_file) = @_;
-  my $l;
-  my %cfg;
-
-  open(CFG, $cfg_file) or return "Cannot open configuration file $cfg_file";
-  while(<CFG>) {
-    $l++;
-    chomp;
-    s/#.*$//;
-    s/\s+$//;
-    next if /^\s*$/;
-
-    /^InactiveThreshold\s+(\d+)$/i && do { $cfg{inactivethreshold} = $1; next; };
-    /^InactiveThreshold2\s+(\d+)$/i && do { $cfg{inactivethreshold2} = $1; next; };
-    /^HtmlDir\s+(\S+)$/i && do { $cfg{htmldir} = $1; next; };
-    /^ExcludeHost\s+(\S+)$/i && do { push @{$cfg{excludehost}}, lc($1); next; };
-    /^Host\s+(\S+)\s+(\S+)$/i && do { $cfg{host}{lc($1)}{community} = $2; next; };
-    /^PatchMap\s+(\S+)$/i && do { push @{$cfg{patchmap}}, lc($1); next; };
-    /^KnownPorts\s+(\S+)$/i && do { push @{$cfg{knownports}}, lc($1); next; };
-    /^Field\s+(port|duplex|rate|vlan|cp|outlet|inact|desc|loc)\s+(\d+)$/i && do { $cfg{widths}{$1} = $2; next; };
-    /^ARPServer\s+(\S+)\s+(\S+)$/i && do { push @{$cfg{arpserver}}, [ $1, $2 ]; next; };
-    /^VLANServer\s+(\S+)\s+(\S+)\s+(\S+)$/i && do { $cfg{vlanserver}{$3} = [ $1, $2 ]; next; };
-    (/^DBconn\s+(\w+)\s+(\w+)\/(\w+):(\w+)$/i || /^DBconn\s+(\w+)\s+(\w+)\/(\w+):(\w+)\@(\S+)$/i) && do {
-      $cfg{dbconn}{$1} = [ $4, $2, $3, $5 ]; next;
-    };
-    /^Community\s+(\w+)$/i && do { $cfg{community} = $1; next; };
-    /^ARPTableAge\s+(\d+)$/i && do { $cfg{arptableage} = $1; next; };
-    /^MACTableAge\s+(\d+)$/i && do { $cfg{mactableage} = $1; next; };
-    /^SQLquery\s+(\S+)\s+(.*)$/i && do { $cfg{sqlquery}{lc($1)} = $2; next; };
-    /^SNMPget\s+(.*)$/i && do { $cfg{snmpget} = $1; next; };
-    /^SNMPwalk\s+(.*)$/i && do { $cfg{snmpwalk} = $1; next; };
-    /^SiteConv\s+(\S+)\s+(\S+)$/i && do { $cfg{siteconv}{lc($1)} = lc($2); next; };
-    return "Syntax error on line $l";
-  }
-  close(CFG);
-  return \%cfg;
 }
 
 
@@ -187,23 +142,6 @@ sub speed_fmt
 
 
 #===========================================================================
-# Passes database connection parameters to this module; the parameters are
-# stored in variables that are local to this module.
-#
-# Arguments: 1. Connection id
-#            2. Database name
-#            3. Username
-#            4. Password
-#            5. Hostname (optional)
-#===========================================================================
-
-sub dbinit
-{
-  $dbconn{$_[0]}{params} = [ $_[1], $_[2], $_[3], $_[4] ];
-}
-
-
-#===========================================================================
 # Closes database connection and frees binding.
 #
 # Arguments: 1. Connection id
@@ -211,14 +149,38 @@ sub dbinit
 
 sub dbdone
 {
-  my ($id) = @_;
-  my $dbh;
+  my ($dbid) = @_;
+
+  #--- sanitize input
+    
+  if(!defined $dbid) {
+    croak 'dbdone(): Undefined id passed in as an argument';
+  }
   
-  if(!defined $id) { return undef; }
-  $dbh = $dbconn{$id}{conn};
-  if(!ref($dbh)) { return undef; }
-  $dbh->disconnect;
-  delete $dbconn{$id}{conn};
+  #--- if not connected, do nothing
+  
+  return if !$dbconn{$id};
+  
+  #--- disconnect from db, forget the handle
+  
+  $dbconn{$id}->disconnect();
+  delete $dbconn{$id};
+}
+
+
+#===========================================================================
+# This is kept only for compatibility with the old SPAM version
+#===========================================================================
+
+sub dbinit
+{
+  my $dbid = $_[0];
+  $cfg->{'dbconn'}{$dbid} = {
+    'dbname' => $_[1],
+    'dbuser' => $_[2],
+    'dbpass' => $_[3],
+    'dbhost' => $_[4]
+  };
 }
 
 
@@ -233,16 +195,37 @@ sub dbdone
 
 sub dbconn
 {
-  my ($id) = @_;
-  my $c;
+  my ($dbid) = @_;
+  
+  #--- sanitize input
+  
+  if(!defined $dbid) {
+    croak "dbconn(): Undefined id passed in as an argument";
+  }
+  
+  #--- if alread connected, just return the handle
+  
+  if(exists $dbconn{$id}) {
+    return $dbconn{$id};
+  }
 
-  return undef if !defined $id;
-  return $dbconn{$id}{conn} if defined $dbconn{$id}{conn};
-  my $s = sprintf('dbi:Pg:dbname=%s', $dbconn{$id}{params}[0]);
-  if($dbconn{$id}{params}[3]) { $s .= sprintf(';host=%s', $dbconn{$id}{params}[3]); }
-  $c = $dbconn{$id}{conn} = DBI->connect($s, $dbconn{$id}{params}[1], $dbconn{$id}{params}[2], \%dbi_params);
-  if(!ref($c)) { $c = $DBI::errstr; }
-  return $c;
+  #--- otherwise try to connect to the database
+  
+  my @dbd_src;
+  my $dbc = $cfg->{'dbconn'}{$dbid};
+  push(@dbd_src, 'dbi:Pg:dbname=' . $dbc->{'dbname'});
+  push(@dbd_src, 'host=' . $dbc->{'dbhost'}) if $dbc->{'dbhost'};
+  my $dbh = DBI->connect(
+    join(';', @dbd_src),
+    $dbc->{'dbuser'},
+    $dbc->{'dbpass'},
+    \%dbi_params
+  );
+  if(!ref($dbh)) {
+    return DBI::errstr();
+  }
+
+  return $dbconn{$id} = $dbh;
 }
 
 
@@ -321,7 +304,6 @@ sub str_maxlen
 
 sub site_conv
 {
-  my $cfg  = shift;
   my $host = shift;
   my $hc;
   
