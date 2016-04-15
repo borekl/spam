@@ -9,6 +9,8 @@
 
 package SPAM_SNMP;
 require Exporter;
+use SPAMv2 qw(load_config file_lineread);
+
 use integer;
 
 @ISA = qw(Exporter);
@@ -117,6 +119,73 @@ my %snmp_fields = (
   #   1:disabled, 2:searching, 3:deliveringPower,4:fault
   pethPsePortDetectionStatus => '.1.3.6.1.2.1.105.1.1.1.6'
 );
+
+
+#==========================================================================
+# Assemble SNMP command from supplied arguments.
+#==========================================================================
+
+sub snmp_command
+{
+  #--- argument and variables
+  
+  my ($command, $host, $community, $mibs, $root) = @_;
+  my $cfg = load_config();
+  
+  #--- return if no config
+  
+  return undef if !ref($cfg);
+  
+  #--- return if non-existent command
+
+  return undef if !exists($cfg->{'snmp'}{$command});
+  my $cmd = join(' ',
+    ( $cfg->{'snmp'}{$command}{'exec'},
+    $cfg->{'snmp'}{$command}{'options'} )
+  );
+  
+  #--- regularize MIBs list to always be an arrayref
+  #--- note: at least one MIB must be passed in!
+  
+  if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
+  
+  #--- stringify MIB list
+  
+  my $miblist = join(':', @$mibs);
+  
+  #--- tokens replacements
+  
+  $cmd =~ s/%c/$community/;
+  $cmd =~ s/%h/$host/;
+  $cmd =~ s/%r/$root/;
+  $cmd =~ s/%m/+$miblist/;
+  
+  #--- finish
+  
+  return $cmd;
+}
+
+
+#==========================================================================
+# Read SNMP command's output line by line.
+#==========================================================================
+
+sub snmp_lineread
+{
+  #--- argument and variables
+  
+  my @args = splice(@_, 0, 5);
+  my $fn = shift;
+
+  #--- prepare command
+  
+  my $cmd = snmp_command(@args);
+  if(!$cmd) { return 'Failed to prepare SNMP command'; }
+  
+  #--- perform the read and finish
+  
+  return file_lineread($cmd, '-|', $fn);
+}
 
 
 #==========================================================================
@@ -455,27 +524,30 @@ sub snmp_get_syslocation
 #
 # Arguments: 1. host
 #            2. community
-# Returns:   1. value of enterprise id
-#            2. value of device id (two numbers connected with a dot)
-#            3. last reload time in UNIX format
+# Returns:   1. vendor platform string
 #===========================================================================
 
 sub snmp_get_sysobjid
 {
-  my ($host, $ip, $community) = @_;
-  my $sysObjId = $snmp_fields{sysObjectId};
-  my ($vid, $model);
+  my ($host, $community) = @_;
+  my $cfg = load_config();
+  my $sysobjid;
   
-  open(SW, "$snmpget $ip -c $community $sysObjId |") or return undef;
-  $_ = <SW>;
-  chomp;
-  /\.(\d+)\.(\d+)$/;
-  $model = "$1.$2";
-  /^.*\s+\.\d+\.\d+.\d+\.\d+\.\d+\.\d+\.(\d+)/;
-  $vid = $1;
-  close(SW);
+  my $r = snmp_lineread(
+    'snmpwalk',
+    $host,
+    $community,
+    $cfg->{'snmp'}{'sysobjidmibs'},
+    'sysObjectId',
+    sub {
+      if($_[0] =~ /::([a-zA-Z0-9]*)$/) {
+        $sysobjid = $1;
+        return 1;
+      }
+    }
+  );
 
-  return($vid, $model);
+  return $r ? undef : $sysobjid;
 }
 
 

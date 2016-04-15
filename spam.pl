@@ -64,43 +64,46 @@ sub help
 # Arguments: 1. host
 #            2. community
 # Returns:   1. platform type
-#            2. sysobjid (last two numbers) 
+#            2. nothing for now 
 #===========================================================================
 
 sub get_platform
 {
   my ($host, $ip, $community) = @_;
-  my $platform;
-  my ($eid, $dev) = snmp_get_sysobjid($host, $ip, $community);
-
+  my $pid = snmp_get_sysobjid($host, $community);
+  my $platform = "unknown:$pid";
+    
   @known_platforms = qw(c6500 c4000 c2900 c2950 c2960 c3500 c3560 c3650 c3850
                         c6500-ios c4000-ios c4500-ios c2620 c4948-ios
                         c7600 c2800 c6500vss c3550 nx5000 nx3000 c6800vss);
-                        
-  if($eid != 9) { return undef; }
-  if($dev =~ /^5\.(44|45)$/) { $platform = 'c6500'; }
-  if($dev =~ /^5\.(40|46)$/) { $platform = 'c4000';  }
-  if($dev =~ /^1\.(219|217)$/) { $platform = 'c2900'; }
-  if($dev =~ /^1\.(323|324|325|359|427|428|429|430|472|480|482|483|484|551|559|560)$/) { $platform = 'c2950'; }
-  if($dev =~ /^1\.(716|717|1208)$/) { $platform = 'c2960'; }
-  if($dev =~ /^1\.248$/) { $platform = 'c3500'; }
-  if($dev =~ /^1\.(366|367|368|431)$/) { $platform = 'c3550'; } # 431 neni v MIBce vinS08m
-  if($dev =~ /^1\.(563)$/) { $platform = 'c3560'; }
-  if($dev =~ /^1\.(282|283)$/) { $platform = 'c6500-ios'; } # Cat6506 a Cat6509
-  if($dev =~ /^1\.(448|502)$/) { $platform = 'c4000-ios'; }
-  if($dev =~ /^1\.(917|503)$/) { $platform = 'c4500-ios'; }
-  if($dev =~ /^1\.(468|208)$/) { $platform = 'c2620'; }
-  if($dev =~ /^1\.626$/) { $platform = 'c4948-ios'; }
-  if($dev =~ /^1\.658$/) { $platform = 'c7600'; }
-  if($dev =~ /^1\.576$/) { $platform = 'c2800'; }
-  if($dev =~ /^1\.896$/) { $platform = 'c6500vss' }
-  if($dev =~ /^3\.1084/) { $platform = 'nx5000'; }
-  if($dev =~ /^3\.1666/) { $platform = 'nx3000'; }
-  if($dev =~ /^1\.1824$/) { $platform = 'c3650'; }
-  if($dev =~ /^1\.1643$/) { $platform = 'c3850'; }
-  if($dev =~ /^1.1934$/) { $platform = 'c6800vss'; }
-  return ($platform, $dev);
-} 
+
+  if(!$pid) { return ('unknown', 'n/a') }
+
+  #--- FIXME: the following is a stop-gap solution
+
+  my %map = (
+    'cat6509'                   => 'c6500-ios',
+    'cat6506'                   => 'c6500-ios',
+    'catalyst65xxVirtualSwitch' => 'c6500vss',
+    'ciscoC68xxVirtualSwitch'   => 'c6800vss',
+    'catalyst296048TT'          => 'c2960',
+    'cat29xxStack'              => 'c2960',
+    'cat385048'                 => 'c3850',
+    'catalyst355048'            => 'c3550',
+    'catalyst4948'              => 'c4948-ios',
+    'cat4900M'                  => 'c4948-ios',
+    'catalyst2924XLv'           => 'c2900',
+    'catalyst296024TT'          => 'c2960',
+    'cisco2811'                 => 'c2800',
+    'ciscoC365048TS'            => 'c3650',
+    'cevChassisN5kC5548UP'      => 'nx5000'
+  );
+  $platform = $map{$pid} if exists $map{$pid};
+     
+  #--- finish
+  
+  return ($platform, 'n/a');
+}
 
 
 #===========================================================================
