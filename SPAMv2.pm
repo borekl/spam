@@ -35,6 +35,7 @@ use integer;
   sql_sites
   sql_site_uses_cp
   multipush
+  file_lineread
 );
 
 
@@ -596,6 +597,25 @@ sub multipush
       push(@{$arrays[$i]}, $_[$i]);
     }
   };
+}
+
+
+#=============================================================================
+# Helper function for line-reading files. The callback can abort reading the
+# rest of the file by returning true.
+#=============================================================================
+
+sub file_lineread
+{
+  my ($file, $open_mode, $fn) = @_;
+  
+  open(my $fh, $open_mode, $file) || return 'Failed to open file';
+  while(my $l = <$fh>) {
+    chomp($l);
+    last if $fn->($l);
+  }
+  close($fh);
+  return undef;
 }
 
 
