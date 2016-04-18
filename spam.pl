@@ -96,7 +96,8 @@ sub get_platform
     'catalyst296024TT'          => 'c2960',
     'cisco2811'                 => 'c2800',
     'ciscoC365048TS'            => 'c3650',
-    'cevChassisN5kC5548UP'      => 'nx5000'
+    'cevChassisN5kC5548UP'      => 'nx5000',
+    'catalyst4948e10GE'         => 'c4948-ios'
   );
   $platform = $map{$pid} if exists $map{$pid};
      
