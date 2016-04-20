@@ -293,10 +293,10 @@ sub html_end
 
 sub tty_message
 {
-  my ($msg) = @_;
+  my $msg = shift;
 
   if(!defined $msg) { $msg = "done\n"; }
-  print $msg if -t STDOUT;
+  printf($msg, @_) if -t STDOUT;
 }
 
 
