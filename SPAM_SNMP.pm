@@ -128,14 +128,14 @@ my %snmp_fields = (
 sub snmp_command
 {
   #--- argument and variables
-  
+
   my ($command, $host, $community, $mibs, $root) = @_;
   my $cfg = load_config();
-  
+
   #--- return if no config
-  
+
   return undef if !ref($cfg);
-  
+
   #--- return if non-existent command
 
   return undef if !exists($cfg->{'snmp'}{$command});
@@ -143,25 +143,25 @@ sub snmp_command
     ( $cfg->{'snmp'}{$command}{'exec'},
     $cfg->{'snmp'}{$command}{'options'} )
   );
-  
+
   #--- regularize MIBs list to always be an arrayref
   #--- note: at least one MIB must be passed in!
-  
+
   if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
-  
+
   #--- stringify MIB list
-  
+
   my $miblist = join(':', @$mibs);
-  
+
   #--- tokens replacements
-  
+
   $cmd =~ s/%c/$community/;
   $cmd =~ s/%h/$host/;
   $cmd =~ s/%r/$root/;
   $cmd =~ s/%m/+$miblist/;
-  
+
   #--- finish
-  
+
   return $cmd;
 }
 
@@ -173,17 +173,17 @@ sub snmp_command
 sub snmp_lineread
 {
   #--- argument and variables
-  
+
   my @args = splice(@_, 0, 5);
   my $fn = shift;
 
   #--- prepare command
-  
+
   my $cmd = snmp_command(@args);
   if(!$cmd) { return 'Failed to prepare SNMP command'; }
-  
+
   #--- perform the read and finish
-  
+
   return file_lineread($cmd, '-|', $fn);
 }
 
@@ -216,7 +216,7 @@ sub snmp_getif
       $result{$if} = $val;
     };
   }
-  close(F);  
+  close(F);
   return \%result;
 }
 
@@ -278,7 +278,7 @@ sub snmp_getif_cat
       $result{"$p1/$p2"} = $val;
     };
   }
-  close(F);  
+  close(F);
   return \%result;
 }
 
@@ -313,7 +313,7 @@ sub snmp_reindex_cat
 #==========================================================================
 # This function merges several hashes from snmp_getif into one that has
 # array references; where the values are the respective hash values.
-# 
+#
 # Arguments: 1. reference to array of hash references (from snmp_getif)
 #==========================================================================
 
@@ -361,12 +361,12 @@ sub snmp_merge_by_ifindex
 sub snmp_cat6k_modinfo
 {
   die; ### THIS FUNCTION NO LONGER IN USE
-  
+
   my ($host, $ip, $community) = @_;
   my %modinfo;
   my $moduleModel = $snmp_fields{moduleModel};
   my $moduleSerialNumberString = $snmp_fields{moduleSerialNumberString};
-  
+
   eval {
 
     #--- module model ---
@@ -384,7 +384,7 @@ sub snmp_cat6k_modinfo
       chomp;
       /\.(\d{1,2}) \"(.*)\"$/ && do { $modinfo{$1}{sn} = $2; }
     }
-    close(SW);  
+    close(SW);
   };
   if($@) {
     chomp($@);
@@ -401,7 +401,7 @@ sub snmp_cat6k_modinfo
 sub snmp_cat6k_vlan_name
 {
   die; ### THIS FUNCTION NOT IN USE
-  
+
   my ($host, $ip, $community, $vn) = @_;
 
   open(SW, "$snmpget $ip -c $community .1.3.6.1.4.1.9.9.46.1.3.1.1.4.1.$vn |") or return undef;
@@ -509,7 +509,7 @@ sub snmp_cdp_cache
 sub snmp_get_syslocation
 {
   my ($host, $ip, $community) = @_;
-  
+
   open(SW, "$snmpget $ip -c $community .1.3.6.1.2.1.1.6.0 |") or return undef;
   $_ = <SW>;
   chomp;
@@ -532,7 +532,7 @@ sub snmp_get_sysobjid
   my ($host, $community) = @_;
   my $cfg = load_config();
   my $sysobjid;
-  
+
   my $r = snmp_lineread(
     'snmpwalk',
     $host,
@@ -634,14 +634,14 @@ sub snmp_get_stp_root_port
   /(\d+)$/;
   close(SW);
   $i = $1;
-  if($i == 0) { return -1; } # this switch is designated root 
+  if($i == 0) { return -1; } # this switch is designated root
   $oid = $snmp_fields{dot1dBasePortIfIndex} . ".$i";
   open(SW, "$snmpget $ip -c $community $oid |") or return undef;
   $_ = <SW>;
   chomp;
   /(\d+)$/;
   close(SW);
-  return $1;  
+  return $1;
 }
 
 
@@ -669,7 +669,7 @@ sub snmp_get_arptable
     my $cmty = $serv->[1];
     if(!$cmty) { $cmty = $def_cmty; }
     if($disp_callback) { &$disp_callback($arpserv_num, $arpserv_cur, $serv); }
-    open(F, "$snmpwalk " . $serv->[0] . " -c " . $cmty 
+    open(F, "$snmpwalk " . $serv->[0] . " -c " . $cmty
          . " .1.3.6.1.2.1.4.22 |") or return undef;
     while(<F>) {
       /\.\d+\.(\d+)\.(\d+)\.(\d+)\.(\d+) \"(..) (..) (..) (..) (..) (..) \"/ && do {
@@ -704,20 +704,20 @@ sub snmp_dot1d_idx
   my ($host, $ip, $community, $vlanlist) = @_;
   my @vlans;
   my %dot1dIdx;
-  
+
   #--- processing arguments
   # if no vlanlist is passed to this function, the vlan list is fed single
   # dummy 'vlan 0', which causes the loop below to not use any vlan selector
-  
+
   $community =~ s/\@.*//;
   if(defined $vlanlist) {
     @vlans = ( keys %$vlanlist );
   } else {
     @vlans = ( 0 );
   }
-  
+
   #--- cycle through all VLANs
-  
+
   foreach my $k (@vlans) {
     my $sel = ($k == 0 ? '' : "\@$k");
     open(F, "$snmpwalk $ip -c ${community}${sel} $snmp_fields{dot1dBasePortIfIndex} |") or return undef;
@@ -727,14 +727,14 @@ sub snmp_dot1d_idx
     }
     close(F);
   }
-  
+
   return \%dot1dIdx;
 }
 
 
 #==========================================================================
 # This function retrieves MAC address table associated with switch ports.
-# 
+#
 # Arguments: 1. host
 #            2. community
 #            3. vlan list (may be undef'd)
@@ -752,14 +752,14 @@ sub snmp_mac_table
   my $macs_cur = 0;
   my $com;
   my %macs_plain;    # for removing duplicities
-  
+
   #--- process community argument
-  
+
   $com = $community;
   $com =~ s/@.*$//;
-  
+
   #--- get vlan list (dummy 'vlan 0' if none supplied)
-  
+
   &$disp_callback(0) if defined $disp_callback;
   if(defined $vlanlist) {
     @vlans = ( keys %$vlanlist );
@@ -768,7 +768,7 @@ sub snmp_mac_table
   }
 
   ### NEW CODE ###
-  
+
   #my %macs_dot1d;
   #foreach my $k (@vlans) {
   #  my $macs_per_vlan = 0;
@@ -785,9 +785,9 @@ sub snmp_mac_table
   #  close(F);
   #  next if $macs_per_vlan == 0;
   #}
-  
+
   ################
-  
+
   #--- cycle through all VLANs
 
   foreach my $k (@vlans) {
@@ -806,12 +806,12 @@ sub snmp_mac_table
       }
     }
     close(F);
-    
+
     #--- then get the bridging table (MAC -> port)
 
     open(F, "$snmpwalk $ip -c ${com}${sel} $snmp_fields{dot1dTpFdbPort} |") or return undef;
     while(<F>) {
-      chomp; 
+      chomp;
       /\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\s+(\d+)$/ && do {
         my $mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", $1, $2, $3, $4, $5, $6);
         my $if = $dot1dIdx->{$7};
@@ -821,7 +821,7 @@ sub snmp_mac_table
         # ignored as well
 
         if(!exists $cdpcache->{$if}) {
-        
+
 #          if((grep { $_ eq $mac; } @{$macs{$if}}) == 0   # add only macs we've not seen before
 #             && $macs_status{$mac} == 3) {               # AND add only learned macs
           if(
@@ -852,9 +852,9 @@ sub snmp_portfast
   my ($host, $ip, $community, $vlanlist) = @_;
   my $dot1dIdx = snmp_dot1d_idx($host, $ip, $community, $vlanlist);
   my %r;
-  
+
   #--- processing arguments
-  
+
   if(defined $vlanlist) {
       @vlans = ( keys %$vlanlist );
   } else {
@@ -864,7 +864,7 @@ sub snmp_portfast
   $com =~ s/\@.*// ;
 
   return undef if !ref($dot1dIdx);
-    
+
   #--- iterate over all VLANs
 
   foreach my $k (@vlans) {
@@ -936,15 +936,15 @@ sub snmp_hwinfo_entity_mib
       my ($class, $container, $physname);
       my $chassis = 0;
       my $slot = 0;
-      
+
       #--- entPhysicalClass
-      
+
       $class = $tmpinfo{5}{$idx};
-      
+
       #--- chassis number (in VSS systems)
       # the entPhysicalName for a container is either "Physical Slot N"
       # or "Chassis N Physical Slot M"
-      
+
       if($class == 6 || $class == 9) {
         $container = $tmpinfo{4}{$idx};
         $physname  = $tmpinfo{7}{$container};
@@ -958,9 +958,9 @@ sub snmp_hwinfo_entity_mib
           $chassis = $1;
         };
       }
-      
+
       #--- chassis
-    
+
       if($tmpinfo{5}{$idx} == 3) {
         $hwinfo->{$chassis}{$cidx}{type}  = 'chassis';
         $hwinfo->{$chassis}{$cidx}{descr} = $tmpinfo{2}{$idx};
@@ -969,9 +969,9 @@ sub snmp_hwinfo_entity_mib
         $hwinfo->{$chassis}{$cidx}{hwrev} = $tmpinfo{8}{$idx};
         $cidx++;
       }
-      
+
       #--- power supply
-      
+
       elsif($tmpinfo{5}{$idx} == 6) {
         $hwinfo->{$chassis}{$cidx}{type} = 'ps';
         $hwinfo->{$chassis}{$cidx}{descr} = $tmpinfo{2}{$idx};
@@ -980,9 +980,9 @@ sub snmp_hwinfo_entity_mib
         $hwinfo->{$chassis}{$cidx}{hwrev} = $tmpinfo{8}{$idx};
         $cidx++;
       }
-      
+
       #--- module
-      
+
       elsif($tmpinfo{5}{$idx} == 9) {
         $physname =~ /slot (\d+)/i && do {
           $slot = $1;
@@ -995,7 +995,7 @@ sub snmp_hwinfo_entity_mib
           $hwinfo->{$chassis}{$slot}{descr} = $tmpinfo{2}{$idx};
         };
         next;
-      } 
+      }
     }
   };
 
