@@ -1008,4 +1008,100 @@ sub snmp_hwinfo_entity_mib
 }
 
 
+#==========================================================================
+# Function for parsing SNMP values as returned snmp-utils.
+#==========================================================================
+
+sub snmp_value_parse
+{
+  my $value = shift;
+  my %re;
+
+  #--- integer
+
+  if($value =~ /^INTEGER:\s+(\d+)$/) {
+    $re{'type'} = 'INTEGER';
+    $re{'value'} = $1 + 0;
+  }
+
+  #--- integer-enum
+
+  elsif($value =~ /^INTEGER:\s+(\w+)\((\d+)\)$/) {
+    $re{'type'} = 'INTEGER';
+    $re{'value'} = $2;
+    $re{'enum'} = $1;
+  }
+
+  #--- string
+
+  elsif($value =~ /^STRING:\s+(.*)$/) {
+    $re{'type'} = 'STRING';
+    $re{'value'} = $1;
+  }
+
+  #--- gauge
+
+  elsif($value =~ /^Gauge(32|64): (\d+)$/) {
+    $re{'type'} = 'Gauge';
+    $re{'bitsize'} = $1;
+    $re{'value'} = $2 + 0;
+  }
+
+  #--- counter
+
+  elsif($value =~ /^Counter(32|64): (\d+)$/) {
+    $re{'type'} = 'Counter';
+    $re{'bitsize'} = $1;
+    $re{'value'} = $2 + 0;
+  }
+
+  #--- timeticks
+
+  elsif($value =~ /Timeticks:\s+\((\d+)\)\s+(.*)\.\d{2}$/) {
+    $re{'type'} = 'Timeticks';
+    $re{'value'} = $1;
+    $re{'fmt'} = $2;
+  }
+
+  #--- hex string
+
+  elsif($value =~ /^Hex-STRING:\s+(.*)$/) {
+    $re{'type'} = 'Hex-STRING';
+    my @v = split(/\s/, $1);
+    if(scalar(@v) == 6) {
+      $re{'value'} = lc(join(':', @v));
+    } else {
+      $re{'value'} = lc($1);
+    }
+  }
+
+  #--- MIB reference
+
+  elsif($value =~ /^([\w-]+)::(\w+)$/) {
+    $re{'type'} = 'Ref';
+    $re{'mib'} = $1;
+    $re{'value'} = $2;
+  }
+
+  #--- generic type:value
+
+  elsif($value =~ /^(\w+): (.*)$/) {
+    $re{'type'} = 'generic';
+    $re{'gentype'} = $1;
+    $re{'value'} = $2;
+  }
+
+  #--- uncrecognized output
+
+  else {
+    $re{'type'} = 'unknown';
+    $re{'value'} = $value;
+  }
+
+  #--- finish
+
+  return \%re;
+}
+
+
 1;
