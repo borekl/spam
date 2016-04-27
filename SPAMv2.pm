@@ -602,7 +602,7 @@ sub multipush
 
 #=============================================================================
 # Helper function for line-reading files. The callback can abort reading the
-# rest of the file by returning true.
+# rest of the file by returning true. Returns error message or undef.
 #=============================================================================
 
 sub file_lineread
