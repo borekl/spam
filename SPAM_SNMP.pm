@@ -35,6 +35,7 @@ use integer;
   snmp_get_vtp_info
   snmp_vlanlist
   snmp_portfast
+  snmp_get_tree
 );
 
 
@@ -1101,6 +1102,107 @@ sub snmp_value_parse
   #--- finish
 
   return \%re;
+}
+
+
+#==========================================================================
+# Get SNMP sub-tree and store it into a hashref. First five arguments are
+# the same as for snmp_lineread(), sixth argument is optional callback
+# that receives line count as argument (for displaying progress indication)
+# The callback can optionally return number of seconds that determine the
+# period it should be called at.
+#==========================================================================
+
+sub snmp_get_tree
+{
+  #--- arguments (same as to snmp_lineread)
+
+  # arguments 0..5 are those of snmp_lineread(); the last argument is
+  # optional and is an callback intended for displaying progress status that
+  # is invoked with (VARIABLE, CNT) where variable is SNMP variable
+  # currently being processed and CNT is entry counter that's zeroed for
+  # each new variable.  This callback is invoked only when: a) the variable
+  # being read is different from previous one (ie.  reading of one variable
+  # finished), or specified amount of time passed between now and the last
+  # time the callback was called.  Default delay is 1 second, but it can be
+  # specified on callback invocation: the returned value will be used for
+  # the rest of the invocations.  Granularity is only 1 second (the
+  # implementation uses time() function).
+
+  my @args = splice(@_, 0, 5);
+  my $cback = shift;
+
+  #--- other variables
+
+  my %re;
+  my $cnt = 0;
+  my $tm1 = time();
+  my $var1;
+  my $delay = 1;
+
+  #--- initial callback call
+
+  if($cback) {
+    my $rv = $cback->(undef, $cnt);
+    $delay = $rv if $rv > 0;
+  }
+
+  #--- main loop ------------------------------------------------------------
+
+  my $r = snmp_lineread(@args, sub {
+    my $l = shift;
+    my $tm2;
+
+  #--- split into variable and value
+
+    my ($var, $val) = split(/ = /, $l);
+
+  #--- parse the right side (value)
+
+    my $rval = snmp_value_parse($val);
+
+  #--- parse the left side (variable, indexes)
+
+    $var =~ s/^.*:://;  # drop the MIB name
+    $var =~ s/\.0$//;   # drop the .0
+
+  #--- get indexes
+
+    $idx = $var;
+    $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
+    $var = $1;
+    my @i = split(/\]\[/, $idx);
+
+  #--- store the values (currently only handline two indexes)
+
+    $re{$var}{$i[0]}        = $rval if scalar(@i) == 1;
+    $re{$var}{$i[0]}{$i[1]} = $rval if scalar(@i) == 2;
+
+  #--- line counter
+
+    $cnt++;
+
+  #--- callback
+
+    $tm2 = time();
+    if($var1 ne $var) {
+      $cnt = 0;
+      $tm1 = $tm2;
+      $var1 = $var;
+      $cback->($var, $cnt);
+    } elsif(($tm2 - $tm1) >= $delay) {
+      $cback->($var, $cnt) if $cback;
+      $tm1 = $tm2;
+    }
+
+  #--- finish callback
+
+    return undef;
+  });
+
+  #--- finish ---------------------------------------------------------------
+
+  return $r ? $r : \%re;
 }
 
 
