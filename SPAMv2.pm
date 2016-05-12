@@ -13,9 +13,11 @@ use Carp;
 use DBI;
 use JSON::MaybeXS;
 use integer;
+use warnings;
+use strict;
 
-@ISA = qw(Exporter);
-@EXPORT = qw(
+our @ISA = qw(Exporter);
+our @EXPORT = qw(
   dbinit
   dbconn
   dbdone
@@ -177,12 +179,12 @@ sub dbdone
   
   #--- if not connected, do nothing
   
-  return if !$dbconn{$id};
+  return if !$dbconn{$dbid};
   
   #--- disconnect from db, forget the handle
   
-  $dbconn{$id}->disconnect();
-  delete $dbconn{$id};
+  $dbconn{$dbid}->disconnect();
+  delete $dbconn{$dbid};
 }
 
 
@@ -223,8 +225,8 @@ sub dbconn
   
   #--- if alread connected, just return the handle
   
-  if(exists $dbconn{$id}) {
-    return $dbconn{$id};
+  if(exists $dbconn{$dbid}) {
+    return $dbconn{$dbid};
   }
 
   #--- otherwise try to connect to the database
@@ -243,7 +245,7 @@ sub dbconn
     return DBI::errstr();
   }
 
-  return $dbconn{$id} = $dbh;
+  return $dbconn{$dbid} = $dbh;
 }
 
 
