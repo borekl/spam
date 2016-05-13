@@ -369,7 +369,10 @@ sub mangle_location
   #--- if not shop, but in proper format
   
   if($l[3]) {
-    $descr = sprintf('%s, %s, %s', @l[3..5]);
+    $descr = join(
+      ', ', 
+      grep { $_ ne 'x' } @l[3..$#l]
+    );
   }
 
   #--- if not shop, copy 'location' to 'descr'
