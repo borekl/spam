@@ -178,48 +178,6 @@ sub pg_errmsg_parse
 
 
 #=============================================================================
-# Receives SQL query with ? placeholders and an array values and replaces
-# the placeholders with the values and returns the result. This is used to
-# pretty display the queries for debug purposes.
-#=============================================================================
-
-sub sql_show_query
-{
-  my ($qry, $vals) = @_;
-
-  #---  handle $vals being single scalar or undefined
-
-  if($vals && !ref($vals)) {
-    $vals = [ $vals ];
-  } elsif(!$vals) {
-    $vals = [];
-  }
-
-  #--- squash extraneous whitespace, replace newlines
-
-  $qry =~ s/\n/ /g;
-  $qry =~ s/\s{2,}/ /g;
-
-  #--- do the placeholders replacement
-
-  for(my $i = 0; $i < scalar(@$vals); $i++) {
-    my $val = $vals->[$i];
-    if(defined $val) {
-      $val = "'$val'" if $val !~ /^\d+$/;
-    } else {
-      $val = 'NULL';
-    }
-    $qry =~ s/\?/$val/;
-  }
-
-  #--- finish
-
-  return $qry;
-}
-
-
-
-#=============================================================================
 # Run SELECT and encode the output into JSON or return hashref.
 #=============================================================================
 
