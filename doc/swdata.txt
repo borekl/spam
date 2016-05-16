@@ -14,7 +14,16 @@ Description of swdata structure used in spam.pl
                     |                                    +- fwrev
                     |                                    +- swrev
                     |                                    +- descr
-                    +- <SNMPVAR> --- <IDX>
+                    |
+                    +- <SNMPMIB> -- <SNMPVAR> -- <INDEX> -+- type
+                    |                                     +- value
+                    |                                     +- enum
+                    |                                     +- mib
+                    |                                     +- fmt
+                    |                                     +- gentype 
+                    |
+                    +- <SNMPVAR> --- <IDX>    // BEING PHASED OUT
+                    |
                     +- dbStatus ---- [  1 ifOperStatus
                                         2 ifInPkts
                                         3 ifOutPkts

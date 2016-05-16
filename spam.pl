@@ -20,6 +20,7 @@ use POSIX qw(strftime);
 use SPAMv2;
 use SPAM_SNMP;
 use Socket;
+use Data::Dumper;
 
 $| = 1;
 my $logfile = '/home/spam/spam.log';
@@ -231,6 +232,118 @@ sub sql_load_uptime
 # Returns:   1. undef on success; any other value means failure
 #===========================================================================
 
+sub poll_host_new
+{
+  #--- arguments -----------------------------------------------------------
+  
+  my ($host) = @_;
+  tty_message("[%s] >>>>>>>>> NEW POLL_HOST >>>>>>>>>\n", $host);
+  
+  #--- other variables -----------------------------------------------------
+  
+  my $community = $cfg2->{'community'};
+  
+  #--- host-specific community override ------------------------------------
+  
+  $community = $cfg2->{'host'}{$host}{'community'}
+    if $cfg2->{'host'}{$host}{'community'};
+
+  #--- skip excluded hosts -------------------------------------------------
+
+  if(grep(/^$host$/, @{$cfg2->{'excludehost'}})) { 
+    return 'Excluded host'; 
+  }
+  
+  #--- discover platform ---------------------------------------------------
+  
+  tty_message("[$host] Getting platform info (started)\n");
+  my $platform = snmp_get_sysobjid($host, $community);
+  return 'Failed to get platform id' if !$platform;
+  tty_message("[$host] Getting platform info ($platform)\n");
+
+  #--- load last status from backend db ------------------------------------
+
+  tty_message("[$host] Load status (started)\n");
+  my $r = sql_load_status($host);
+  if(defined $r) {
+    tty_message("[$host] Load status (status failed, $r)\n");
+    return 'Failed to load table STATUS';
+  }
+  $r = sql_load_uptime($host);
+  if(!ref($r)) {
+    tty_message("[$host] Load status (uptime failed, $r)\n");
+    return 'Failed to load uptime';
+  }
+  $swdata{$host}{stats}{sysuptime2} = $$r;
+  tty_message("[$host] Load status (finished)\n");
+
+  #--- get sysUpTime -------------------------------------------------------
+  
+  tty_message("[$host] Getting boot time (started)\n");
+  $r = $swdata{$host}{stats}{sysuptime} = snmp_get_sysuptime($host, $host, $community);
+  tty_message(
+    "[$host] Getting boot time (finished, " . strftime("%Y-%m-%d", localtime($r)) . ")\n"
+  );
+  
+  #--- get sysLocation -----------------------------------------------------
+
+  $swdata{$host}{stats}{syslocation} = snmp_get_syslocation($host, $host, $community);
+
+  #--- get STP root port ---------------------------------------------------
+
+  $swdata{$host}{stproot} = snmp_get_stp_root_port($host, $host, $community);
+
+  #--- get VTP domain name -------------------------------------------------
+
+  ($swdata{$host}{vtpdomain}, $swdata{$host}{vtpmode}) = snmp_get_vtp_info($host, $host, $community);
+
+  #--- load supported MIB trees --------------------------------------------
+  
+  for my $mib_entry (@{$cfg2->{'mibs'}}) {
+    my $re = $cfg2->{'platforms'};
+    my $mib = $mib_entry->{'mib'};
+    if($platform =~ /$re/) {
+      tty_message(
+        "[%s] Processing %s\n", $host, $mib
+      );
+      my $mib_entry_points = $mib_entry->{'entry'};
+      if(!ref($mib_entry_points)) {
+        $mib_entry_points = [ $mib_entry_points ];
+      }
+      for my $mib_subtree (@$mib_entry_points) {
+        my $r = snmp_get_tree(
+          'snmpwalk', $host, $community, $mib,
+          $mib_subtree,
+          sub {
+            my ($var, $cnt) = @_;
+            tty_message("[$host] Loading $mib");
+            if($var) { tty_message("::$var"); }
+            if($cnt) { tty_message(" ($cnt)"); }
+            tty_message("\n");
+          }
+        );
+        if(!ref($r)) {
+          tty_message(
+            "[%s] Processing %s (failed, %s)\n",
+            $host, $mib, $r
+          );
+        } else {
+          # Merge the new hash in
+          if(ref($swdata{$host}{$mib})) {
+            %{$swdata{$host}{$mib}} = (%{$swdata{$host}{$mib}}, %$r);
+          } else {
+            $swdata{$host}{$mib} = $r;
+          }
+        }
+      }
+    }
+  }
+  
+  return "unfinished";
+}
+
+#===
+
 sub poll_host
 {
   my ($host, $getmactable) = @_;
@@ -238,6 +351,8 @@ sub poll_host
   my ($ret, $platform, $objid, $ip);
   my $cat_idx;
 
+  tty_message("[%s] >>>>>>>>> OLD POLL_HOST >>>>>>>>>\n", $host);
+  
   #--- host-specific community override
   
   $community = $cfg2->{'host'}{$host}{'community'} 
@@ -588,33 +703,13 @@ sub poll_host
 
 
 #===========================================================================
-# This function returns reference to ifDescr->ifindex hash.
-#
-# Arguments: 1. host
-# Returns:   1. reference to reverse index hash
-#===========================================================================
-
-sub name_to_ifindex_hash
-{
-  my ($host) = @_;
-  my %idx;
-
-  foreach my $k (keys %{$swdata{$host}{ifDescr}}) {
-    my $val = $swdata{$host}{ifDescr}{$k};
-    $idx{$val} = $k;
-  }
-  return \%idx;
-}
-
-
-#===========================================================================
 # This function compares old data (retrieved from backend database into
 # "dbStatus" subtree of swdata) and the new data retrieved via SNMP from
 # given host. It updates in-memory data and prepares plan for database
 # update (in @update_plan array).
 #
 # Arguments: 1. host
-#            2. Name to ifindex hash generated by name_to_ifindex_hash()
+#            2. Name to ifDescr->ifindex hash
 # Returns:   1. update plan (array reference)
 #            2. update statistics (array reference to number of
 #               inserts/deletes/full updates/partial updates)
@@ -667,14 +762,14 @@ sub find_changes
 #############
 
       if (
-        $old->[0] != $new->{ifOperStatus}{$if}           # port status
-	|| $old->[1] != $new->{ifInUcastPkts}{$if}       # incoming packet count change
-	|| $old->[2] != $new->{ifOutUcastPkts}{$if}      # outgoing packet count change
+        $old->[0] != $new->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'}
+	|| $old->[1] != $new->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'}
+	|| $old->[2] != $new->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'}
         || $old->[5] != $new->{vmVlan}{$if}              # VLAN number change
-        || $old->[6] ne $new->{ifAlias}{$if}             # interface description
+        || $old->[6] ne $new->{'IF-MIB'}{'ifAlias'}{$if}{'value'}
         || $old->[7] != $new->{portDuplex}{$if}          # duplex status
-        || $old->[8] != ($new->{ifSpeed}{$if} / 1000000) # port speed
-        || $old->[10] != $new->{ifAdminStatus}{$if}      # admin status
+        || $old->[8] != ($new->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000)
+        || $old->[10] != $new->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'}
         || $old->[11] != $errdis                         # errordisable
       ) {
 	# 'U' as 'full update', ie. update all fields in STATUS table
@@ -747,14 +842,14 @@ sub sql_status_update
       @bind = (
         $host,
         $k->[1],
-        $hdata->{ifOperStatus}{$if} == 1 ? 'true' : 'false',
-        $hdata->{ifInUcastPkts}{$if},
-        $hdata->{ifOutUcastPkts}{$if},
+        $hdata->{'IF-MIB'}{'ifOperStatus'}{$if}{'enum'} == 'up' ? 'true' : 'false',
+        $hdata->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'},
+        $hdata->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'},
         $current_time,
         $current_time,
         $if,
         $hdata->{vmVlan}{$if},
-        $hdata->{ifAlias}{$if} =~ s/'/''/gr,
+        $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'},
         $hdata->{portDuplex}{$if},
         ($hdata->{ifSpeed}{$if} / 1000000) =~ s/\..*$//r,
         port_flag_pack($hdata, $if),
@@ -782,9 +877,9 @@ sub sql_status_update
         );
         @bind = (
           $current_time,
-          $hdata->{ifOperStatus}{$if} == 1 ? 't':'f',
-          $hdata->{ifInUcastPkts}{$if},
-          $hdata->{ifOutUcastPkts}{$if},
+          $hdata->{'IF-MIB'}{'ifOperStatus'}{$if}{'enum'} == 'up' ? 'true' : 'false',
+          $hdata->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'},
+          $hdata->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'},
           $if,
           $hdata->{vmVlan}{$if},
           $hdata->{ifAlias}{$if} =~ s/'/''/gr,
@@ -1263,7 +1358,20 @@ sub switch_info
   my $stat = $swdata{$host}{stats};
   my $portname;
   my $knownports = grep(/^$host$/, @{$cfg2->{'knownports'}});
-  my $idx = name_to_ifindex_hash($host);
+
+### DEBUG ###
+#print "--- DEBUG 1 ---\n";
+#if(exists $swdata{$host}) { 
+#  print "swdata{HOST} exists\n";
+#  if(exists $swdata{$host}{'IF-MIB'}) {
+#    print "swdata{HOST}{IF-MIB} exists\n";
+#    print "IF-MIB variables known:\n";
+#    print join(', ', keys %{$swdata{$host}{'IF-MIB'}}), "\n";
+#  }
+#}
+#############
+
+  my %idx = reverse %{$swdata{$host}{'IF-MIB'}{'ifDescr'}};
           
   #--- initialize ---
   $stat->{p_total} = 0;
@@ -1287,7 +1395,7 @@ sub switch_info
     #--- unregistered ports
     if($knownports && ($swdata{$host}{ifOperStatus}{$port} == 1)) {
       if(!exists $port2cp->{$host}{$portname}) {
-        my $if = $idx->{$portname};
+        my $if = $idx{$portname};
         if(!exists $swdata{$host}{cdpcache}{$if}) {
           $stat->{p_illact}++;
         }
@@ -2033,22 +2141,51 @@ eval {
         #--- child ---------------------------------------------------------
         
             tty_message("[$host] Processing started\n");
+            poll_host_new($host);
+
+### DEBUG ###
+#print "--- DEBUG 3 ---\n";
+#if(exists $swdata{$host}) { 
+#  print "swdata{$host} exists\n";
+#  if(exists $swdata{$host}{'IF-MIB'}) {
+#    print "swdata{$host}{IF-MIB} exists\n";
+#    print "IF-MIB variables known:\n";
+#    print join(', ', keys %{$swdata{$host}{'IF-MIB'}}), "\n";
+#  }
+#}
+open(my $fh, '>', 'file.dump') || die;
+print $fh Dumper(\%swdata), "\n";
+close($fh);
+#############
+
             if(!poll_host($host, $get_mactable)) {
+
 
 	    #--- find changes and update status table ---
 
               tty_message("[$host] Updating status table (started)\n");
-              my $idx = name_to_ifindex_hash($host);
-	      my ($update_plan, $update_stats) = find_changes($host, $idx);
+              my %idx = reverse $swdata{$host}{'IF-MIB'}{'ifDescr'};
+	      my ($update_plan, $update_stats) = find_changes($host, \%idx);
               tty_message(sprintf("[%s] Updating status table (%d/%d/%d/%d)\n", 
                         $host, $update_stats->[0], $update_stats->[1], $update_stats->[2], $update_stats->[3]));
-              my $e = sql_status_update($host, $update_plan, $idx);
+              my $e = sql_status_update($host, $update_plan, \%idx);
               if($e) { tty_message("[$host] Updating status table (failed, $e)\n"); }
 	      tty_message("[$host] Updating status table (finished)\n");
 
 	      #--- update swstat table ---
 	  
 	      tty_message("[$host] Updating swstat table (started)\n");
+### DEBUG ###
+#print "--- DEBUG 2 ---\n";
+#if(exists $swdata{$host}) { 
+#  print "swdata{$host} exists\n";
+#  if(exists $swdata{$host}{'IF-MIB'}) {
+#    print "swdata{$hosto}{IF-MIB} exists\n";
+#    print "IF-MIB variables known:\n";
+#    print join(', ', keys %{$swdata{$host}{'IF-MIB'}}), "\n";
+#  }
+#}
+#############
 	      switch_info($host);
 	      $e = sql_switch_info_update($host);
 	      if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
