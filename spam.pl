@@ -33,6 +33,7 @@ my $selective_run;   # selective run flag
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
 my @known_platforms; # list of known platform codes
+my $debug = 0;       # debug mode, settable with --debug
 
 
 #===========================================================================
@@ -53,6 +54,7 @@ sub help
   print "  --arpservers     list known ARP servers and exit\n";
   print "  --hosts          list known hosts and exit\n";
   print "  --tasks=N        number of tasks to be run (N is 1 to 16, default 8)\n";
+  print "  --debug          turn on debug mode\n";
   print "  --help, -?       this help\n";
   print "\n";
 }
@@ -990,54 +992,82 @@ sub sql_transaction
   my $update = shift;
   my $dbh = dbconn('spam');
   my $r;
+  my $fh;         # debugging output filehandle
+      
+  #--- write the transation to file (for debugging)
   
+  if($debug) {
+    my $line = 1;
+    open($fh, '>>', "transaction.$$.log");
+    if($fh) {
+      printf $fh "---> TRANSACTION LOG START\n";
+      for my $row (@$update) {
+        printf $fh "%d. %s\n", $line++, join('|', @$row);
+      }
+    }
+  }
+
+  eval { #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    
   #--- ensure database connection
 
-  if(!ref($dbh)) { 
-    return 'Cannot connect to database (spam)'; 
-  }
+    if(!ref($dbh)) { 
+      die "Cannot connect to database (spam)\n"; 
+    }
   
   #--- begin transaction
 
-  $dbh->begin_work()
-  || return 'Cannot begin database transaction (spam, ' . $dbh->errstr() . ')';
+    $dbh->begin_work()
+    || die sprintf(
+      "Cannot begin database transaction (spam, %s)\n", $dbh->errstr()
+    );
   
   #--- perform update
 
-  for my $row (@$update) {
-  
-### DEBUG ###
-#printf("TRANSACTION>>> %s\n", join('|', @$row));
-#############
-
-    my $qry = ref($row) ? $row->[0] : $row;
-    my @args;
-    if(ref($row)) { @args = @$row[1 .. scalar(@$row)-1]; }
-    my $sth = $dbh->prepare($qry);
-    my $r = $sth->execute(@args);
-    my $err1 = $sth->errstr();
-    my $err;
-    if(!$r) {
-      if($dbh->rollback()) {
-        $err = sprintf('Database update failed (%s), transaction rolled back', $err1);
-      } else {
-        my $err2 = $dbh->errstr();
-        $err = sprintf('Database update failed (%s), transaction rollback failed (%s)', $err1, $err2);
+    for my $row (@$update) {
+      my $qry = ref($row) ? $row->[0] : $row;
+      my @args;
+      if(ref($row)) { @args = @$row[1 .. scalar(@$row)-1]; }
+      my $sth = $dbh->prepare($qry);
+      my $r = $sth->execute(@args);
+      my $err1 = $sth->errstr();
+      if(!$r) {
+        if($dbh->rollback()) {
+          die sprintf(
+            "Database update failed (%s), transaction rolled back\n", 
+            $err1
+          );
+        } else {
+          my $err2 = $dbh->errstr();
+          die sprintf(
+            "Database update failed (%s), transaction rollback failed (%s)\n",
+            $err1, $err2
+          );
+        }
       }
-    return $err;
     }
-  }
   
   #--- commit transaction
 
-  $dbh->commit()
-  || do {
-    my $err = sprintf('Cannot commit database transaction (%s)', $dbh->errstr());
-    return $err;
-  };
+    $dbh->commit()
+    || die sprintf("Cannot commit database transaction (%s)\n", $dbh->errstr());
+  
+  }; #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     
+  #--- log debug info into transaction log
+
+  if($fh) {
+    if($@) {
+      chomp($@);
+      printf $fh "---> TRANSACTION FAILED (%s)\n", $@;
+    } else {
+      printf $fh "---> TRANSACTION FINISHED SUCCEFULLY\n";
+    }
+  }
+
   #--- finish successfully
 
+  close($fh) if $fh;  
   return undef;
 }
 
@@ -1823,7 +1853,8 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'arpservers' => \$list_arpservers, 
                'hosts'      => \$list_hosts,
                'tasks=i'    => \$tasks_max,
-               'autoreg'    => \$autoreg
+               'autoreg'    => \$autoreg,
+               'debug'      => \$debug
               )) {
   print "\n"; help(); exit(1);
 }
