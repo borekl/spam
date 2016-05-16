@@ -33,6 +33,7 @@ my $selective_run;   # selective run flag
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
 my @known_platforms; # list of known platform codes
+my $debug = 0;       # debug mode, settable with --debug
 
 
 #===========================================================================
@@ -53,6 +54,7 @@ sub help
   print "  --arpservers     list known ARP servers and exit\n";
   print "  --hosts          list known hosts and exit\n";
   print "  --tasks=N        number of tasks to be run (N is 1 to 16, default 8)\n";
+  print "  --debug          turn on debug mode\n";
   print "  --help, -?       this help\n";
   print "\n";
 }
@@ -1819,7 +1821,8 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'arpservers' => \$list_arpservers, 
                'hosts'      => \$list_hosts,
                'tasks=i'    => \$tasks_max,
-               'autoreg'    => \$autoreg
+               'autoreg'    => \$autoreg,
+               'debug'      => \$debug
               )) {
   print "\n"; help(); exit(1);
 }
