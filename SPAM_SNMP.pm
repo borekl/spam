@@ -1140,7 +1140,17 @@ sub snmp_get_tree
   my $tm1 = time();
   my $var1;
   my $delay = 1;
-
+  my $fh;
+  
+  #--- initiate debugging
+  
+  if($ENV{'SPAM_DEBUG'}) {
+    open($fh, '>>', "snmp_tree.$$.log");
+    if($fh) {
+      printf $fh "---> SNMP TREE\n";
+    }
+  }
+  
   #--- initial callback call
 
   if($cback) {
@@ -1178,6 +1188,14 @@ sub snmp_get_tree
 
     $re{$var}{$i[0]}        = $rval if scalar(@i) == 1;
     $re{$var}{$i[0]}{$i[1]} = $rval if scalar(@i) == 2;
+  
+  #--- debugging info
+  
+    if($fh) {
+      my $rval_txt = join(',', %$rval);
+      printf $fh "%s.%s = %s\n", $var, $i[0], $rval_txt if scalar(@i) == 1;
+      printf $fh "%s.%s.%s = %s\n", $var, $i[0], $i[1], $rval_txt if scalar(@i) == 2;
+    }
 
   #--- line counter
 
@@ -1203,6 +1221,7 @@ sub snmp_get_tree
 
   #--- finish ---------------------------------------------------------------
 
+  close($fh) if $fh;
   return $r ? $r : \%re;
 }
 
