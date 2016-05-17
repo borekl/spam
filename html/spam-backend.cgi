@@ -1716,7 +1716,6 @@ sub sql_del_patch
   #--- variables
   
   my ($host, $portname) = @_;
-  my $dbh = dbconn('spam');
   my (%re, $qry, $r);
   
   #--- init
@@ -1728,10 +1727,10 @@ sub sql_del_patch
   
   $qry = 'DELETE FROM porttable WHERE host = ? AND portname = ?';
   $re{'query'} = sql_show_query($qry, [ $host, $portname ]);
-  $r = $dbh->do($qry, undef, $host, $portname);
+  $r = $db_spam->do($qry, undef, $host, $portname);
   $re{'dbrv'} = $r;
   if(!defined $r) {
-    $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
+    $re{'errdb'} = pg_errmsg_parse($db_spam->errstr());
     $re{'errwhy'} = 'Failed to remove database row';
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
