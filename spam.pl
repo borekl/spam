@@ -33,7 +33,6 @@ my $selective_run;   # selective run flag
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
 my @known_platforms; # list of known platform codes
-my $debug = 0;       # debug mode, settable with --debug
 
 
 #===========================================================================
@@ -992,7 +991,7 @@ sub sql_transaction
       
   #--- write the transation to file (for debugging)
   
-  if($debug) {
+  if($ENV{'SPAM_DEBUG'}) {
     my $line = 1;
     open($fh, '>>', "transaction.$$.log");
     if($fh) {
@@ -1851,7 +1850,7 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'hosts'      => \$list_hosts,
                'tasks=i'    => \$tasks_max,
                'autoreg'    => \$autoreg,
-               'debug'      => \$debug
+               'debug'      => \$ENV{'SPAM_DEBUG'}
               )) {
   print "\n"; help(); exit(1);
 }
