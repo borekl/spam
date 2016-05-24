@@ -1147,7 +1147,7 @@ sub snmp_get_tree
   if($ENV{'SPAM_DEBUG'}) {
     open($fh, '>>', "snmp_tree.$$.log");
     if($fh) {
-      printf $fh "---> SNMP TREE\n";
+      printf $fh "---> SNMP TREE %s::%s\n", $args[3], $args[4];
     }
   }
   
