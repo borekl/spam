@@ -1193,18 +1193,26 @@ sub snmp_get_tree
     $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
     $var = $1;
     my @i = split(/\]\[/, $idx);
+    for (@i) { s/^"(.*)"$/$1/; };
+    
+  #--- store the values #
 
-  #--- store the values (currently only handline two indexes)
-
-    $re{$var}{$i[0]}        = $rval if scalar(@i) == 1;
-    $re{$var}{$i[0]}{$i[1]} = $rval if scalar(@i) == 2;
+  # following code builds hash so that [0][1][2] becomes $h->{0}{1}{2};
+  # the hash creation is additive, so preexisting hashes are reused, not
+  # overwritten
+  
+    my $h = $re{$var};
+    for my $k (@i[0 .. $#i-1]) {
+      $h->{$k} = {} if !ref($h->{$k});
+      $h = $h->{$k};
+    }
+    $h->{$i[-1]} = $rval;
   
   #--- debugging info
   
     if($fh) {
       my $rval_txt = join(',', %$rval);
-      printf $fh "%s.%s = %s\n", $var, $i[0], $rval_txt if scalar(@i) == 1;
-      printf $fh "%s.%s.%s = %s\n", $var, $i[0], $i[1], $rval_txt if scalar(@i) == 2;
+      printf $fh "%s.%s = %s\n", $var, join('.', @i), $rval_txt;
     }
 
   #--- line counter
