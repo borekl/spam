@@ -1164,6 +1164,16 @@ sub snmp_get_tree
     my $l = shift;
     my $tm2;
 
+  #--- FIXME: skip lines that don't contain '='
+  
+  # This is ugly hack to work around the way snmp-utils display long binary
+  # strings (type "Hex-STRING"): these are displayed on multiple line, which
+  # causes problems with current way of parsing the output. So this should
+  # be reimplemented to accomodate this, but meanwhile we just slurp the hex
+  # values on the first line and discard the rest.
+  
+    return if $l !~ /=/;
+  
   #--- split into variable and value
 
     my ($var, $val) = split(/ = /, $l);
