@@ -1181,6 +1181,9 @@ sub snmp_get_tree
   #--- parse the right side (value)
 
     my $rval = snmp_value_parse($val);
+    if($ENV{'SPAM_DEBUG'}) {
+      $rval->{'src'} = $l;
+    }
 
   #--- parse the left side (variable, indexes)
 
