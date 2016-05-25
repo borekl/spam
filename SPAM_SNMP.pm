@@ -1188,25 +1188,31 @@ sub snmp_get_tree
   #--- parse the left side (variable, indexes)
 
     $var =~ s/^.*:://;  # drop the MIB name
-    $var =~ s/\.0$//;   # drop the .0
+    #$var =~ s/\.0$//;   # drop the .0
 
   #--- get indexes
 
-    $idx = $var;
-    $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
-    $var = $1;
-    my @i = split(/\]\[/, $idx);
-    for (@i) { 
-      s/^"(.*)"$/$1/; 
-      s/^STRING:\s*//;
-    };
-    
+    my @i;
+    if($var =~ s/\.0$//) {
+      @i = (0);
+    } else
+    {
+      $idx = $var;
+      $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
+      $var = $1;
+      @i = split(/\]\[/, $idx);
+      for (@i) { 
+        s/^"(.*)"$/$1/; 
+        s/^STRING:\s*//;
+      }
+    }
+
   #--- store the values
 
   # following code builds hash so that [0][1][2] becomes $h->{0}{1}{2};
   # the hash creation is additive, so preexisting hashes are reused, not
   # overwritten
-  
+
     if(!ref($re{$var})) { $re{$var} = {}; }
     my $h = $re{$var};
     for my $k (@i[0 .. $#i-1]) {
