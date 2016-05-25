@@ -1193,7 +1193,10 @@ sub snmp_get_tree
     $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
     $var = $1;
     my @i = split(/\]\[/, $idx);
-    for (@i) { s/^"(.*)"$/$1/; };
+    for (@i) { 
+      s/^"(.*)"$/$1/; 
+      s/^STRING:\s*//;
+    };
     
   #--- store the values
 
