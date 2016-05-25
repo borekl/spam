@@ -1195,12 +1195,13 @@ sub snmp_get_tree
     my @i = split(/\]\[/, $idx);
     for (@i) { s/^"(.*)"$/$1/; };
     
-  #--- store the values #
+  #--- store the values
 
   # following code builds hash so that [0][1][2] becomes $h->{0}{1}{2};
   # the hash creation is additive, so preexisting hashes are reused, not
   # overwritten
   
+    if(!ref($re{$var})) { $re{$var} = {}; }
     my $h = $re{$var};
     for my $k (@i[0 .. $#i-1]) {
       $h->{$k} = {} if !ref($h->{$k});
