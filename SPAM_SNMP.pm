@@ -1171,7 +1171,7 @@ sub snmp_get_tree
   #--- FIXME: skip lines that don't contain '='
   
   # This is ugly hack to work around the way snmp-utils display long binary
-  # strings (type "Hex-STRING"): these are displayed on multiple line, which
+  # strings (type "Hex-STRING"): these are displayed on multiple lines, which
   # causes problems with current way of parsing the output. So this should
   # be reimplemented to accomodate this, but meanwhile we just slurp the hex
   # values on the first line and discard the rest.
@@ -1192,7 +1192,6 @@ sub snmp_get_tree
   #--- parse the left side (variable, indexes)
 
     $var =~ s/^.*:://;  # drop the MIB name
-    #$var =~ s/\.0$//;   # drop the .0
 
   #--- get indexes
 
@@ -1206,8 +1205,8 @@ sub snmp_get_tree
       $var = $1;
       @i = split(/\]\[/, $idx);
       for (@i) { 
-        s/^"(.*)"$/$1/; 
-        s/^STRING:\s*//;
+        s/^"(.*)"$/$1/;      # drop double quotes around index value
+        s/^STRING:\s*//;     # drop type prefix from strings
       }
     }
 
