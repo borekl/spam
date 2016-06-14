@@ -649,46 +649,92 @@ sub snmp_get_stp_root_port
 
 
 #===========================================================================
-# Retrieve ARP entries from list of routers
-#
-# Arguments: 1. arp hosts list with entries in form [ host, community ]
-#            2. default community
-#            3. callback that gets three arguments; undef means no callback
-#               2a. number of arp servers
-#               2b. number of currently processed arp server
-#               2c. name of currently processed arp server
-# Returns:   1. MAC->IP hash reference
+# Retrieve ARP entries from list of routers. It returns mac->ip address hash
+# reference. The optional callback is there to facilitate caller-side
+# progress info display; arguments are: 1. number of arp servers, 2. number
+# of currently processed entry, 3. name of currently processed server.
 #===========================================================================
-
 
 sub snmp_get_arptable
 {
-  my ($arpdef, $def_cmty, $disp_callback)= @_;
-  my %arptable;
-  my $arpserv_num = scalar(@$arpdef);
-  my $arpserv_cur = 1;
+  #--- arguments
 
-  for my $serv (@$arpdef) {
-    my $cmty = $serv->[1];
-    if(!$cmty) { $cmty = $def_cmty; }
-    if($disp_callback) { &$disp_callback($arpserv_num, $arpserv_cur, $serv); }
-    open(F, "$snmpwalk " . $serv->[0] . " -c " . $cmty
-         . " .1.3.6.1.2.1.4.22 |") or return undef;
-    while(<F>) {
-      /\.\d+\.(\d+)\.(\d+)\.(\d+)\.(\d+) \"(..) (..) (..) (..) (..) (..) \"/ && do {
-        my $ip = "$1.$2.$3.$4";
-        my $mac = "${5}:${6}:${7}:${8}:${9}:${10}";
-        if(!exists $arptable{$mac}) {
+  my (
+    $arpdef,     # 1. arp servers list in form [ host, community ]
+    $def_cmty,   # 2. default SNMP community
+    $cb          # 3. callback (optional)
+  ) = @_;
+
+  #--- other variables
+
+  my %tree;
+  my %arptable;
+  my $cfg = load_config();
+
+  #-------------------------------------------------------------------------
+  #--- read the relevant MIB sections --------------------------------------
+  #-------------------------------------------------------------------------
+
+  for my $arp_source (@$arpdef) {
+    my $r;
+
+  #--- SNMP community, either default or per-server
+
+    my $cmty = $arp_source->[1] // $def_cmty;
+    $tree{$arp_source->[0]} = {};
+
+  #--- read the MIB tree
+
+    for my $tree_root (@{$cfg->{'snmp'}{'arptable'}{'entries'}}) {
+      $r = snmp_get_tree(
+        'snmpwalk',
+        $arp_source->[0],
+        $cmty,
+        $cfg->{'snmp'}{'arptable'}{'mib'},
+        $tree_root
+      );
+
+  #--- handle the result
+
+      if(!ref($r)) {
+        die sprintf("failed to get arptable from %s (%s)", $arp_source->[0], $r);
+      } else {
+        my $t = $tree{$arp_source->[0]};
+        %$t = ( %$t, %$r );
+      }
+    }
+
+  #--- display message through callback
+
+    if($cb) {
+      $cb->($arp_source->[0]);
+    }
+  }
+
+  #-------------------------------------------------------------------------
+  #--- transform the data int the format used by spam.pl
+  #-------------------------------------------------------------------------
+
+  for my $host (keys %tree) {
+    for my $if (keys %{$tree{$host}{'ipNetToMediaPhysAddress'}}) {
+      for my $ip (keys %{$tree{$host}{'ipNetToMediaPhysAddress'}{$if}}) {
+        if(
+          $tree{$host}{'ipNetToMediaType'}{$if}{$ip}{'enum'} eq 'dynamic'
+        ) {
+          my $mac = $tree{$host}{'ipNetToMediaPhysAddress'}{$if}{$ip}{'value'};
+          $mac = join(':', map {
+            if(length($_) < 2) { $_ = '0' . $_; } else { $_; }
+          } split(/:/, $mac));
           $arptable{$mac} = $ip;
         }
       }
     }
-    close(F);
-    $arpserv_cur++;
   }
+
+  #--- finish
+
   return \%arptable;
 }
-
 
 
 #==========================================================================
