@@ -1365,7 +1365,7 @@ sub snmp_get_tree
       $cnt = 0;
       $tm1 = $tm2;
       $var1 = $var;
-      $cback->($var, $cnt);
+      $cback->($var, $cnt) if $cback;
     } elsif(($tm2 - $tm1) >= $delay) {
       $cback->($var, $cnt) if $cback;
       $tm1 = $tm2;
