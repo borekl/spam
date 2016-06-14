@@ -1264,20 +1264,21 @@ sub snmp_get_tree
   my $var1;
   my $delay = 1;
   my $fh;
-  
+
   #--- initiate debugging
-  
+
   if($ENV{'SPAM_DEBUG'}) {
     open($fh, '>>', "snmp_tree.$$.log");
     if($fh) {
-      printf $fh "---> SNMP TREE %s::%s", $args[3], $args[4];
+      printf $fh "--> SNMP TREE %s::%s", $args[3], $args[4];
       if($args[2] =~ /\@(\d+)$/) {
         printf $fh " (%d)", $1;
       }
       print $fh "\n";
+      printf $fh "--> %s\n", snmp_command(@args);
     }
   }
-  
+
   #--- initial callback call
 
   if($cback) {
@@ -1292,7 +1293,7 @@ sub snmp_get_tree
     my $tm2;
 
   #--- FIXME: skip lines that don't contain '='
-  
+
   # This is ugly hack to work around the way snmp-utils display long binary
   # strings (type "Hex-STRING"): these are displayed on multiple lines, which
   # causes problems with current way of parsing the output. So this should
