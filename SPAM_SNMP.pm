@@ -21,7 +21,6 @@ use integer;
   snmp_get_sysobjid
   snmp_get_sysuptime
   snmp_get_arptable
-  snmp_mac_table
   snmp_get_stp_root_port
   snmp_get_vtp_info
   snmp_vlanlist
@@ -478,116 +477,6 @@ sub snmp_dot1d_idx
   }
 
   return \%dot1dIdx;
-}
-
-
-#==========================================================================
-# This function retrieves MAC address table associated with switch ports.
-#
-# Arguments: 1. host
-#            2. community
-#            3. vlan list (may be undef'd)
-#            4. CDP cache (result of snmp_cdp_cache())
-#            5. callback that gets arguments:
-#               a - number of MACs so far
-#==========================================================================
-
-sub snmp_mac_table
-{
-  my ($host, $ip, $community, $vlanlist, $cdpcache, $disp_callback) = @_;
-  my %macs;
-  my %macs_status;
-  my @vlans;
-  my $macs_cur = 0;
-  my $com;
-  my %macs_plain;    # for removing duplicities
-
-  #--- process community argument
-
-  $com = $community;
-  $com =~ s/@.*$//;
-
-  #--- get vlan list (dummy 'vlan 0' if none supplied)
-
-  &$disp_callback(0) if defined $disp_callback;
-  if(defined $vlanlist) {
-    @vlans = ( keys %$vlanlist );
-  } else {
-    @vlans = ( 0 );
-  }
-
-  ### NEW CODE ###
-
-  #my %macs_dot1d;
-  #foreach my $k (@vlans) {
-  #  my $macs_per_vlan = 0;
-  #  open(F, "$snmpwalk $ip -c ${com}${sel} $snmp_fields{dot1dTpFdbPort} |") || return undef;
-  #  while(<F>) {
-  #    chomp();
-  #    # $1-6 contain MAC address octets, $7 contains dot1d index number
-  #    /\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\s+(\d+)$/ && do {
-  #      my $mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", $1, $2, $3, $4, $5, $6);
-  #      $macs_dot1d{$7} = $mac;
-  #      $macs_per_vlan++;
-  #    };
-  #  }
-  #  close(F);
-  #  next if $macs_per_vlan == 0;
-  #}
-
-  ################
-
-  #--- cycle through all VLANs
-
-  foreach my $k (@vlans) {
-    my $sel = ($k == 0 ? "" : "\@$k");
-    # my $dot1dIdx = snmp_dot1d_idx($host, $ip, $community, $vlanlist);
-    my $dot1dIdx = snmp_dot1d_idx($host, $ip, $community, {$k => undef});
-
-    #--- second get the bridging table (MAC -> status)
-
-    open(F, "$snmpwalk $ip -c ${com}${sel} $snmp_fields{dot1dTpFdbStatus} |") or return undef;
-    while(<F>) {
-      chomp;
-      /\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\s+(\d+)$/ && do {
-        my $mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", $1, $2, $3, $4, $5, $6);
-        $macs_status{$mac} = $7;
-      }
-    }
-    close(F);
-
-    #--- then get the bridging table (MAC -> port)
-
-    open(F, "$snmpwalk $ip -c ${com}${sel} $snmp_fields{dot1dTpFdbPort} |") or return undef;
-    while(<F>) {
-      chomp;
-      /\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\.(\d+)\s+(\d+)$/ && do {
-        my $mac = sprintf("%02x:%02x:%02x:%02x:%02x:%02x", $1, $2, $3, $4, $5, $6);
-        my $if = $dot1dIdx->{$7};
-
-        # ignoring all ports receiving CDP packets; this certainly isn't
-        # optimal, since it causes ports connecting to routers to be
-        # ignored as well
-
-        if(!exists $cdpcache->{$if}) {
-
-#          if((grep { $_ eq $mac; } @{$macs{$if}}) == 0   # add only macs we've not seen before
-#             && $macs_status{$mac} == 3) {               # AND add only learned macs
-          if(
-            !exists($macs_plain{$mac})   # add only macs we've not seen before
-            && ( $macs_status{$mac} == 3 || $macs_status{$mac} == 5)
-          ) {               # AND add only learned macs
-            push(@{$macs{$if}}, $mac);
-            $macs_plain{$mac} = undef;
-            $macs_cur++;
-            &$disp_callback($macs_cur) if defined $disp_callback;
-          }
-        }
-      }
-    }
-    close(F);
-  }
-  return \%macs;
 }
 
 
