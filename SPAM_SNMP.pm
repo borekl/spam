@@ -26,11 +26,6 @@ use integer;
 );
 
 
-#$snmpwalk = "/usr/bin/snmpbulkwalk -t 10 -m /dev/null -v 2c -Osqn -Iu";
-#$snmpwalk = "snmpwalk -t 10 -m /dev/null -Os -Oq";
-#$snmpget = "/usr/bin/snmpget -t 10 -m /dev/null -Osqn -v 2c -Iu";
-
-
 #==========================================================================
 # Select SNMP fields OIDs
 #==========================================================================
