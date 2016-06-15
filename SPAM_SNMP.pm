@@ -17,7 +17,6 @@ use integer;
 @ISA = qw(Exporter);
 @EXPORT = qw(
   snmp_entity_to_hwinfo
-  snmp_cat6k_vlan_name
   snmp_cdp_cache
   snmp_get_syslocation
   snmp_get_sysobjid
@@ -169,25 +168,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#==========================================================================
-# Retrieve VLAN name from Cisco Catalyst 6XXX switch
-#==========================================================================
-
-sub snmp_cat6k_vlan_name
-{
-  die; ### THIS FUNCTION NOT IN USE
-
-  my ($host, $ip, $community, $vn) = @_;
-
-  open(SW, "$snmpget $ip -c $community .1.3.6.1.4.1.9.9.46.1.3.1.1.4.1.$vn |") or return undef;
-  $_ = <SW>;
-  chomp;
-  /^.*\"(.*)\"$/;
-  close(SW);
-  return $1;
 }
 
 
