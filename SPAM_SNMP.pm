@@ -21,7 +21,6 @@ use integer;
   snmp_get_sysobjid
   snmp_get_sysuptime
   snmp_get_arptable
-  snmp_get_stp_root_port
   snmp_get_vtp_info
   snmp_vlanlist
   snmp_get_tree
@@ -312,38 +311,6 @@ sub snmp_get_vtp_info
   $mode = $1;
 
   return($name, $mode);
-}
-
-
-#===========================================================================
-# Get STP Root port ifindex
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. root port ifindex, -1 in case of root bridge or undef in
-#               case of error
-#===========================================================================
-
-sub snmp_get_stp_root_port
-{
-  my ($host, $ip, $community) = @_;
-  my $oid = $snmp_fields{dot1dStpRootPort};
-  my ($i, $if);
-
-  open(SW, "$snmpget $ip -c $community $oid |") or return undef;
-  $_ = <SW>;
-  chomp;
-  /(\d+)$/;
-  close(SW);
-  $i = $1;
-  if($i == 0) { return -1; } # this switch is designated root
-  $oid = $snmp_fields{dot1dBasePortIfIndex} . ".$i";
-  open(SW, "$snmpget $ip -c $community $oid |") or return undef;
-  $_ = <SW>;
-  chomp;
-  /(\d+)$/;
-  close(SW);
-  return $1;
 }
 
 
