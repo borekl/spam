@@ -1099,6 +1099,7 @@ sub sql_transaction
         printf $fh "%d. %s\n", $line++, 
           sql_show_query($row->[0], [ @{$row}[1 .. scalar(@$row)-1] ]);
       }
+      printf $fh "---> TRANSACTION LOG END\n";
     }
   }
 
@@ -1127,18 +1128,10 @@ sub sql_transaction
       my $r = $sth->execute(@args);
       my $err1 = $sth->errstr();
       if(!$r) {
-        if($dbh->rollback()) {
-          die sprintf(
-            "Database update failed (%s), transaction rolled back\n", 
-            $err1
-          );
-        } else {
-          my $err2 = $dbh->errstr();
-          die sprintf(
-            "Database update failed (%s), transaction rollback failed (%s)\n",
-            $err1, $err2
-          );
-        }
+        die sprintf(
+          "Database update failed (%s), transaction rolled back\n", 
+          $err1
+        );
       }
     }
   
@@ -1151,19 +1144,25 @@ sub sql_transaction
     
   #--- log debug info into transaction log
 
-  if($fh) {
-    if($@) {
-      chomp($@);
-      printf $fh "---> TRANSACTION FAILED (%s)\n", $@;
+  my $rv;
+  if($@) {
+    chomp($@);
+    $rv = $@;
+    printf $fh "---> TRANSACTION FAILED (%s)\n", $@ if $fh;
+    if(!$dbh->rollback()) {
+      printf $fh "---> TRANSACTION ABORT FAILED (%s)\n", $dbh->errstr() if $fh;
+      $rv .= ', ' . $dbh->errstr();
     } else {
-      printf $fh "---> TRANSACTION FINISHED SUCCEFULLY\n";
+      printf $fh "---> TRANSACTION ABORTED SUCCESSFULLY\n" if $fh
     }
+  } else {
+    printf $fh "---> TRANSACTION FINISHED SUCCESSFULLY\n" if $fh;
   }
 
   #--- finish successfully
 
   close($fh) if $fh;  
-  return undef;
+  return $rv;
 }
 
 
