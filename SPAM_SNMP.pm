@@ -16,7 +16,6 @@ use integer;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-  snmp_merge_by_ifindex
   snmp_cat6k_modinfo
   snmp_cat4k_ios_modinfo
   snmp_cat6k_ios_modinfo
@@ -180,44 +179,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#==========================================================================
-# This function merges several hashes from snmp_getif into one that has
-# array references; where the values are the respective hash values.
-#
-# Arguments: 1. reference to array of hash references (from snmp_getif)
-#==========================================================================
-
-sub snmp_merge_by_ifindex
-{
-  my ($in) = @_;
-  my %result;
-  my $i = 0;
-  my @keys;
-
-  #--- create list of all hash keys ---
-  foreach my $k (@$in) {
-    foreach my $l (keys %$k) {
-      if(grep { $_ == $l } @keys) {
-        next;
-      } else {
-        push(@keys, $l);
-      }
-    }
-  }
-
-  #--- now run through the keys ---
-  foreach my $k (@keys) {
-    my @valarr;
-    foreach my $l (@$in) {
-      push(@valarr, $l->{$k});
-    }
-    $result{$k} = \@valarr;
-  }
-
-  return \%result;
 }
 
 
