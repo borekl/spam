@@ -16,7 +16,6 @@ use integer;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-  snmp_reindex_cat
   snmp_merge_by_ifindex
   snmp_cat6k_modinfo
   snmp_cat4k_ios_modinfo
@@ -181,33 +180,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#==========================================================================
-# This function reindexes data retrieved using snmp_getif_cat() call
-# to standard ifindex way.
-#
-# Arguments: 1. data to be reindexed (hash reference)
-#            2. cross index (portIfIndex data, hash reference)
-# Returns:   1. ifindex -> value hash reference
-#
-# Example:   $data = snmp_getif_cat($host, "gere167DE", "portName");
-#            $idx = snmp_getif_cat($host, "gere167DE", "portIfIndex");
-#            $result = snmp_reindex_cat($data, $idx);
-#==========================================================================
-
-sub snmp_reindex_cat
-{
-  my ($ifdata, $xidx) = @_;
-  my %result;
-
-  if(!$ifdata || !$xidx) { return undef; }
-  foreach my $k (keys %$ifdata) {
-    my $ifindex = $xidx->{$k};
-    $result{$ifindex} = $ifdata->{$k};
-  }
-  return \%result;
 }
 
 
