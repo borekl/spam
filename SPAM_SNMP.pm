@@ -16,7 +16,6 @@ use integer;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-  snmp_hwinfo_entity_mib
   snmp_entity_to_hwinfo
   snmp_cat6k_vlan_name
   snmp_cdp_cache
@@ -80,12 +79,6 @@ my %snmp_fields = (
   # moduleModel
   moduleModelIOS => ".1.3.6.1.4.1.9.9.92.1.1.1.3", #.iso.org.dod.internet.private.enterprises.cisco.ciscoMgmt.92.1.1.1.3
   moduleSerialNumberStringIOS => ".1.3.6.1.4.1.9.9.92.1.1.1.2", #
-  # Cat6500 IOS
-  entPhysicalEntry => '.1.3.6.1.2.1.47.1.1.1.1',
-  entPhysicalContainedIn => '.1.3.6.1.2.1.47.1.1.1.1.4',
-  entPhysicalClass => '.1.3.6.1.2.1.47.1.1.1.1.5',
-  entPhysicalModelName => ".1.3.6.1.2.1.47.1.1.1.1.13",
-  entPhysicalSerialNum => ".1.3.6.1.2.1.47.1.1.1.1.11",
   #--- Cisco Catalyst 29XX port MIB ---
   c2900PortIfIndex => '.1.3.6.1.4.1.9.9.87.1.4.1.1.25', # for conversion to ifindex
   c2900PortDuplexStatus => '.1.3.6.1.4.1.9.9.87.1.4.1.1.32', # 1=full,2=half
@@ -670,131 +663,6 @@ sub snmp_mac_table
     close(F);
   }
   return \%macs;
-}
-
-
-#==========================================================================
-# This function retrieves information about components installed in
-# a Catalyst 6000-series switch with IOS.
-#
-# Uses ENTITY-MIB.
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. %hwinfo  hash reference or error message string in form
-#               %hwinfo -> CHASSIS-NO MOD-NO -> [sn|model|..] -> value
-#==========================================================================
-
-sub snmp_hwinfo_entity_mib
-{
-  my ($host, $ip, $community) = @_;
-  my $hwinfo;
-  my %tmpinfo;
-  my $check;
-  my $cidx = 1000;     # incremental index for non-module components
-  my $cmd_snmp_phys = sprintf('%s -c %s %s %s |', $snmpwalk, $community, $ip, $snmp_fields{entPhysicalEntry});
-
-  eval {
-
-    #--- read entire entPhysicalTable
-
-    open(SW, $cmd_snmp_phys) || die "Cannot run snmp command\n";
-    while(<SW>) {
-      /\.(\d+)\.(\d+) (\d+)$/ && do { #--- numeric value
-        $tmpinfo{$1}{$2} = $3;
-      };
-      /\.(\d+)\.(\d+) \"(.*)\"$/ && do { #--- string value
-        $tmpinfo{$1}{$2} = $3;
-      };
-    }
-    close(SW);
-
-    #--- processing
-    #
-    # entPhysTable sub-tables
-    #  2 .. entPhysicalDescription
-    #  4 .. entPhysicalContainedIn
-    #  5 .. entPhysicalClass (3-chassis, 5-container, 6-ps, 9-linecard)
-    #  7 .. entPhysicalName
-    #  8 .. entPhysicalHwRev
-    #  9 .. entPhysicalFwRev
-    # 10 .. entPhysicalSwRev
-    # 11 .. entPhysicalSerialNum
-    # 13 .. entPhysicalModelName
-
-    for my $idx (keys %{$tmpinfo{5}}) {
-      my ($class, $container, $physname);
-      my $chassis = 0;
-      my $slot = 0;
-
-      #--- entPhysicalClass
-
-      $class = $tmpinfo{5}{$idx};
-
-      #--- chassis number (in VSS systems)
-      # the entPhysicalName for a container is either "Physical Slot N"
-      # or "Chassis N Physical Slot M"
-
-      if($class == 6 || $class == 9) {
-        $container = $tmpinfo{4}{$idx};
-        $physname  = $tmpinfo{7}{$container};
-        $physname =~ /chassis (\d+)/i && do {
-          $chassis = $1;
-        };
-      }
-      elsif($class == 3) {
-        $physname  = $tmpinfo{7}{$idx};
-        $physname =~ /chassis (\d+)/i && do {
-          $chassis = $1;
-        };
-      }
-
-      #--- chassis
-
-      if($tmpinfo{5}{$idx} == 3) {
-        $hwinfo->{$chassis}{$cidx}{type}  = 'chassis';
-        $hwinfo->{$chassis}{$cidx}{descr} = $tmpinfo{2}{$idx};
-        $hwinfo->{$chassis}{$cidx}{model} = $tmpinfo{13}{$idx};
-        $hwinfo->{$chassis}{$cidx}{sn}    = $tmpinfo{11}{$idx};
-        $hwinfo->{$chassis}{$cidx}{hwrev} = $tmpinfo{8}{$idx};
-        $cidx++;
-      }
-
-      #--- power supply
-
-      elsif($tmpinfo{5}{$idx} == 6) {
-        $hwinfo->{$chassis}{$cidx}{type} = 'ps';
-        $hwinfo->{$chassis}{$cidx}{descr} = $tmpinfo{2}{$idx};
-        $hwinfo->{$chassis}{$cidx}{model} = $tmpinfo{13}{$idx};
-        $hwinfo->{$chassis}{$cidx}{sn}    = $tmpinfo{11}{$idx};
-        $hwinfo->{$chassis}{$cidx}{hwrev} = $tmpinfo{8}{$idx};
-        $cidx++;
-      }
-
-      #--- module
-
-      elsif($tmpinfo{5}{$idx} == 9) {
-        $physname =~ /slot (\d+)/i && do {
-          $slot = $1;
-          $hwinfo->{$chassis}{$slot}{type}  = 'linecard';
-          $hwinfo->{$chassis}{$slot}{model} = $tmpinfo{13}{$idx};
-          $hwinfo->{$chassis}{$slot}{sn}    = $tmpinfo{11}{$idx};
-          $hwinfo->{$chassis}{$slot}{hwrev} = $tmpinfo{8}{$idx};
-          $hwinfo->{$chassis}{$slot}{fwrev} = $tmpinfo{9}{$idx};
-          $hwinfo->{$chassis}{$slot}{swrev} = $tmpinfo{10}{$idx};
-          $hwinfo->{$chassis}{$slot}{descr} = $tmpinfo{2}{$idx};
-        };
-        next;
-      }
-    }
-  };
-
-  if($@) {
-    chomp($@);
-    return 'failed (' . $@ . ')';
-  }
-
-  return $hwinfo;
 }
 
 
