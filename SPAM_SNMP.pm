@@ -21,7 +21,6 @@ use integer;
   snmp_get_sysobjid
   snmp_get_sysuptime
   snmp_get_arptable
-  snmp_get_vtp_info
   snmp_vlanlist
   snmp_get_tree
 );
@@ -278,39 +277,6 @@ sub snmp_get_sysuptime
   $v = $t - $u;
 
   return $v;
-}
-
-
-#===========================================================================
-# Get VTP domain name and VTP mode for a switch
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. VTP domain name
-#            2. VTP mode (1 - client, 2 - server, 3 - transparent)
-#===========================================================================
-
-sub snmp_get_vtp_info
-{
-  my ($host, $ip, $community) = @_;
-  my $vtp_n = $snmp_fields{managementDomainName};
-  my $vtp_m = $snmp_fields{managementDomainLocalMode};
-  my ($name, $mode);
-
-  open(SW, "$snmpget $ip -c $community ${vtp_n}.1 |") or return undef;
-  $_ = <SW>;
-  chomp;
-  / \"(.*)\"$/;
-  close(SW);
-  $name = $1;
-
-  open(SW, "$snmpget $ip -c $community ${vtp_m}.1 |") or return undef;
-  $_ = <SW>;
-  chomp;
-  / (\d+)$/;
-  $mode = $1;
-
-  return($name, $mode);
 }
 
 
