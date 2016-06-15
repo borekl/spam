@@ -16,9 +16,6 @@ use integer;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-  snmp_cat6k_modinfo
-  snmp_cat4k_ios_modinfo
-  snmp_cat6k_ios_modinfo
   snmp_hwinfo_entity_mib
   snmp_entity_to_hwinfo
   snmp_cat6k_vlan_name
@@ -179,52 +176,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#==========================================================================
-# This function retrieves information about modules installed in a Catalyst
-# 6XXX switch (serial number and model).
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. %modinfo. hash reference or error message string in form
-#                     %modinfo -> MOD-NUMBER -> [sn|model] -> value
-#==========================================================================
-
-sub snmp_cat6k_modinfo
-{
-  die; ### THIS FUNCTION NO LONGER IN USE
-
-  my ($host, $ip, $community) = @_;
-  my %modinfo;
-  my $moduleModel = $snmp_fields{moduleModel};
-  my $moduleSerialNumberString = $snmp_fields{moduleSerialNumberString};
-
-  eval {
-
-    #--- module model ---
-
-    open(SW, "$snmpwalk -c $community $ip $moduleModel |") or die "Cannot run snmp command\n";
-    #open(SW, "$snmpwalk $host $community .1.3.6.1.4.1.9.5.1.3.1.1.17 |") or die "Cannot run snmp command\n";
-    while(<SW>) {
-      /\.(\d{1,2}) \"(.*)\"$/ && do { $modinfo{$1}{model} = $2; };
-    }
-    close(SW);
-    #--- module serial number ---
-    open(SW, "$snmpwalk -c $community $ip $moduleSerialNumberString |") or die "Cannot run snmp command\n";
-    #open(SW, "$snmpwalk $host $community .1.3.6.1.4.1.9.5.1.3.1.1.26 |") or die "Cannot run snmp command\n";
-    while(<SW>) {
-      chomp;
-      /\.(\d{1,2}) \"(.*)\"$/ && do { $modinfo{$1}{sn} = $2; }
-    }
-    close(SW);
-  };
-  if($@) {
-    chomp($@);
-    return 'failed (' . $@ . ')';
-  }
-  return \%modinfo;
 }
 
 
