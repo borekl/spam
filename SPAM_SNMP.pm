@@ -17,7 +17,6 @@ use integer;
 @ISA = qw(Exporter);
 @EXPORT = qw(
   snmp_entity_to_hwinfo
-  snmp_cdp_cache
   snmp_get_syslocation
   snmp_get_sysobjid
   snmp_get_sysuptime
@@ -199,60 +198,6 @@ sub snmp_vlanlist
   }
   close(SW);
   return \%vlan_list;
-}
-
-
-#==========================================================================
-# Retrieves CDP cache from Cisco device
-#
-# Arguments: 1. Host
-#            2. Community
-# Returns:   1. Resulting hash reference in form
-#               % -> IFINDEX -> [platform|caps|devport] -> VALUE
-#==========================================================================
-
-sub snmp_cdp_cache
-{
-  my ($host, $ip, $community) = @_;
-  my %cdp_cache;
-  my $cdpCachePlatform = ".1.3.6.1.4.1.9.9.23.1.2.1.1.8";
-  my $cdpCacheCapabilities = ".1.3.6.1.4.1.9.9.23.1.2.1.1.9";
-  my $cdpCacheDevicePort = ".1.3.6.1.4.1.9.9.23.1.2.1.1.7";
-
-  #--- platform ---
-  open(SW, "$snmpwalk $ip -c $community $cdpCachePlatform |") or return undef;
-  while(<SW>) {
-    chomp;
-    /\.(\d+)\.\d+ \"(.*)\"$/ && do { $cdp_cache{$1}{platform} = $2; };
-  }
-  close(SW);
-
-  #--- capabilities ---
-  open(SW, "$snmpwalk $ip -c $community $cdpCacheCapabilities |") or return undef;
-  while(<SW>) {
-    chomp;
-    /\.(\d+)\.\d+ \"(.*)\"$/ && do {
-      my $if = $1;
-      my $caps = $2;
-      $caps =~ /^([0-9A-F]{2}) ([0-9A-F]{2}) ([0-9A-F]{2}) ([0-9A-F]{2}) $/;
-      $cdp_cache{$if}{caps} = hex("$1$2$3$4");
-    };
-  }
-  close(SW);
-
-  #--- device port ---
-  open(SW, "$snmpwalk $ip -c $community $cdpCacheDevicePort |") or return undef;
-  while(<SW>) {
-    chomp;
-    /\.(\d+)\.\d+ \"(.*)\"$/ && do {
-      my ($if, $p) = ($1, $2);
-      $p =~ s/\s$//g;
-      $cdp_cache{$if}{devport} = $p;
-    };
-  }
-  close(SW);
-
-  return \%cdp_cache;
 }
 
 
