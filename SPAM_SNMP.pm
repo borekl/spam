@@ -36,7 +36,6 @@ use integer;
   snmp_get_stp_root_port
   snmp_get_vtp_info
   snmp_vlanlist
-  snmp_portfast
   snmp_get_tree
 );
 
@@ -106,9 +105,6 @@ my %snmp_fields = (
   vtpVlanName => '.1.3.6.1.4.1.9.9.46.1.3.1.1.4',
   #--- Etherlike MIB (supported by all but C2900 series ---
   dot3StatsDuplexStatus => '.1.3.6.1.2.1.10.7.2.1.19', # 2=half,3=full
-  #--- CISCO-STP-EXTENSIONS-MIB
-  stpxFastStartPortEnable => '.1.3.6.1.4.1.9.9.82.1.9.3.1.2', # 1=true,2=false
-  stpxFastStartPortMode => '.1.3.6.1.4.1.9.9.82.1.9.3.1.3', # 1=ena,2=disa,3=trunk,4=default
   #--- dot1x IEEE MIB
   dot1xAuthAuthControlledPortControl => '.1.0.8802.1.1.1.1.2.1.1.6', # 1=forceUnauth,2=auto,3=forceAuth
   dot1xAuthAuthControlledPortStatus => '.1.0.8802.1.1.1.1.2.1.1.5', # 1=authorized,2=unauthorized
@@ -888,47 +884,6 @@ sub snmp_mac_table
     close(F);
   }
   return \%macs;
-}
-
-
-#==========================================================================
-# This function loads portfast mode of switch ports.
-#
-#==========================================================================
-
-sub snmp_portfast
-{
-  my ($host, $ip, $community, $vlanlist) = @_;
-  my $dot1dIdx = snmp_dot1d_idx($host, $ip, $community, $vlanlist);
-  my %r;
-
-  #--- processing arguments
-
-  if(defined $vlanlist) {
-      @vlans = ( keys %$vlanlist );
-  } else {
-    @vlans = ( 0 );
-  }
-  my $com = $community;
-  $com =~ s/\@.*// ;
-
-  return undef if !ref($dot1dIdx);
-
-  #--- iterate over all VLANs
-
-  foreach my $k (@vlans) {
-    my $sel = ($k == 0 ? "" : "\@$k");
-    my $s = "$snmpwalk $ip -c ${com}${sel} $snmp_fields{stpxFastStartPortMode} |";
-    open(F, $s) or return undef;
-    while(<F>) {
-      chomp;
-      /\.(\d+)\s(\d)$/ && do {
-        my ($idx,$val) = ($1, $2);
-        $r{$dot1dIdx->{$idx}} = $val;
-      };
-    }
-  }
-  return \%r;
 }
 
 
