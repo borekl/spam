@@ -16,9 +16,6 @@ use integer;
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-  snmp_getif
-  snmp_getif_cafSMS
-  snmp_getif_cat
   snmp_reindex_cat
   snmp_merge_by_ifindex
   snmp_cat6k_modinfo
@@ -184,101 +181,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#==========================================================================
-# This function pulls given ifEntry field for all interfaces  from SNMP
-# agent.
-#
-# Arguments: 1. host
-#            2. community
-#            3. field
-# Returns:   1. ifindex -> value hash reference or undef on error
-#==========================================================================
-
-sub snmp_getif
-{
-  my ($host, $ip, $community, $field) = @_;
-  my %result;
-  my $oid = $snmp_fields{$field};
-
-  if(!$oid) { return undef; }
-  open(F, "$snmpwalk $ip -c $community $oid |") or return undef;
-  while(<F>) {
-    chomp;
-    my ($if, $val);
-    /^[0-9.]*\.(\d+) (.*)$/ && do {
-      $if = $1; $oval = $2;
-      if($oval =~ /^"(.*)"$/) { $val = $1; }
-      else { $val = $oval; }
-      $result{$if} = $val;
-    };
-  }
-  close(F);
-  return \%result;
-}
-
-
-#==========================================================================
-# This function pulls info from cafSessionMethodState variable.
-#
-# Arguments: 1. host
-#            2. community
-#            3. field
-#==========================================================================
-
-sub snmp_getif_cafSMS
-{
-  my ($host, $ip, $community) = @_;
-  my $oid = $snmp_fields{cafSessionMethodState};
-  my %result;
-
-  if(!$oid) { return undef; }
-  open(F, "$snmpwalk $ip -c $community $oid |") or return undef;
-  while(<F>) {
-    chomp;
-    /^(\.\d+){14}\.(\d+)(\.\d+){25}\.(\d+)\s(\d+)/ && do {
-      my ($if, $method, $val) = ($2, $4, $5);
-      $result{$if}{$method} = $val;
-    };
-  }
-  close(F);
-  return \%result;
-}
-
-
-#==========================================================================
-# This function pulls given ifPort/c2900PortEntry field for all interfaces
-# from SNMP agent. This function is specific to Catalyst 6XXX/29XX switches
-# as they have different indexing scheme for many fields. The hash key here
-# is "module/port" string.
-#
-# Arguments: 1. host
-#            2. community
-#            3. field
-# Returns:   1. "module/port" -> value hash reference
-#==========================================================================
-
-sub snmp_getif_cat
-{
-  my ($host, $ip, $community, $field) = @_;
-  my %result;
-  my $oid = $snmp_fields{$field};
-
-  if(!$oid) { return undef; }
-  open(F, "$snmpwalk $ip -c $community $oid |") or return undef;
-  while(<F>) {
-    chomp;
-    my ($p1, $p2, $val);
-    /^.*\.(\d+)\.(\d+) (.*)$/ && do {
-      $p1 = $1; $p2 = $2; $val = $3;
-      if($val =~ /^"(.*)"$/) { $val = $1; }
-      $result{"$p1/$p2"} = $val;
-    };
-  }
-  close(F);
-  return \%result;
 }
 
 
