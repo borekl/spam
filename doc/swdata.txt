@@ -4,9 +4,6 @@ Description of swdata structure used in spam.pl
 %swdata --- <HOST> -+- stats -----+- sysuptime
                     |             +- sysuptime2
                     |             +- syslocation
-                    +- stproot
-                    +- vtpdomain
-                    +- vtpmode
                     +- hw ---------- <SLOT#> ------------+- type
                     |                                    +- model
                     |                                    +- sn
