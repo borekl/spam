@@ -664,20 +664,4 @@ sub snmp_get_tree
 }
 
 
-#my $cfg = load_config('spam.cfg.json');
-#printf("Getting ifTable:    0");
-#my $r = snmp_get_tree(
-#  'snmpwalk', 'stos20', '600meC73nerOK', 'IF-MIB', 'ifTable',
-#  sub {
-#    local $| = 1;
-#    printf("\b\b\b\b%4d", $_[0]);
-#    return 2;
-#  }
-#);
-#if(!ref($r)) {
-#  print $r, "\n";
-#} else {
-#  print "\nfinished\n";
-#}
-
 1;
