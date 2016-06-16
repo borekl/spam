@@ -17,9 +17,7 @@ use integer;
 @ISA = qw(Exporter);
 @EXPORT = qw(
   snmp_entity_to_hwinfo
-  snmp_get_syslocation
-  snmp_get_sysobjid
-  snmp_get_sysuptime
+  snmp_system_info
   snmp_get_arptable
   snmp_vlanlist
   snmp_get_tree
@@ -194,84 +192,48 @@ sub snmp_vlanlist
 
 
 #===========================================================================
-# Get SNMP sysLocation variable
+# Get SNMPv2-MIB system tree; this contains some essential info about the
+# SNMP host incl. platform, uptime, location etc.
 #
 # Arguments: 1. host
 #            2. community
-# Returns:   1. value of sysLocation variable
+# Returns:   1. SNMP tree (hashref) or error string
+#            2. platform string from sysObjectID
+#            3. system uptime converted into UNIX epoch format
 #===========================================================================
 
-sub snmp_get_syslocation
-{
-  my ($host, $ip, $community) = @_;
-
-  open(SW, "$snmpget $ip -c $community .1.3.6.1.2.1.1.6.0 |") or return undef;
-  $_ = <SW>;
-  chomp;
-  /\"(.*)\"$/;
-  close(SW);
-  return $1;
-}
-
-
-#===========================================================================
-# Get SNMP sysObjectId and sysUpTime variables
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. vendor platform string
-#===========================================================================
-
-sub snmp_get_sysobjid
+sub snmp_system_info
 {
   my ($host, $community) = @_;
   my $cfg = load_config();
-  my $sysobjid;
 
-  my $r = snmp_lineread(
+  #--- the SNMPv2-MIB::system tree
+
+  my $r = snmp_get_tree(
     'snmpwalk',
     $host,
     $community,
-    $cfg->{'snmp'}{'sysobjidmibs'},
-    'sysObjectId',
-    sub {
-      if($_[0] =~ /::([a-zA-Z0-9]*)$/) {
-        $sysobjid = $1;
-        return 1;
-      }
-    }
+    $cfg->{'snmp'}{'system'}{'mib'},
+    $cfg->{'snmp'}{'system'}{'entries'}[0],
   );
 
-  return $r ? undef : $sysobjid;
-}
+  #--- process the output
 
+  if(!ref($r)) {
+    return $r;
+  } else {
 
-#===========================================================================
-# Get SNMP sysUpTime variables
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. last reload time in UNIX format
-#===========================================================================
+  #--- strip the MIB from the left-side
 
-sub snmp_get_sysuptime
-{
-  my ($host, $ip, $community) = @_;
-  my $sysUpTime = $snmp_fields{sysUpTime};
-  my ($d, $h, $m, $s, $t);
+    my $sysobjid = $r->{'sysObjectID'}{0}{'value'};
+    $sysobjid =~ s/^.*:://;
 
-  open(SW, "$snmpget $ip -c $community $sysUpTime |") or return undef;
-  $_ = <SW>;
-  chomp;
-  / (\d+):(\d+):(\d+):(\d+\.\d+)$/;
-  close(SW);
-  ($d, $h, $m, $s) = ($1, $2, $3, $4);
-  $t = time();
-  $s = int($s + 0.5);
-  $u = $s + ($m * 60) + ($h * 3600) + ($d * 86400);
-  $v = $t - $u;
+  #--- convert uptime time-ticks to UNIX epoch value
 
-  return $v;
+    my $sysuptime = $r->{'sysUpTimeInstance'}{'value'};
+    $sysuptime = time() - int($sysuptime / 100);
+    return ($r, $sysobjid, $sysuptime);
+  }
 }
 
 
