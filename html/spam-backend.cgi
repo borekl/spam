@@ -1026,9 +1026,14 @@ sub sql_search
   #--- compose hwinfo with search result
   
   # The search result need to be interleaved with module info for modular
-  # switches; but only when user is searching by switch name
-  
-  if($re{'hwinfo'} && scalar(@{$re{'hwinfo'}{'result'}})) {
+  # switches; but only when user is searching by switch name; non-linecard
+  # hw entities have n >= 1000, so the hwinfo/search composition is only done
+  # for switches where we detected linecards
+
+  if(
+    $re{'hwinfo'}
+    && grep { $_->{'n'} < 1000 } @{$re{'hwinfo'}{'result'}}
+  ) {
     search_hwinfo_interleave(\%re);
   }
     
