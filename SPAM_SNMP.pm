@@ -19,7 +19,6 @@ use integer;
   snmp_entity_to_hwinfo
   snmp_system_info
   snmp_get_arptable
-  snmp_vlanlist
   snmp_get_tree
 );
 
@@ -157,37 +156,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#==========================================================================
-# Retrieves VLAN list from Cat6XXX switch
-#
-# Arguments: 1. Host
-#            2. Host's IP address (can be undef)
-#            3. Community
-# Return:    1. Hash (vlan-number -> vlan-name)
-#==========================================================================
-
-sub snmp_vlanlist
-{
-  my ($host, $ip, $community) = @_;
-  my %vlan_list;
-  my $vtpVlanName = $snmp_fields{vtpVlanName};
-
-  if(!$ip) { $ip = $host; }
-  open(SW, "$snmpwalk $ip -c $community $vtpVlanName |") or return undef;
-  while(<SW>) {
-    chomp;
-    /\.(\d+) \"(.*)\"$/ && do {
-      #--- we skip VLANs numbers above 999; these are special
-      #--- and have special handling in some cases causing
-      #--- long timeouts for some requests
-      $vlan_list{$1} = $2 unless $1 > 999;
-    };
-  }
-  close(SW);
-  return \%vlan_list;
 }
 
 
