@@ -327,50 +327,6 @@ sub snmp_get_arptable
 
 
 #==========================================================================
-# This function loads dot1dBasePortIfIndex table (mapping from dot1d
-# index to ifIndex).
-#
-# Arguments: 1. host
-#            2. community
-#            3. vlan list (may be undefined)
-#
-# Returns:   1. hash ref (dot1dIdx -> ifIndex)
-#==========================================================================
-
-sub snmp_dot1d_idx
-{
-  my ($host, $ip, $community, $vlanlist) = @_;
-  my @vlans;
-  my %dot1dIdx;
-
-  #--- processing arguments
-  # if no vlanlist is passed to this function, the vlan list is fed single
-  # dummy 'vlan 0', which causes the loop below to not use any vlan selector
-
-  $community =~ s/\@.*//;
-  if(defined $vlanlist) {
-    @vlans = ( keys %$vlanlist );
-  } else {
-    @vlans = ( 0 );
-  }
-
-  #--- cycle through all VLANs
-
-  foreach my $k (@vlans) {
-    my $sel = ($k == 0 ? '' : "\@$k");
-    open(F, "$snmpwalk $ip -c ${community}${sel} $snmp_fields{dot1dBasePortIfIndex} |") or return undef;
-    while(<F>) {
-      chomp;
-      /\.(\d+) (\d+)$/ && do { $dot1dIdx{$1} = $2; }
-    }
-    close(F);
-  }
-
-  return \%dot1dIdx;
-}
-
-
-#==========================================================================
 # This function retrieves hwinfo (processed select information from
 # entPhysicalTable) and stores it into $swdata{hwinfo}. This function is 
 # a stopgap designed to be fully compatible with previous function that
