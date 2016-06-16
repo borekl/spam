@@ -670,11 +670,18 @@ sub snmp_get_tree
 
   #--- get indexes
 
+  # left side as output by SNMP utils with -OX option appears in one of the
+  # three forms (with corresponding sections of code below):
+  #   1. snmpVariable.0
+  #   2. snmpVariable
+  #   2. snmpVariable[idx1][idx2]...[idxN]
+
     my @i;
     if($var =~ s/\.0$//) {
       @i = (0);
-    } else
-    {
+    } elsif($var =~ /^\w+$/) {
+      @i = ();
+    } else {
       $idx = $var;
       $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
       $var = $1;
@@ -693,11 +700,15 @@ sub snmp_get_tree
 
     if(!ref($re{$var})) { $re{$var} = {}; }
     my $h = $re{$var};
-    for my $k (@i[0 .. $#i-1]) {
-      $h->{$k} = {} if !ref($h->{$k});
-      $h = $h->{$k};
+    if(@i) {
+      for my $k (@i[0 .. $#i-1]) {
+        $h->{$k} = {} if !ref($h->{$k});
+        $h = $h->{$k};
+      }
+      $h->{$i[-1]} = $rval;
+    } else {
+      $re{$var} = $rval;
     }
-    $h->{$i[-1]} = $rval;
   
   #--- debugging info
   
