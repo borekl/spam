@@ -1647,45 +1647,6 @@ sub sql_switch_info_update
 
 
 #===========================================================================
-# This function creates VLAN list
-#
-# Returns: Error message or undef
-#===========================================================================
-
-sub html_vlan_list
-{
-  my ($vlan_stat, $vlan_list) = @_;
-  my $c = 'a';
-
-  #--- open HTML file ---
-
-  open(F, ">" . $cfg2->{htmldir} . "/" . "vlanlist.html") or return "Cannot write switch list file";
-  html_begin(\*F, "Switch list", ["default.css"]);
-  print F "<H1 ALIGN=CENTER>VLAN List</H1>\n";
-  print F "<TABLE CELLSPACING=0 CELLPADDING=5 ALIGN=CENTER>\n";
-
-  #--- produce table ---
-
-  for my $v (sort keys %$vlan_stat) {
-    print F "<TR CLASS=\"h\"><TD COLSPAN=3>VTP domain <B>$v</B></TD><TR>\n";
-    for my $w (sort { $a <=> $b }keys %{$vlan_stat->{$v}}) {
-      print F "<TR CLASS=\"$c\"><TD ALIGN=RIGHT>$w</TD>\n";
-      print F '<TD>', $vlan_list->{$v}{$w}, "</TD>\n";
-      print F "<TD ALIGN=RIGHT>", $vlan_stat->{$v}{$w}, "</TD></TR>\n";
-      $c = ( $c eq 'a' ? 'b':'a' );
-    }
-  }
-
-  #--- finish ---
-
-  print F "</TABLE>\n";
-  html_end(\*F);
-  close(F);
-  return undef;
-}
-
-
-#===========================================================================
 # This function performs database maintenance.
 #
 # Returns: 1. Error message or undef
@@ -1748,67 +1709,6 @@ sub maintenance
   #}
   
   return undef;
-}
-
-
-
-#===========================================================================
-# This function collates full VLAN statistics for all VTP domains
-#
-# Arguments: 1. VTP masters list from sql_get_vtp_masters_list()
-# Returns:   1. hash reference to result in form
-#               VTP_DOMAIN -> VLAN -> USAGE_COUNT
-#            2. VLAN list in form: VTP_DOMAIN -> VLAN -> DESCRIPTION
-#===========================================================================
-
-sub collate_vlan_statistics
-{
-  my ($vtp_masters) = @_;
-  my %vlan_list;
-  my $ret;
-  my $query;
-  my %vlan_stat;
-
-  #--- retrieve VLAN lists from VTP masters ---
-
-  for my $v (@$vtp_masters) {
-    #--- if the VLAN list is already loaded, then don't load it again
-    if(exists $swdata{$v->[0]}{vlans}) {
-      $vlan_list{$v->[1]} = $swdata{$v->[0]}{vlans};
-      next;
-    }
-    $ret = snmp_vlanlist($v->[0], undef, $v->[2]);
-    return $ret unless ref($ret);
-    $vlan_list{$v->[1]} = $ret;
-  }
-
-  #--- ensure database connection ---
-
-  my $dbh = dbconn('spam');
-  if(!ref($dbh)) { return "Cannot connect to database (spam)"; }
-
-  #--- retrieve statistics from database ---
-
-  my $sth = $dbh->prepare('SELECT * FROM vlanstats');
-  $sth->execute() || return 'Database query failed (spam,' . $sth->errstr() . ')';
-  while(my $ra = $sth->fetchrow_arrayref) {
-    $vlan_stat{$ra->[0]}{$ra->[1]} = $ra->[2];
-  }
-
-  #--- compare VLAN list from VTP master and from database stats
-  #--- insert empty VLANs into database-retrieved result (VLANs
-  #--- with no member ports would not appear there otherwise)
-
-  for my $v (@$vtp_masters) {
-    my $vtp_domain = $v->[1];
-    for my $vlan (keys %{$vlan_list{$vtp_domain}}) {
-      if(!exists $vlan_stat{$vtp_domain}{$vlan} && $vlan < 1000) {
-        $vlan_stat{$vtp_domain}{$vlan} = 0;
-      }
-    }
-  }
-
-  return (\%vlan_stat, \%vlan_list);
 }
 
 
@@ -2265,20 +2165,7 @@ close($fh);
 	    tty_message("[main] Updating arp table (failed)\n");
 	  }
 	}
-	
-	
-	#--- generate VLAN list ---
-        # FIXME: this should be moved to view.cgi!
-        
-	if($generate_vlanlist) {
-	  tty_message("[main] Generating VLAN list (started)\n");
-	  my $vtp_masters = sql_get_vtp_masters_list();
-	  die "Cannot get VTP masters list ($vtp_masters)" unless ref($vtp_masters);
-	  my ($vlan_stat, $vlan_list) = collate_vlan_statistics($vtp_masters);
-	  if(!ref $vlan_stat) { die $vlan_stat; }
-	  html_vlan_list($vlan_stat, $vlan_list);
-	  tty_message("[main] Generating VLAN list (finished)\n");
-	}
+
 };
 if($@ && $@ ne "OK\n") {
   if (! -t STDOUT) { print "spam: "; }
