@@ -577,6 +577,14 @@ sub sql_get_swinfo
   );
   if($local_re->{'status'} eq 'ok') {
     $local_re->{'result'} = $local_re->{'result'}[0];
+
+    # VSS flag
+    if(
+      $local_re->{'result'}{'platform'} =~ /(vss|VirtualSwitch)$/
+    ) {
+      $local_re->{'result'}{'vss'} = 1;
+    }
+
     $local_re->{'result'}{'platform'} =~ /vss$/ && do {
       $local_re->{'result'}{'vss'} = 1;
     };
