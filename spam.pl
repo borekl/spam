@@ -394,7 +394,13 @@ sub poll_host
   if(exists $swdata{$host}{'IF-MIB'}{'ifType'}) {
     tty_message("[$host] Pruning non-ethernet interfaces (started)\n");
     for my $if (keys %{$swdata{$host}{'IF-MIB'}{'ifName'}}) {
-      if($swdata{$host}{'IF-MIB'}{'ifType'}{$if}{'enum'} ne 'ethernetCsmacd') {
+      if(
+        # interfaces of type other than 'ethernetCsmacd'
+        $swdata{$host}{'IF-MIB'}{'ifType'}{$if}{'enum'} ne 'ethernetCsmacd'
+        # special cases; some interfaces are ethernetCsmacd and yet they are
+        # not real interfaces (good job, Cisco) and cause trouble
+        || $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'} =~ /^vl/i
+      ) {
         push(@ifs_to_prune, $if);
       }
     }
