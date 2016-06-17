@@ -264,6 +264,7 @@ sub poll_host
       "[$host] System info: platform=%s boottime=%s\n",
       $platform, strftime('%Y-%m-%d', localtime($uptime))
     );
+    $swdata{$host}{'stats'}{'platform'} = $platform;
     $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
     $swdata{$host}{'stats'}{'syslocation'}
     = $sysinfo->{'sysLocation'}{0}{'value'}
