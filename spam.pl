@@ -1244,6 +1244,7 @@ sub sql_transaction
 
   #--- perform update
 
+    my $line = 1;
     for my $row (@$update) {
       my $qry = ref($row) ? $row->[0] : $row;
       my @args;
@@ -1253,10 +1254,11 @@ sub sql_transaction
       my $err1 = $sth->errstr();
       if(!$r) {
         die sprintf(
-          "Database update failed (%s), transaction rolled back\n",
-          $err1
+          "Database update failed (line %d, %s), transaction rolled back\n",
+          $line, $err1
         );
       }
+      $line++;
     }
 
   #--- commit transaction
