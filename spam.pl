@@ -289,13 +289,15 @@ sub poll_host
   #--- load supported MIB trees --------------------------------------------
 
   for my $mib_entry (@{$cfg2->{'mibs'}}) {
-    my $re = $cfg2->{'platforms'};    # regex to match platform string
     my $mib = $mib_entry->{'mib'};    # MIB name
     my @vlans = ( undef );            # vlans to iterate over
 
     #--- match platform string
 
-    next if $platform !~ /$re/;
+    my $include_re = $mib_entry->{'include'} // undef;
+    my $exclude_re = $mib_entry->{'exclude'} // undef;
+    next if $include_re && $platform !~ /$include_re/;
+    next if $exclude_re && $platform =~ /$exclude_re/;
     tty_message("[%s] Processing %s\n", $host, $mib);
 
     #--- process additional flags
