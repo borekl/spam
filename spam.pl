@@ -1889,21 +1889,20 @@ sub maintenance
 
 
 #===========================================================================
-# This function finds another host to be scheduled for run
+# This function finds another task to be scheduled for run
 #
 # Arguments: 1. work list (arrayref)
-# Returns:   1. work list index or undef
+# Returns:   1. work list entry or undef
 #===========================================================================
 
-sub schedule_host
+sub schedule_task
 {
   my $work_list = shift;
 
   if(!ref($work_list)) { die; }
   for(my $i = 0; $i < scalar(@$work_list); $i++) {
-    my $x = $work_list->[$i][1];
-    if(!defined $x) {
-      return $i;
+    if(!defined $work_list->[$i][2]) {
+      return $work_list->[$i];
     }
   }
   return undef;
@@ -1915,18 +1914,18 @@ sub schedule_host
 #
 # Argument: 1. work list (arrayref)
 #           2. pid
-# Returns:  1. host name or undef
+# Returns:  1. work list entry or undef
 #===========================================================================
 
-sub clear_host_by_pid
+sub clear_task_by_pid
 {
   my $work_list = shift;
   my $pid = shift;
 
   for my $k (@$work_list) {
-    if($k->[1] == $pid) {
-      $k->[1] = 0;
-      return $k->[0];
+    if($k->[2] == $pid) {
+      $k->[2] = 0;
+      return $k;
     }
   }
   return undef;
@@ -2182,15 +2181,20 @@ eval {
 	    my $x = lc($_);
 	    $host =~ /^$x/i;
           } @poll_hosts));
-          $work_list[$wl_idx++] = [ $host, undef ];
+          push(@work_list, [ 'host', $host, undef ]);
 	}
 	tty_message("[main] $wl_idx hosts scheduled to be processed\n");
 
-	#--- loop through all hosts ----------------------------------------
+	#--- add arptable task to the work list
 
-	my $host_i; # host index into @work_list
-	while(defined($host_i = schedule_host(\@work_list))) {
-          my $host = $work_list[$host_i][0];
+	if($get_arptable) {
+	  push(@work_list, [ 'arp', undef, undef ]);
+	}
+
+	#--- loop through all tasks ----------------------------------------
+
+	while(defined(my $task = schedule_task(\@work_list))) {
+          my $host = $task->[1];
     	  my $pid = fork();
 	  if($pid == -1) {
 	    die "Cannot fork() new process";
@@ -2199,14 +2203,17 @@ eval {
         #--- parent --------------------------------------------------------
 
             $tasks_cur++;
-            $work_list[$host_i][1] = $pid;
+            $task->[2] = $pid;
             tty_message("[main] Child $host (pid $pid) started\n");
             if($tasks_cur >= $tasks_max) {
               my $cpid;
               if(($cpid = wait()) != -1) {
                 $tasks_cur--;
-                my $chost = clear_host_by_pid(\@work_list, $cpid);
-                tty_message("[main] Child $chost reaped\n");
+                my $ctask = clear_task_by_pid(\@work_list, $cpid);
+                tty_message(
+                  "[main] Child %s reaped\n",
+                  $ctask->[0] eq 'host' ? $ctask->[1] : 'arptable'
+                );
               } else {
                 die "Assertion failed! No children running.";
               }
@@ -2215,110 +2222,113 @@ eval {
 
         #--- child ---------------------------------------------------------
 
-            tty_message("[$host] Processing started\n");
-            if(!poll_host($host, $get_mactable)) {
-            #if(!poll_host_old($host, $get_mactable)) {
+        #--- host processing
+        
+            if($task->[0] eq 'host') {
+              tty_message("[$host] Processing started\n");
+              if(!poll_host($host, $get_mactable)) {
 
-	    #--- find changes and update status table ---
+	      #--- find changes and update status table ---
 
-              tty_message("[$host] Updating status table (started)\n");
-	      my ($update_plan, $update_stats) = find_changes($host);
-              tty_message(
-                sprintf(
-                  "[%s] Updating status table (%d/%d/%d/%d)\n",
-                  $host, @$update_stats
-                )
-              );
-              my $e = sql_status_update($host, $update_plan);
-              if($e) { tty_message("[$host] Updating status table (failed, $e)\n"); }
-	      tty_message("[$host] Updating status table (finished)\n");
+                tty_message("[$host] Updating status table (started)\n");
+                my ($update_plan, $update_stats) = find_changes($host);
+                tty_message(
+                  sprintf(
+                    "[%s] Updating status table (%d/%d/%d/%d)\n",
+                    $host, @$update_stats
+                  )
+                );
+                my $e = sql_status_update($host, $update_plan);
+                if($e) { tty_message("[$host] Updating status table (failed, $e)\n"); }
+                tty_message("[$host] Updating status table (finished)\n");
 
-	      #--- update swstat table ---
+                #--- update swstat table ---
 
-	      tty_message("[$host] Updating swstat table (started)\n");
-	      switch_info($host);
-	      $e = sql_switch_info_update($host);
-	      if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
-	      tty_message("[$host] Updating swstat table (finished)\n");
+                tty_message("[$host] Updating swstat table (started)\n");
+                switch_info($host);
+                $e = sql_switch_info_update($host);
+                if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
+                tty_message("[$host] Updating swstat table (finished)\n");
 
 	    #--- update hwinfo table ---
 
-	      {
-	        my $update_stats;
-	        tty_message("[$host] Updating hwinfo table (started)\n");
-	        ($e, $update_stats) = sql_hwinfo_update($host);
-	        if($e) { tty_message("[$host] Updating hwinfo table ($e)\n"); }
-                tty_message(sprintf("[%s] Updating hwinfo table (i:%d/d:%d/u:%d)\n", $host, @$update_stats));
-	        tty_message("[$host] Updating hwinfo table (finished)\n");
-              }
+                {
+                  my $update_stats;
+                  tty_message("[$host] Updating hwinfo table (started)\n");
+                  ($e, $update_stats) = sql_hwinfo_update($host);
+                  if($e) { tty_message("[$host] Updating hwinfo table ($e)\n"); }
+                  tty_message(sprintf("[%s] Updating hwinfo table (i:%d/d:%d/u:%d)\n", $host, @$update_stats));
+                  tty_message("[$host] Updating hwinfo table (finished)\n");
+                }
 
             #--- update mactable ---
 
-	      if($get_mactable) {
-                tty_message("[$host] Updating mactable (started)\n");
-                $e = sql_mactable_update($host);
-                if(defined $e) { print $e, "\n"; }
-                tty_message("[$host] Updating mactable (finished)\n");
-	      }
+                if($get_mactable) {
+                  tty_message("[$host] Updating mactable (started)\n");
+                  $e = sql_mactable_update($host);
+                  if(defined $e) { print $e, "\n"; }
+                  tty_message("[$host] Updating mactable (finished)\n");
+                }
 
             #--- run autoregistration
 	    # this goes over all port descriptions and those, that contain outlet
 	    # designation AND have no associated outlet in porttable are inserted
             # there
 
-            # IN DEVELOPMENT
+                if($autoreg) {
+                  tty_message("[$host] Running auto-registration (started)\n");
+                  sql_autoreg($host);
+                  tty_message("[$host] Running auto-registration (finished)\n");
+                }
 
-	      if($autoreg) {
-	        tty_message("[$host] Running auto-registration (started)\n");
-                sql_autoreg($host);
-	        tty_message("[$host] Running auto-registration (finished)\n");
 	      }
 
-	    #--- debug log
+            } # host processing block ends here
 
-	      #print DLOG strftime('%c', localtime()), " $host processed\n";
-	    }
+            #--- getting arptable
+
+            elsif($task->[0] eq 'arp') {
+              tty_message("[arptable] Updating arp table (started)\n");
+              my $r = snmp_get_arptable(
+                $cfg2->{'arpserver'}, $cfg2->{'community'},
+                sub {
+                  tty_message("[arptable] Retrieved arp table from $_[0]\n");
+                }
+              );
+              if(!ref($r)) {
+                tty_message("[arptable] Updating arp table (failed, $r)\n");
+              } else {
+                $arptable = $r;
+                tty_message("[arptable] Updating arp table (processing)\n");
+                my $e = sql_arptable_update();
+                if($e) { tty_message("[arptable] Updating arp table (failed, $e)\n"); }
+                else { tty_message("[arptable] Updating arp table (finished)\n"); }
+              }
+            }
 
 	    #--- child finish
 
             exit(0);
 	  }
-	}
+
+	} # the concurrent section ends here
 
         #--- clean-up ------------------------------------------------------
 
         my $cpid;
         while(($cpid = wait()) != -1) {
           $tasks_cur--;
-          my $chost = clear_host_by_pid(\@work_list, $cpid);
-          tty_message("[main] Child $chost reaped in cleanup\n");
+          my $ctask = clear_task_by_pid(\@work_list, $cpid);
+          tty_message(
+            "[main] Child %s reaped\n",
+            $ctask->[0] eq 'host' ? $ctask->[1] : 'arptable'
+          );
           tty_message("[main] $tasks_cur children remaining\n");
         }
         if($tasks_cur) {
           die "Assertion failed! \$tasks_cur non-zero.";
         }
         tty_message("[main] Concurrent section finished\n");
-
-	#--- get and update arptable ---
-
-	if($get_arptable) {
-	  tty_message("[main] Updating arp table (started)\n");
-	  my $r = snmp_get_arptable(
-	    $cfg2->{'arpserver'}, $cfg2->{'community'},
-	    sub {
-              tty_message("[main] Retrieved arp table from $_[0]\n");
-	    }
-          );
-          if(!ref($r)) {
-            tty_message("[main] Updating arp table (failed, $r)\n");
-          } else {
-            $arptable = $r;
-	    tty_message("[main] Updating arp table (processing)\n");
-            my $e = sql_arptable_update();
-            if($e) { tty_message("[main] Updating arp table (failed, $e)\n"); }
-            else { tty_message("[main] Updating arp table (finished)\n"); }
-	  }
-	}
 
 };
 if($@ && $@ ne "OK\n") {
@@ -2335,4 +2345,3 @@ if($@ && $@ ne "OK\n") {
 if(!$no_lock) {
   unlink("/tmp/spam.lock");
 }
-
