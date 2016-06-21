@@ -345,8 +345,8 @@ sub poll_host
           $mib_subtree,
           sub {
             my ($var, $cnt) = @_;
-            my $msg = "[$host] Loading $mib";
-            if($var) { $msg .= "::$var"; }
+            return if !$var;
+            my $msg = "[$host] Loading $mib::$var";
             if($vlan) { $msg .= " $vlan"; }
             if($cnt) { $msg .= " ($cnt)"; }
             tty_message("$msg\n");
