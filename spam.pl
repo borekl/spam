@@ -854,11 +854,21 @@ sub find_changes
   my $idx = $h->{'idx'}{'portToIfIndex'};
   my @idx_keys = (keys %$idx);
   my @update_plan;
-  my @stats = (0, 0, 0, 0);  # i/d/U/u
+  my @stats = (0) x 4;  # i/d/U/u
+  my $debug_fh;
+
+  #--- debug init
+
+  if($ENV{'SPAM_DEBUG'}) {
+    open($debug_fh, '>', "find_changes.$$.log");
+    if($debug_fh) {
+      printf $debug_fh "--> find_changes(%s)\n", $host
+    }
+  }
 
   #--- delete: ports that no longer exist (not found via SNMP) ---
 
-  foreach my $k (keys %{$h->{dbStatus}}) {
+  foreach my $k (keys %{$h->{'dbStatus'}}) {
     if(!grep { $_ eq $k } @idx_keys) {
       push(@update_plan, [ 'd', $k ]);       # 'd' as 'delete'
       $stats[1]++;
@@ -881,26 +891,60 @@ sub find_changes
       my $update_flag;
       my $descr = $h->{'IF-MIB'}{'ifAlias'}{$if};
       my $errdis = 0; # currently unavailable
-      #my $errdis = addoperinfo($h->{portAdditionalOperStatus}{$if}, 32) ? 1 : 0;
 
-      if (
-        $old->[0] != $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'}
-	|| $old->[1] != $h->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'}
-	|| $old->[2] != $h->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'}
-        || $old->[5] != $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{$if}{'value'}
-        || $old->[6] ne $h->{'IF-MIB'}{'ifAlias'}{$if}{'value'}
-        || $old->[7] != $h->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'}
-        || $old->[8] != ($h->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000)
-        || $old->[9]  != port_flag_pack($h, $if)
-        || $old->[10] != $h->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'}
-        || $old->[11] != $errdis                         # errordisable
-      ) {
+      #--- collect the data to compare
+
+      my @data = (
+        [ 'ifOperStatus', 'n',
+           $old->[0], $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} ],
+	[ 'ifInUcastPkts', 'n',
+	  $old->[1], $h->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'} ],
+	[ 'ifOutUcastPkts', 'n',
+	  $old->[2], $h->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'} ],
+        [ 'vmVlan', 'n',
+          $old->[5], $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'} ],
+        [ 'ifAlias', 's',
+          $old->[6], $h->{'IF-MIB'}{'ifAlias'}{$if}{'value'} ],
+        [ 'portDuplex', 'n',
+          $old->[7], $h->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'} ],
+        [ 'ifSpeed', 'n',
+          $old->[8], ($h->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) ],
+        [ 'port_flags', 'n',
+          $old->[9],  port_flag_pack($h, $if) ],
+        [ 'ifAdminStatus', 'n',
+          $old->[10], $h->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} ],
+        [ 'errdisable', 'n',
+          $old->[11], $errdis ]
+      );
+
+      #--- perform comparison
+
+      my $cmp_acc;
+      printf $debug_fh "--> PORT %s\n", $k if $debug_fh;
+      for my $d (@data) {
+        my $cmp;
+        if($d->[1] eq 's') {
+          $cmp = $d->[2] ne $d->[3];
+        } else {
+          $cmp = $d->[2] != $d->[3];
+        }
+        printf $debug_fh  "%s: %s %s -> %s\n", $d->[0], $d->[2], $d->[3],
+          $cmp ? 'NO MATCH' : 'MATCH'
+          if $debug_fh;
+        $cmp_acc ||= $cmp;
+      }
+
+      #--- push full or partial update
+
+      if($cmp_acc) {
 	# 'U' as 'full update', ie. update all fields in STATUS table
+        print $debug_fh "result: FULL UPDATE\n" if $debug_fh;
         push (@update_plan, [ 'U', $k ]);
         $swdata{$host}{updated}{$if} = 1;
         $stats[2]++;
       } else {
         # 'u' as 'partial update', ie. update only lastchk field
+        print $debug_fh "result: PARTIAL UPDATE\n" if $debug_fh;
         push (@update_plan, [ 'u', $k ]);
         $stats[3]++;
         #if($h->{ifOperStatus}{$if} == 1) { $swdata{$host}{updated}{$if} = 1; }
@@ -915,6 +959,19 @@ sub find_changes
     }
   }
 
+  #--- some debugging output
+
+  if($debug_fh) {
+    print $debug_fh "---> UPDATE PLAN FOLLOWS\n";
+    for my $k (@update_plan) {
+      printf $debug_fh "%s %s\n", @$k;
+    }
+    print $debug_fh "---> END OF UPDATE PLAN\n";
+  }
+
+  #--- finish
+
+  close($debug_fh) if $debug_fh;
   return (\@update_plan, \@stats);
 }
 
