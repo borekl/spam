@@ -976,7 +976,7 @@ sub sql_status_update
         $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'},
         $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'},
         $hdata->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'},
-        ($hdata->{'IF-MIB'}{'ifSpeed'}{$if} / 1000000) =~ s/\..*$//r,
+        ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
         port_flag_pack($hdata, $if),
         $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 'true' : 'false',
         'false' # addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 'true' : 'false'
@@ -1009,7 +1009,7 @@ sub sql_status_update
           $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'},
           $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'} =~ s/'/''/gr,
           $hdata->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'},
-          ($hdata->{'IF-MIB'}{'ifSpeed'}{$if} / 1000000) =~ s/\..*$//r,
+          ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
           port_flag_pack($hdata, $if),
           $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 't':'f',
           'false' #addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 't':'f'
