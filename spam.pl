@@ -44,9 +44,8 @@ sub help
   print "Usage: spam.pl [OPTIONS]\n\n";
   print "  --[no]arptable   turn polling for ARP table on or off (default off)\n";
   print "  --[no]mactable   turn getting bridging table on or off (default on)\n";
-  print "  --[no]vlanlist   turn generating VLAN lists on or off (default off)\n";
   print "  --[no]autoreg    turn autoregistration of outlets on or off (default off)\n";
-  print "  --quick          equivalent of --noarptable, --nomactable and --novlanlist\n";
+  print "  --quick          equivalent of --noarptable and --nomactable\n";
   print "  --host=HOST      poll only HOST, can be used multiple times (default all\n";
   print "                   hosts), partial matches accepted, anchored on beginning\n";
   print "  --maint          perform database maintenance and exit\n";
@@ -2071,7 +2070,6 @@ tty_message(
 #--- parse command line ----------------------------------------------------
 
 
-my $generate_vlanlist = 0;
 my $get_arptable = 0;
 my $get_mactable = 1;
 my $quick_mode = 0;
@@ -2087,7 +2085,6 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'help|?'     => \$help,
                'mactable!'  => \$get_mactable,
                'maint'      => \$maint,
-               'vlanlist!'  => \$generate_vlanlist,
                'quick!'     => \$quick_mode,
                'arpservers' => \$list_arpservers,
                'hosts'      => \$list_hosts,
@@ -2107,7 +2104,7 @@ if($tasks_max < 0 || $tasks_max > 16) {
   exit(1);
 }
 if($quick_mode == 1) {
-  $generate_vlanlist = $get_arptable = $get_mactable = 0;
+  $get_arptable = $get_mactable = 0;
 }
 if($list_arpservers || $list_hosts) {
   $no_lock = 1;
