@@ -235,7 +235,7 @@ sub poll_host
 
   #--- arguments -----------------------------------------------------------
 
-  my ($host) = @_;
+  my ($host, $get_mactable) = @_;
 
   #--- other variables -----------------------------------------------------
 
@@ -297,7 +297,6 @@ sub poll_host
     my $exclude_re = $mib_entry->{'exclude'} // undef;
     next if $include_re && $platform !~ /$include_re/;
     next if $exclude_re && $platform =~ /$exclude_re/;
-    tty_message("[%s] Processing %s\n", $host, $mib);
 
     #--- process additional flags
 
@@ -318,7 +317,18 @@ sub poll_host
       if(grep($_ eq 'vlan1', @{$mib_entry->{'flags'}})) {
         @vlans = ( 1 );
       }
+
+      # 'mactable' MIBs should only be read when --mactable switch is active
+
+      if(grep($_ eq 'mactable', @{$mib_entry->{'flags'}})) {
+        tty_message("[$host] Skipping $mib, mactable loading not active\n");
+        next if !$get_mactable;
+      }
     }
+
+    #--- processing of the MIB is a go
+
+    tty_message("[%s] Processing %s\n", $host, $mib);
 
     #--- get MIB tree entry point(s)
 
