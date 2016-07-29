@@ -330,7 +330,7 @@ sub site_conv
   
   $host =~ /^(...)/;
   $hc = lc($1);
-  my $site = $cfg->{siteconv}{$hc};
+  my $site = $cfg->{'siteconv'}{$hc};
   if(!$site) { $site = $hc; }
   return $site;
 }
