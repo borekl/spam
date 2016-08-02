@@ -1011,10 +1011,17 @@ sub sql_transaction
 sub sql_mactable_update
 {
   my $host = shift;
+  my $h = $swdata{$host}{'BRIDGE-MIB'};
   my $dbh = dbconn('spam');
   my $ret;
   my @update;              # update plan
   my %mac_current;         # contents of 'mactable'
+
+  #--- insta-sub for normalizing MAC values
+
+  my $normalize = sub {
+    join(':', map { length($_) == 2 ? $_ : '0' . $_; } split(/:/, shift));
+  };
 
   #--- ensure database connection ---
 
@@ -1040,43 +1047,59 @@ sub sql_mactable_update
 
   #--- gather update plan ---
 
-  foreach my $if (keys %{$swdata{$host}{mactable}}) {
-    foreach my $mac (@{$swdata{$host}{mactable}{$if}}) {
+  for my $vlan (keys %$h) {
+    for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbStatus'}}) {
       my ($q, @fields, @bind);
+
+      #--- get ifindex value
+
+      my $dot1d = $h->{$vlan}{'dot1dTpFdbPort'}{$mac}{'value'};
+      my $if = $h->{$vlan}{'dot1dBasePortIfIndex'}{$dot1d}{'value'};
+
+      #--- skip uninteresting MACs (note, that we're not filtering 'static'
+      #--- entries: ports with port security seem to report their MACs as
+      #--- static in Cisco IOS)
+
+      next if
+        $h->{$vlan}{'dot1dTpFdbStatus'}{$mac}{'enum'} eq 'invalid' ||
+        $h->{$vlan}{'dot1dTpFdbStatus'}{$mac}{'enum'} eq 'self';
+
+      #--- skip MACs on ports we are not tracking (such as port channels etc)
+
+      next if !exists $swdata{$host}{'IF-MIB'}{'ifName'}{$if};
+
+      #--- normalize MAC, get formatted timestamp
+
+      my $mac_n = $normalize->($mac);
       my $aux = strftime("%c", localtime());
-      next if !exists $swdata{$host}{ifDescr}{$if};
 
-      if(exists $mac_current{$mac}) {
-
-        #--- update 'mactable' ---
-
+      if(exists $mac_current{$mac_n}) {
+        # update
         @fields = (
           'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
         );
         @bind = (
-          $host, $swdata{$host}{ifDescr}{$if}, $aux, $mac
+          $host, $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'}, $aux, $mac
         );
         $q = sprintf(
           q{UPDATE mactable SET %s WHERE mac = ?},
           join(',', @fields)
         );
-
       } else {
-
-        #--- insert ---
-
+        # insert
         @fields = (
-          'mac', 'host', 'portname', 'lastchk','active'
+          'mac', 'host', 'portname', 'lastchk', 'active'
         );
         @bind = (
-          $mac, $host, $swdata{$host}{ifDescr}{$if}, $aux, 't'
+          $mac, $host, $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'},
+          $aux, 't'
         );
         $q = sprintf(
           q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
           join(',', @fields)
         );
 
-        delete $mac_current{$mac};
+        delete $mac_current{$mac_n};
       }
       push(@update, [ $q, @bind ]) if $q;
     }
