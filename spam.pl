@@ -1282,7 +1282,15 @@ sub switch_info
 
 sub port_flag_pack
 {
-  my ($hdata, $port) = @_;
+  #--- arguments
+
+  my (
+    $hdata,     # 1. (hashref) swdata{host} subtree
+    $port       # 2. port ifindex
+  ) = @_;
+
+  #--- other variables
+
   my $result = 0;
 
   #--- trunking mode
