@@ -59,55 +59,6 @@ sub help
 
 
 #===========================================================================
-# Discovers SNMP device type.
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. platform type
-#            2. nothing for now
-#===========================================================================
-
-sub get_platform
-{
-  my ($host, $ip, $community) = @_;
-  my $pid = snmp_get_sysobjid($host, $community);
-  my $platform = "unknown:$pid";
-
-  @known_platforms = qw(c6500 c4000 c2900 c2950 c2960 c3500 c3560 c3650 c3850
-                        c6500-ios c4000-ios c4500-ios c2620 c4948-ios
-                        c7600 c2800 c6500vss c3550 nx5000 nx3000 c6800vss);
-
-  if(!$pid) { return ('unknown', 'n/a') }
-
-  #--- FIXME: the following is a stop-gap solution
-
-  my %map = (
-    'cat6509'                   => 'c6500-ios',
-    'cat6506'                   => 'c6500-ios',
-    'catalyst65xxVirtualSwitch' => 'c6500vss',
-    'ciscoC68xxVirtualSwitch'   => 'c6800vss',
-    'catalyst296048TT'          => 'c2960',
-    'cat29xxStack'              => 'c2960',
-    'cat385048'                 => 'c3850',
-    'catalyst355048'            => 'c3550',
-    'catalyst4948'              => 'c4948-ios',
-    'cat4900M'                  => 'c4948-ios',
-    'catalyst2924XLv'           => 'c2900',
-    'catalyst296024TT'          => 'c2960',
-    'cisco2811'                 => 'c2800',
-    'ciscoC365048TS'            => 'c3650',
-    'cevChassisN5kC5548UP'      => 'nx5000',
-    'catalyst4948e10GE'         => 'c4948-ios'
-  );
-  $platform = $map{$pid} if exists $map{$pid};
-
-  #--- finish
-
-  return ($platform, 'n/a');
-}
-
-
-#===========================================================================
 # This function loads list of switches from external database that must
 # be already bound under name 'ondb'.
 #
