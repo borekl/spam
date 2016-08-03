@@ -686,7 +686,8 @@ sub sql_status_update
         ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
         port_flag_pack($hdata, $if),
         $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 'true' : 'false',
-        'false' # addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 'true' : 'false'
+        # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
+        'false'
       );
 
       $q = sprintf(
@@ -719,7 +720,8 @@ sub sql_status_update
           ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
           port_flag_pack($hdata, $if),
           $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 't':'f',
-          'false' #addoperinfo($hdata->{portAdditionalOperStatus}{$if}, 32) ? 't':'f'
+          # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
+          'false'
         );
 
         if(!$reboot_flag) {
@@ -1192,19 +1194,6 @@ sub sql_arptable_update
 
 
 #===========================================================================
-#===========================================================================
-
-sub addoperinfo
-{
-  my ($s, $n) = @_;
-
-  $s =~ /([[:xdigit:]]{2}) ([[:xdigit:]]{2})/;
-  my $v = (hex($1) * 256) + hex($2);
-  return ($v & $n);
-}
-
-
-#===========================================================================
 # Generate some statistics info on server and store it into %swdata.
 #===========================================================================
 
@@ -1233,11 +1222,8 @@ sub switch_info
     $stat->{p_total}++;
     $stat->{p_patch}++ if exists $port2cp->{$host}{$portname};
     $stat->{p_act}++ if $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} == 1;
-    #{
-      # portAdditionalOperStatus missing
-      #my $st = $swdata{$host}{portAdditionalOperStatus}{$port};
-      #if(addoperinfo($st, 32)) { $stat->{p_errdis}++; }
-    #}
+    # p_errdis used to count errordisable ports, but required SNMP variable
+    # is no longer available
     #--- unregistered ports
     if($knownports && ($h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} == 1)) {
       if(!exists $port2cp->{$host}{$portname}) {
