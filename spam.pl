@@ -52,6 +52,7 @@ sub help
   print "  --arpservers     list known ARP servers and exit\n";
   print "  --hosts          list known hosts and exit\n";
   print "  --tasks=N        number of tasks to be run (N is 1 to 16, default 8)\n";
+  print "  --remove=HOST    remove HOST from database and exit\n";
   print "  --debug          turn on debug mode\n";
   print "  --help, -?       this help\n";
   print "\n";
@@ -1145,6 +1146,31 @@ sub sql_arptable_update
 
 
 #===========================================================================
+# Function that removes a host from the database. To be used on switches
+# that no longer exist.
+#===========================================================================
+
+sub sql_host_remove
+{
+  #--- arguments
+
+  my ($host) = @_;
+
+  #--- other variables
+
+  my @transaction;
+  my $r;
+
+  #--- perform removal
+
+  for my $table (qw(status hwinfo swstat badports mactable modwire)) {
+    push(@transaction, [ "DELETE FROM $table WHERE host = ?", $host ]);
+  }
+  return sql_transaction(\@transaction);
+}
+
+
+#===========================================================================
 # Generate some statistics info on server and store it into %swdata.
 #===========================================================================
 
@@ -1696,7 +1722,7 @@ my $no_lock = 0;           # inhibit creation of lock file
 my $tasks_max = 8;         # maximum number of background tasks
 my $tasks_cur = 0;         # current number of background tasks
 my $autoreg = 0;           # autoreg feature
-my ($help, $maint, $list_arpservers, $list_hosts);
+my ($help, $maint, $list_arpservers, $list_hosts, $cmd_remove_host);
 my @poll_hosts;
 
 if(!GetOptions('host=s'     => \@poll_hosts,
@@ -1709,6 +1735,7 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'hosts'      => \$list_hosts,
                'tasks=i'    => \$tasks_max,
                'autoreg'    => \$autoreg,
+               'remove=s'   => \$cmd_remove_host,
                'debug'      => \$ENV{'SPAM_DEBUG'}
               )) {
   print "\n"; help(); exit(1);
@@ -1773,6 +1800,21 @@ eval {
 	  my $e = maintenance();
 	  if($e) { die "$e\n"; }
           tty_message("[main] Maintaining database (finished)\n");
+	  die "OK\n";
+	}
+
+	#--- host removal --------------------------------------------------
+
+	# Currently only single host removal, the hastname must match
+	# precisely
+
+	if($cmd_remove_host) {
+	  tty_message("[main] Removing host $cmd_remove_host (started)\n");
+	  my $e = sql_host_remove($cmd_remove_host);
+	  if($e) {
+	    die $e;
+	  }
+	  tty_message("[main] Removing host $cmd_remove_host (finished)\n");
 	  die "OK\n";
 	}
 
