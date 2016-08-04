@@ -27,7 +27,7 @@ $| = 1;
 
 #=== global variables ======================================================
 
-my $cfg2;            # complete configuration holder (new)
+my $cfg;            # complete configuration holder (new)
 my $port2cp;         # switchport->CP mapping (from porttable)
 my $selective_run;   # selective run flag
 my %swdata;          # holder for all data retrieved from hosts
@@ -82,8 +82,8 @@ sub cfg_switch_list_load
   # be immutable
   while(($s, $cmty, $ip_addr) = $sth->fetchrow_array()) {
     if(!$cmty) { $cmty = undef; }
-    $cfg2->{host}{lc($s)}{community} = $cmty;
-    $cfg2->{host}{lc($s)}{ip} = $ip_addr;
+    $cfg->{host}{lc($s)}{community} = $cmty;
+    $cfg->{host}{lc($s)}{ip} = $ip_addr;
   }
   return undef;
 }
@@ -107,8 +107,8 @@ sub cfg_arpservers_list_load
   }
   while(($s, $cmty) = $sth->fetchrow_array()) {
     if(!$cmty) { $cmty = undef; }
-    push(@{$cfg2->{arpserver}}, [$s, $cmty])
-      unless scalar(grep { $_->[0] eq $s } @{$cfg2->{arpserver}}) != 0;
+    push(@{$cfg->{arpserver}}, [$s, $cmty])
+      unless scalar(grep { $_->[0] eq $s } @{$cfg->{arpserver}}) != 0;
   }
   return undef;
 }
@@ -191,16 +191,16 @@ sub poll_host
 
   #--- other variables -----------------------------------------------------
 
-  my $community = $cfg2->{'community'};
+  my $community = $cfg->{'community'};
 
   #--- host-specific community override ------------------------------------
 
-  $community = $cfg2->{'host'}{$host}{'community'}
-    if $cfg2->{'host'}{$host}{'community'};
+  $community = $cfg->{'host'}{$host}{'community'}
+    if $cfg->{'host'}{$host}{'community'};
 
   #--- skip excluded hosts -------------------------------------------------
 
-  if(grep(/^$host$/, @{$cfg2->{'excludehost'}})) {
+  if(grep(/^$host$/, @{$cfg->{'excludehost'}})) {
     return 'Excluded host';
   }
 
@@ -239,7 +239,7 @@ sub poll_host
 
   #--- load supported MIB trees --------------------------------------------
 
-  for my $mib_entry (@{$cfg2->{'mibs'}}) {
+  for my $mib_entry (@{$cfg->{'mibs'}}) {
     my $mib = $mib_entry->{'mib'};    # MIB name
     my @vlans = ( undef );            # vlans to iterate over
 
@@ -1179,7 +1179,7 @@ sub switch_info
   my ($host) = @_;
   my $h = $swdata{$host};
   my $stat = $h->{'stats'};
-  my $knownports = grep(/^$host$/, @{$cfg2->{'knownports'}});
+  my $knownports = grep(/^$host$/, @{$cfg->{'knownports'}});
   my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
 
   #--- initialize ---
@@ -1376,9 +1376,9 @@ sub sql_get_vtp_masters_list
     return 'Database query failed (spam,' . $sth->errstr() . ')';
   }
   while(my @a = $sth->fetchrow_array) {
-    $a[2] = $cfg2->{'community'};  # pre-fill default community string
-    if(exists $cfg2->{'host'}{$a[0]}{'community'}) {
-      $a[2] = $cfg2->{'host'}{$a[0]}{'community'};
+    $a[2] = $cfg->{'community'};  # pre-fill default community string
+    if(exists $cfg->{'host'}{$a[0]}{'community'}) {
+      $a[2] = $cfg->{'host'}{$a[0]}{'community'};
     }
     push(@list, \@a);
   }
@@ -1386,13 +1386,13 @@ sub sql_get_vtp_masters_list
   #--- for VTP domains with preferred masters, eliminate all other masters;
   #--- preference is set in configuration file with "VLANServer" statement
 
-  for my $k (keys %{$cfg2->{vlanserver}}) {
+  for my $k (keys %{$cfg->{vlanserver}}) {
     for(my $i = 0; $i < scalar(@list); $i++) {
       next if $list[$i]->[1] ne $k;
-      if(lc($cfg2->{vlanserver}{$k}[0]) ne lc($list[$i]->[0])) {
+      if(lc($cfg->{vlanserver}{$k}[0]) ne lc($list[$i]->[0])) {
         splice(@list, $i--, 1);
       } else {
-        $list[$i]->[2] = $cfg2->{vlanserver}{$k}[1];   # community string
+        $list[$i]->[2] = $cfg->{vlanserver}{$k}[1];   # community string
       }
     }
   }
@@ -1543,14 +1543,14 @@ sub maintenance
 
   $dbh->do(
     q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg2->{'arptableage'}
+    undef, $t, $cfg->{'arptableage'}
   ) or return 'Cannot delete from database (spam)';
 
   #--- mactable purging
 
   $dbh->do(
     q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg2->{'mactableage'}
+    undef, $t, $cfg->{'mactableage'}
   ) or return 'Cannot delete from database (spam)';
 
   #--- status table purging
@@ -1777,19 +1777,19 @@ eval {
 	#--- load master configuration file --------------------------------
 
 	tty_message("[main] Loading master config (started)\n");
-	if(!ref($cfg2 = load_config('spam.cfg.json'))) {
-	  die "$cfg2\n";
+	if(!ref($cfg = load_config('spam.cfg.json'))) {
+	  die "$cfg\n";
 	}
 	tty_message("[main] Loading master config (finished)\n");
 
 	#--- initialize SPAM_SNMP library
 
-	$SPAM_SNMP::snmpget = $cfg2->{snmpget};
-	$SPAM_SNMP::snmpwalk = $cfg2->{snmpwalk};
+	$SPAM_SNMP::snmpget = $cfg->{snmpget};
+	$SPAM_SNMP::snmpwalk = $cfg->{snmpwalk};
 
 	#--- bind to native database ---------------------------------------
 
-	if(!exists $cfg2->{dbconn}{spam}) {
+	if(!exists $cfg->{dbconn}{spam}) {
 	  die "Database binding 'spam' not defined\n";
         }
 
@@ -1820,7 +1820,7 @@ eval {
 
 	#--- bind to ondb database -----------------------------------------
 
-	if(!exists $cfg2->{dbconn}{ondb}) {
+	if(!exists $cfg->{dbconn}{ondb}) {
 	  die "Database binding 'ondb' not defined\n";
         }
 
@@ -1834,7 +1834,7 @@ eval {
           if($list_hosts) {
             my $n = 0;
             print "\nDumping configured switches:\n\n";
-            for my $k (sort keys %{$cfg2->{host}}) {
+            for my $k (sort keys %{$cfg->{host}}) {
               print $k, "\n";
               $n++;
             }
@@ -1853,7 +1853,7 @@ eval {
           if($list_arpservers) {
             my $n = 0;
             print "\nDumping configured ARP servers:\n\n";
-            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg2->{arpserver}}) {
+            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->{arpserver}}) {
               print $k->[0], "\n";
               $n++;
             }
@@ -1891,7 +1891,7 @@ eval {
 
 	my @work_list;
 	my $wl_idx = 0;
-	foreach my $host (sort keys %{$cfg2->{host}}) {
+	foreach my $host (sort keys %{$cfg->{host}}) {
 	  next if($selective_run && !(grep {
 	    my $x = lc($_);
 	    $host =~ /^$x/i;
@@ -2005,7 +2005,7 @@ eval {
             elsif($task->[0] eq 'arp') {
               tty_message("[arptable] Updating arp table (started)\n");
               my $r = snmp_get_arptable(
-                $cfg2->{'arpserver'}, $cfg2->{'community'},
+                $cfg->{'arpserver'}, $cfg->{'community'},
                 sub {
                   tty_message("[arptable] Retrieved arp table from $_[0]\n");
                 }
