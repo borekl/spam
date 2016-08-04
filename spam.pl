@@ -183,8 +183,6 @@ sub sql_load_uptime
 
 sub poll_host
 {
-  my $s;      # aux variable used for shortening access deep into $swdata
-
   #--- arguments -----------------------------------------------------------
 
   my ($host, $get_mactable) = @_;
@@ -192,6 +190,7 @@ sub poll_host
   #--- other variables -----------------------------------------------------
 
   my $community = $cfg->{'community'};
+  my $s;      # aux variable used for shortening access deep into $swdata
 
   #--- host-specific community override ------------------------------------
 
