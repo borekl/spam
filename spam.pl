@@ -1749,10 +1749,6 @@ if($list_arpservers || $list_hosts) {
   $no_lock = 1;
 }
 
-#--- open debug log
-
-#open(DLOG, '>> /tmp/spam.log');
-
 #--- ensure single instance via lockfile -----------------------------------
 
 if(!$no_lock) {
@@ -2043,10 +2039,6 @@ if($@ && $@ ne "OK\n") {
   if (! -t STDOUT) { print "spam: "; }
   print $@;
 }
-
-#--- close debug log ---
-
-#close(DLOG);
 
 #--- release lock file ---
 
