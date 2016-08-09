@@ -1665,7 +1665,6 @@ sub sql_autoreg
       $cp_descr = substr($cp_descr, 0, 10);
       $cp_db = $port2cp->{$host}{$port};
       $cp_db =~ s/^.*!//;
-## printf "---> %s %s [DESCR=%s] [DB=%s]  \n", $port, $descr, $cp_descr, $cp_db;
       if(!$cp_db) {
         push(@insert, qq{INSERT INTO porttable VALUES ( '$host', '$port', '$cp_descr', '$site', 'swcoll' )});
       }
@@ -1676,11 +1675,6 @@ sub sql_autoreg
 
   my $msg = sprintf("Found %d entr%s to autoregister", scalar(@insert), scalar(@insert) == 1 ? 'y' : 'ies');
   tty_message("[$host] $msg\n");
-  ### DEBUG ###
-  #for (@insert) {
-  #  print $_, "\n";
-  #}
-  ###
   if(scalar(@insert) > 0) {
     my $e = sql_transaction(\@insert);
     if(!$e) {
