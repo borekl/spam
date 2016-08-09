@@ -27,7 +27,7 @@ $| = 1;
 
 #=== global variables ======================================================
 
-my $cfg;            # complete configuration holder (new)
+my $cfg;             # complete configuration holder (new)
 my $port2cp;         # switchport->CP mapping (from porttable)
 my $selective_run;   # selective run flag
 my %swdata;          # holder for all data retrieved from hosts
