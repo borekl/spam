@@ -579,7 +579,7 @@ sub find_changes
         } else {
           $cmp = $d->[2] != $d->[3];
         }
-        printf $debug_fh  "%s: %s %s -> %s\n", $d->[0], $d->[2], $d->[3],
+        printf $debug_fh  "%s: old:%s new:%s -> %s\n", $d->[0], $d->[2], $d->[3],
           $cmp ? 'NO MATCH' : 'MATCH'
           if $debug_fh;
         $cmp_acc ||= $cmp;
