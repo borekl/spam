@@ -642,7 +642,7 @@ sub sql_status_update
   my ($host, $update_plan) = @_;
   my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
   my $hdata = $swdata{$host};
-  my ($r, $q, $fields, $current_time, $if, @update);
+  my ($r, $q, $fields, @update);
   my $reboot_flag = 0;
   my (@fields, @vals, @bind);
 
@@ -659,12 +659,13 @@ sub sql_status_update
   #--- create entire SQL transaction into @update array ---
 
   for my $k (@$update_plan) {
+
+    my $if = $idx->{$k->[1]};
     my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$if};
+    my $current_time = strftime("%c", localtime());
 
     #--- INSERT
 
-    $if = $idx->{$k->[1]};
-    $current_time = strftime("%c", localtime());
     if($k->[0] eq 'i') {
 
       @fields = qw(
