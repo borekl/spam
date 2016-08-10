@@ -115,6 +115,57 @@ sub cfg_arpservers_list_load
 
 
 #===========================================================================
+# Store swdata{HOST}{dbStatus} row.
+#===========================================================================
+
+sub swdata_status_row_add
+{
+  my $host = shift;
+  my $key = shift;
+  $_[0] =~ y/10/12/;  # ifOperStatus
+  $_[10] =~ y/10/12/; # ifAdminStatus
+  $swdata{$host}{'dbStatus'}{$key} = [ @_ ];
+}
+
+
+#===========================================================================
+# swdata{HOST}{dbStatus} iterator.
+#===========================================================================
+
+sub swdata_status_iter
+{
+  my $host = shift;
+  my $cback = shift;
+
+  for my $k (keys %{$swdata{$host}{'dbStatus'}}) {
+    my $r = $cback->($k, @{$swdata{$host}{'dbStatus'}{$k}});
+    last if $r;
+  }
+}
+
+
+#===========================================================================
+# swdata{HOST}{dbStatus} getter for whole row.
+#===========================================================================
+
+sub swdata_status_get
+{
+  my ($host, $key, $col) = @_;
+
+  if(exists $swdata{$host}{'dbStatus'}{$key}) {
+    my $row = $swdata{$host}{'dbStatus'}{$key};
+    if(defined $col) {
+      return $row->[$col];
+    } else {
+      return $row;
+    }
+  } else {
+    return undef;
+  }
+}
+
+
+#===========================================================================
 # This routine will load content of the status table from the backend
 # database into a $swdata structure (only rows relevant to specified host).
 #
@@ -141,13 +192,11 @@ sub sql_load_status
   if(!$r) {
     return 'Database query failed (spam, ' . $sth->errstr() . ')';
   }
+
   while(my $ra = $sth->fetchrow_arrayref()) {
-    my $ifOperStatus = $ra->[1]; $ifOperStatus =~ y/10/12/;
-    my $ifAdminStatus = $ra->[11]; $ifAdminStatus =~ y/10/12/;
-    $swdata{$host}{dbStatus}{$ra->[0]} = [
-      $ifOperStatus, @{$ra}[2..10], $ifAdminStatus, @{$ra}[12,13]
-    ];
+    swdata_status_row_add($host, @$ra);
   }
+
   return undef;
 }
 
@@ -469,12 +518,13 @@ sub find_changes
 
   #--- delete: ports that no longer exist (not found via SNMP) ---
 
-  foreach my $k (keys %{$h->{'dbStatus'}}) {
+  swdata_status_iter($host, sub {
+    my $k = shift;
     if(!grep { $_ eq $k } @idx_keys) {
       push(@update_plan, [ 'd', $k ]);       # 'd' as 'delete'
       $stats[1]++;
     }
-  }
+  });
 
   #--- now we scan entries found via SNMP ---
 
@@ -484,11 +534,11 @@ sub find_changes
     # interface's [portModuleIndex, portIndex]
     my $pi = $h->{'idx'}{'ifIndexToPortIndex'}{$if};
 
-    if(exists $swdata{$host}{dbStatus}{$k}) {
+    if(swdata_status_get($host, $k)) {
 
       #--- update: entry is not new, check whether it has changed ---
 
-      my $old = $swdata{$host}{dbStatus}{$k};
+      my $old = swdata_status_get($host, $k);
       my $update_flag;
       my $descr = $h->{'IF-MIB'}{'ifAlias'}{$if};
       my $errdis = 0; # currently unavailable
@@ -1212,7 +1262,7 @@ sub switch_info
     # ports that were used within period defined by "inactivethreshold2"
     # configuration parameter
     if($knownports) {
-      if($swdata{$host}{dbStatus}{$portname}[12] < 2592000) {
+      if(swdata_status_get($host, $portname, 12) < 2592000) {
         $stat->{p_used}++;
       }
     }
@@ -1655,8 +1705,9 @@ sub sql_autoreg
 
   #--- iterate over all ports
 
-  for my $port (keys %{$swdata{$host}{dbStatus}}) {
-    my $descr = $swdata{$host}{dbStatus}{$port}[6];
+  swdata_status_iter($host, sub {
+    my $port = shift;
+    my $descr = @_[6];
     my ($cp_descr, $cp_db);
     if($descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
       $cp_descr = $1;
@@ -1669,7 +1720,7 @@ sub sql_autoreg
         push(@insert, qq{INSERT INTO porttable VALUES ( '$host', '$port', '$cp_descr', '$site', 'swcoll' )});
       }
     }
-  }
+  });
 
   #--- insert data into database
 
