@@ -474,6 +474,10 @@ sub snmp_get_tree
 
     my ($var, $val) = split(/ = /, $l);
 
+  #--- drop the "No Such Instance" result
+
+    return if $val =~ /^No Such Instance/;
+
   #--- parse the right side (value)
 
     my $rval = snmp_value_parse($val);
