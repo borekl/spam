@@ -11,6 +11,10 @@ body {
    GENERIC
  ----------------------------------------------------------------------------*/
 
+div.match-divs {
+  display : inline-block;
+}
+
 table, th, td {
   border-collapse : collapse;
   border : none;
