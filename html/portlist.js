@@ -64,6 +64,12 @@ function processPortList()
       jq_port_list = jq_mount.find('table.list')
       new modPortInfo(shared, jq_port_list, that);
 
+      //--- bind hide/unhide handler to swinfo tables
+
+      $('table.swinfo span.swsec').on('click', function(evt) {
+        $(evt.currentTarget).parents('thead').next().toggle();
+      });
+
       //--- bind editable to those module aux info fields
       
       $('span.modwire').on('click', function() {

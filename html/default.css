@@ -281,8 +281,49 @@ div#swinfo {
 th.swinfo {
   padding : 0em;
   padding-right : 1em;
-  text-align: left;
-  font-weight : normal;
+  color : #666;
+  text-align: right;
+  font-weight : bold;
+  font-size : smaller;
+  text-transform : uppercase;
+  vertical-align : baseline;
+}
+
+td.swinfo {
+  vertical-align : baseline;
+}
+
+table.swinfo {
+  width : 100%;
+}
+
+table.swinfo tbody tr:nth-child(even) {
+  background-color : #ddd;
+}
+
+table.swinfo thead tr {
+  color : white;
+  background : #f60;
+  font-weight : bold;
+}
+
+table.swinfo thead td {
+  padding-left : 0.2em;
+  text-transform : uppercase;
+  font-weight : bold;
+  font-size : normal;
+  vertical-align : center;
+}
+
+table.swinfo thead td span.swsec {
+  user-select : none;
+  -moz-user-select : none;
+  -webkit-user-select : none;
+}
+
+table.swinfo thead td span.swsec:hover {
+  text-decoration : underline;
+  cursor : pointer;
 }
 
 /*----------------------------------------------------------------------------

@@ -4,28 +4,77 @@
 
 <div class="match-divs">
 
-{!==========================================================================!}
+{!==========================================================================
+  Switch Info / this provides global information about switch and is located
+  above the portlist.
+  ==========================================================================!}
 
 <div id="swinfo">
-  {#swinfo.result}
-  <table>
+
+  <table class="swinfo"> {!-------------------------------------------------!}
+    <thead>
+      <tr>
+        <td colspan="2">
+          <span class="swsec">Switch Information</span>
+        </td>
+      </tr>
+    </thead>
     <tbody>
-      <tr><th class="swinfo">Location</th>     <td>{descr}</td></tr>
-      <tr><th class="swinfo">Total ports</th>  <td>{ports_total}</td></tr>
-      <tr><th class="swinfo">Active ports</th> <td>{ports_active}</td></tr>
-      <tr><th class="swinfo">Boot time</th>    <td>{boot_time} ({boot_age} ago)</td></tr>
-      <tr><th class="swinfo">Last check</th>   
-      <td>
-        {chg_when}{~s}
-        {@eq key=stale value=1}
-          (<span class="warn">{lastchk_age} ago</span>)
-        {:else}
-          ({lastchk_age} ago)
-        {/eq}
-      </td></tr>
+      {#swinfo.result}
+      <tr>
+        <th class="swinfo">Location</th>
+        <td class="swinfo">{descr}</td>
+      </tr>
+      <tr>
+        <th class="swinfo">Total ports</th>
+        <td class="swinfo">{ports_total}</td>
+      </tr>
+      <tr>
+        <th class="swinfo">Active ports</th>
+        <td class="swinfo">{ports_active}</td>
+      </tr>
+      <tr>
+        <th class="swinfo">Boot time</th>
+        <td class="swinfo">{boot_time} ({boot_age} ago)</td>
+      </tr>
+      <tr>
+        <th class="swinfo">Last check</th>
+        <td class="swinfo">
+          {chg_when}{~s}
+          {@eq key=stale value=1}
+            (<span class="warn">{lastchk_age} ago</span>)
+          {:else}
+            ({lastchk_age} ago)
+          {/eq}
+        </td>
+      </tr>
+      {/swinfo.result}
     </tbody>
   </table>
-  {/swinfo.result}
+
+  <table class="swinfo"> {!-------------------------------------------------!}
+    <thead>
+      <tr>
+        <td colspan="4">
+          <span class="swsec">Hardware Information</span>
+        </td>
+      </tr>
+    </thead>
+    <tbody class="nodisp">
+      {#hwinfo.result}
+      <tr>
+        <td class="swinfo">
+          {@ne key=m value=0}{m}/{/ne}
+          {n}
+        </td>
+        <td class="swinfo">{type}</td>
+        <td class="swinfo">{partnum}</td>
+        <td class="swinfo">{sn}</td>
+      </tr>
+      {/hwinfo.result}
+    </tbody>
+  </table>
+
 </div>
 
 
