@@ -545,7 +545,8 @@ sub sql_get_hwinfo
     'spam', 
     "SELECT m, n, type, partnum, sn, location
      FROM hwinfo LEFT JOIN modwire USING ( host, m, n)
-     WHERE host = ?",
+     WHERE host = ?
+     ORDER BY m ASC, n ASC",
     $host
   );
   if($local_re->{'status'} eq 'ok') {
