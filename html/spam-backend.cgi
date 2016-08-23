@@ -306,6 +306,7 @@ sub mangle_location
   #--- arguments
   
   my $row = shift;           # 1. row from swstat table (hashref)
+  return undef if !ref($row) || !$row->{'location'};
   
   #--- other variables
   
@@ -319,7 +320,7 @@ sub mangle_location
   
   #--- field 3: "shop Sxx"
   
-  $l[3] =~ /^Shop [ST](\d{2}|xx)/ && do {
+  $l[3] && $l[3] =~ /^Shop [ST](\d{2}|xx)/ && do {
     $shop = 1;
     $descr = sprintf('S%s %s, %s', $1, $l[4], $l[5]);
   };
@@ -356,7 +357,7 @@ sub mangle_location
 sub mangle_swlist
 {
   my $row = shift;
-  my @l = split(/;/, $row->{'location'});
+  my @l = split(/;/, $row->{'location'} // '');
   my $shop;
 
   #--- remove undefined values
