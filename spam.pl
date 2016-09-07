@@ -1074,6 +1074,10 @@ sub sql_mactable_update
 
       next if !exists $swdata{$host}{'IF-MIB'}{'ifName'}{$if};
 
+      #--- skip MACs on ports that are receiving CDP
+
+      next if exists $swdata{$host}{'CISCO-CDP-MIB'}{'cdpCacheCapabilities'}{$if};
+
       #--- normalize MAC, get formatted timestamp
 
       my $mac_n = $normalize->($mac);
