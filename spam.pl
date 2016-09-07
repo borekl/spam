@@ -321,8 +321,10 @@ sub poll_host
       # 'mactable' MIBs should only be read when --mactable switch is active
 
       if(grep($_ eq 'mactable', @{$mib_entry->{'flags'}})) {
-        tty_message("[$host] Skipping $mib, mactable loading not active\n");
-        next if !$get_mactable;
+        if(!$get_mactable) {
+          tty_message("[$host] Skipping $mib, mactable loading not active\n");
+          next;
+        }
       }
     }
 
