@@ -146,11 +146,13 @@ function portInfoShow()
           function() {
             jq_out = $('div.pi-outlet span');
             jq_out.css('opacity', '0.5');
+            jq_button.removeClass('svg-dustbin').addClass('svg-spinner');
             $.post(shared.backend, {
               r: 'delpatch',
               host: r.search.result.host,
               portname: r.search.result.portname
             }, function(delres) {
+              jq_button.removeClass('svg-spinner').addClass('svg-dustbin');
               if(delres.status == 'ok') {
                 jq_button.addClass('nodisp');
                 jq_out.empty();

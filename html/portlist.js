@@ -39,7 +39,9 @@ var
 this.refreshPortList = function()
 {
   if('beRequest' in myCfg) {
+    $(myCfg.spinner).addClass('spinner');
     $.post(shared.backend, myCfg.beRequest, function(r) {
+      $(myCfg.spinner).removeClass('spinner');
       myCfg.beResponse = r;
       processPortList();
     });

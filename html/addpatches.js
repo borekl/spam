@@ -219,6 +219,8 @@ function formSubmit(evt)
 
   //--- backend query
 
+  $('button[name=addp_submit]')
+    .removeClass('svg-check').addClass('svg-spinner');
   $.post(shared.backend, arg, function(data) {
 
     // display feedback data from backend; this is run even when the
@@ -227,6 +229,8 @@ function formSubmit(evt)
     //  * validation result
     //  * error messages for validation failures
 
+    $('button[name=addp_submit]')
+      .removeClass('svg-spinner').addClass('svg-check');
     jq_tbody.find('tr').each(function() {
       $(this).trigger('statmsg', '');
     });
@@ -335,7 +339,9 @@ dust.render('addpatch', {}, function(err, out) {
   // populate 'site' SELECT
 
   $('select[name=addp_site]').each(function(idx, el) {
+    $('div#addpatch').addClass('spinner');
     shared.populate_select_sites(idx, el, function(idx, el) {
+      $('div#addpatch').removeClass('spinner');
       if(prefill && 'site' in prefill) {
         $(el).val(prefill.site).trigger('change');
       } else {

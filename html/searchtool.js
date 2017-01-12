@@ -55,7 +55,7 @@ function submitSearch(evt)
 
   //--- submit form data to backend, get results back
   
-  $('div#srctool').addClass('spinner');
+  $('button#submit').removeClass('svg-check').addClass('svg-spinner');
   portList = new modPortList(
     shared, { beRequest: form, mount: 'div#result', template: 'srcres' },
     function(search) {
@@ -69,7 +69,7 @@ function submitSearch(evt)
         $('input[name=' + field  + ']').val(search.params.normalized[field]);
       }
     }
-    $('div#srctool').removeClass('spinner');
+    $('button#submit').removeClass('svg-spinner').addClass('svg-check');
 
   });
 }
