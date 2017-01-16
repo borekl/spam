@@ -252,6 +252,13 @@ sub poll_host
     return 'Excluded host';
   }
 
+  #--- check if the hostname can be resolved
+
+  if(!inet_aton($host)) {
+    tty_message("[$host] Hostname cannot be resolved\n");
+    return 'DNS resolution failed';
+  }
+
   #--- get system info
 
   tty_message("[$host] Getting host system info (started)\n");
