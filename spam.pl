@@ -258,6 +258,7 @@ sub poll_host
   my ($sysinfo, $platform, $uptime) = snmp_system_info($host, $community);
   if(!ref($sysinfo)) {
     tty_message("[$host] Getting host system info (failed, %s)\n", $sysinfo);
+    return 'Cannot get system info';
   } else {
     tty_message(
       "[$host] System info: platform=%s boottime=%s\n",
