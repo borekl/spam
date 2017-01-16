@@ -1030,6 +1030,7 @@ sub sql_mactable_update
   my $ret;
   my @update;              # update plan
   my %mac_current;         # contents of 'mactable'
+  my $debug_fh;
 
   #--- insta-sub for normalizing MAC values
 
@@ -1041,12 +1042,31 @@ sub sql_mactable_update
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
 
+  #--- open debug file
+
+  if($ENV{'SPAM_DEBUG'}) {
+    open($debug_fh, '>', "debug.mactable_update.$$.log");
+    if($debug_fh) {
+      printf $debug_fh "==> sql_mactable_update(%s)\n", $host;
+    }
+  }
+
   #--- query current state, mactable ---
 
-  my $sth = $dbh->prepare('SELECT mac, host, portname, active FROM mactable');
+  my $qry = 'SELECT mac, host, portname, active FROM mactable';
+  if($debug_fh) {
+    printf $debug_fh "--> GET CURRENT MACTABLE CONTENTS\n";
+    printf $debug_fh "--> %s\n", $qry;
+  }
+  my $sth = $dbh->prepare($qry);
   $sth->execute() || return 'Database query failed (spam,' . $sth->errstr() . ')';
   while(my ($mac, $mhost, $mportname, $mactive) = $sth->fetchrow_array()) {
-    $mac_current{$mac} = [ $mhost, $mportname, $mactive ];
+    $mac_current{$mac} = 1;
+    if($debug_fh) {
+      printf $debug_fh
+        "%s = [ %s, %s, %s ]\n",
+        $mac, $mhost, $mportname, $mactive ? 'ACTIVE' : 'NOT ACTIVE';
+    }
   }
 
   #--- reset 'active' field to 'false'
@@ -1061,6 +1081,7 @@ sub sql_mactable_update
 
   #--- gather update plan ---
 
+  printf $debug_fh "--> CREATE UPDATE PLAN\n" if $debug_fh;
   for my $vlan (keys %$h) {
     for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbStatus'}}) {
       my ($q, @fields, @bind);
@@ -1103,6 +1124,7 @@ sub sql_mactable_update
           q{UPDATE mactable SET %s WHERE mac = ?},
           join(',', @fields)
         );
+        printf $debug_fh "UPDATE %s\n", $mac_n if $debug_fh;
       } else {
         # insert
         @fields = (
@@ -1116,8 +1138,9 @@ sub sql_mactable_update
           q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
           join(',', @fields)
         );
+        printf $debug_fh "INSERT %s\n", $mac_n if $debug_fh;
 
-        delete $mac_current{$mac_n};
+        $mac_current{$mac_n} = 1;
       }
       push(@update, [ $q, @bind ]) if $q;
     }
@@ -1126,6 +1149,7 @@ sub sql_mactable_update
   #--- sent data to db and finish---
 
   $ret = sql_transaction(\@update);
+  close($debug_fh) if $debug_fh;
   return $ret if defined $ret;
   return undef;
 }
