@@ -483,7 +483,7 @@ sub poll_host
   #--- dump swstat
 
   if($ENV{'SPAM_DEBUG'}) {
-    open(my $fh, '>', "swdata.$$.log") || die;
+    open(my $fh, '>', "debug.swdata.$$.log") || die;
     print $fh  Dumper(\%swdata);
     close($fh);
   }
@@ -520,7 +520,7 @@ sub find_changes
   #--- debug init
 
   if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>', "find_changes.$$.log");
+    open($debug_fh, '>', "debug.find_changes.$$.log");
     if($debug_fh) {
       printf $debug_fh "--> find_changes(%s)\n", $host
     }
@@ -939,7 +939,7 @@ sub sql_transaction
 
   if($ENV{'SPAM_DEBUG'}) {
     my $line = 1;
-    open($fh, '>>', "transaction.$$.log");
+    open($fh, '>>', "debug.transaction.$$.log");
     if($fh) {
       printf $fh "---> TRANSACTION LOG START\n";
       for my $row (@$update) {
