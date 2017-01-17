@@ -20,6 +20,3 @@ CREATE TABLE status (
   errdis      boolean,
   PRIMARY KEY (host, portname)
 );
-
-CREATE UNIQUE INDEX status_ifindex ON status ( host, ifindex );
-
