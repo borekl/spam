@@ -914,7 +914,9 @@ sub sql_search
   
   #--- normalize search parameters
   
-  $re{'params'}{'normalized'} = $par = normalize_search($par);
+  if($par->{'mode'} ne 'portlist') {
+    $re{'params'}{'normalized'} = $par = normalize_search($par);
+  }
   
   #--- function to do some mangling of data
   
