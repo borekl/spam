@@ -29,7 +29,6 @@ $| = 1;
 
 my $cfg;             # complete configuration holder (new)
 my $port2cp;         # switchport->CP mapping (from porttable)
-my $selective_run;   # selective run flag
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
 my @known_platforms; # list of known platform codes
@@ -46,13 +45,14 @@ sub help
   print "  --[no]mactable   turn getting bridging table on or off (default on)\n";
   print "  --[no]autoreg    turn autoregistration of outlets on or off (default off)\n";
   print "  --quick          equivalent of --noarptable and --nomactable\n";
-  print "  --host=HOST      poll only HOST, can be used multiple times (default all\n";
-  print "                   hosts), partial matches accepted, anchored on beginning\n";
-  print "  --maint          perform database maintenance and exit\n";
-  print "  --arpservers     list known ARP servers and exit\n";
-  print "  --hosts          list known hosts and exit\n";
+  print "  --host=HOST      poll only HOST, can be used multiple times (default all hosts)\n";
+  print "  --hostre=RE      poll only hosts matching the regexp\n";
   print "  --tasks=N        number of tasks to be run (N is 1 to 16, default 8)\n";
   print "  --remove=HOST    remove HOST from database and exit\n";
+  print "  --maint          perform database maintenance and exit\n";
+  print "  --arpservers     list known ARP servers and exit\n";
+  print "  --worklist       display list of switches that would be processed and exit\n";
+  print "  --hosts          list known hosts and exit\n";
   print "  --debug          turn on debug mode\n";
   print "  --help, -?       this help\n";
   print "\n";
@@ -1805,10 +1805,13 @@ my $no_lock = 0;           # inhibit creation of lock file
 my $tasks_max = 8;         # maximum number of background tasks
 my $tasks_cur = 0;         # current number of background tasks
 my $autoreg = 0;           # autoreg feature
+my $cmd_worklist = 0;      # display only a worklist
 my ($help, $maint, $list_arpservers, $list_hosts, $cmd_remove_host);
 my @poll_hosts;
+my $poll_hosts_re;
 
 if(!GetOptions('host=s'     => \@poll_hosts,
+               'hostre=s'   => \$poll_hosts_re,
                'arptable!'  => \$get_arptable,
                'help|?'     => \$help,
                'mactable!'  => \$get_mactable,
@@ -1819,6 +1822,7 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'tasks=i'    => \$tasks_max,
                'autoreg'    => \$autoreg,
                'remove=s'   => \$cmd_remove_host,
+               'worklist'   => \$cmd_worklist,
                'debug'      => \$ENV{'SPAM_DEBUG'}
               )) {
   print "\n"; help(); exit(1);
@@ -1955,10 +1959,6 @@ eval {
 	undef $ret;
 	tty_message("[main] Loading port table (finished)\n");
 
-	#--- set selective run flag ----------------------------------------
-
-	if(scalar(@poll_hosts) != 0) { $selective_run = 1; }
-
 	#--- disconnect parent database handle -----------------------------
 	# I'm not sure about behaviour of DBI database handles when using
 	# fork(), so let's play safe here. The handle will be automatically
@@ -1971,19 +1971,39 @@ eval {
 	my @work_list;
 	my $wl_idx = 0;
 	foreach my $host (sort keys %{$cfg->{host}}) {
-	  next if($selective_run && !(grep {
-	    my $x = lc($_);
-	    $host =~ /^$x/i;
-          } @poll_hosts));
-          push(@work_list, [ 'host', $host, undef ]);
+          if(
+            (
+              scalar(@poll_hosts) &&
+              grep { lc($host) eq lc($_); } @poll_hosts
+            ) || (
+              $poll_hosts_re &&
+              $host =~ /$poll_hosts_re/i
+            ) || (
+              !scalar(@poll_hosts) && !defined($poll_hosts_re)
+            )
+          ) {
+            push(@work_list, [ 'host', $host, undef ]);
+          }
 	}
-	tty_message("[main] $wl_idx hosts scheduled to be processed\n");
+	tty_message("[main] %d hosts scheduled to be processed\n", scalar(@work_list));
 
 	#--- add arptable task to the work list
 
 	if($get_arptable) {
 	  push(@work_list, [ 'arp', undef, undef ]);
 	}
+
+        #--- --worklist option selected, only print the worklist and finish
+
+        if($cmd_worklist) {
+          printf("\nFollowing host would be scheduled for polling\n");
+          printf(  "=============================================\n");
+          for my $we (@work_list) {
+            printf("%s %s\n",@{$we}[0..1]);
+          }
+          print "\n";
+          die "OK\n";
+        }
 
 	#--- loop through all tasks ----------------------------------------
 
