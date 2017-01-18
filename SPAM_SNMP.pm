@@ -436,7 +436,7 @@ sub snmp_get_tree
   #--- initiate debugging
 
   if($ENV{'SPAM_DEBUG'}) {
-    open($fh, '>>', "snmp_tree.$$.log");
+    open($fh, '>>', "debug.snmp_tree.$$.log");
     if($fh) {
       printf $fh "--> SNMP TREE %s::%s", $args[3], $args[4];
       if($args[2] =~ /\@(\d+)$/) {
