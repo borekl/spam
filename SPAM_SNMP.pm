@@ -20,6 +20,7 @@ use integer;
   snmp_system_info
   snmp_get_arptable
   snmp_get_tree
+  snmp_get_object
 );
 
 
@@ -564,6 +565,240 @@ sub snmp_get_tree
 
   close($fh) if $fh;
   return $r ? $r : \%re;
+}
+
+
+#==========================================================================
+# Get SNMP object and store it into a hashref. First five arguments are
+# the same as for snmp_lineread(), sixth argument is optional callback
+# that receives line count as argument (for displaying progress indication)
+# The callback can optionally return number of seconds that determine the
+# period it should be called at.
+#==========================================================================
+
+sub snmp_get_object
+{
+  #--- arguments (same as to snmp_lineread)
+
+  # arguments 0..5 are those of snmp_lineread(); argument 5 is list of
+  # columns to retrieve, this can be undef to get all existing columns; the
+  # last argument is optional and is an callback intended for displaying
+  # progress status that is invoked with (VARIABLE, CNT) where variable is
+  # SNMP variable currently being processed and CNT is entry counter that's
+  # zeroed for each new variable.  This callback is invoked only when: a)
+  # the variable being read is different from previous one (ie.  reading of
+  # one variable finished), or specified amount of time passed between now
+  # and the last time the callback was called.  Default delay is 1 second,
+  # but it can be specified on callback invocation: the returned value will
+  # be used for the rest of the invocations.  Granularity is only 1 second
+  # (the implementation uses time() function).
+
+  my (
+    $cmd,       # 1 / scal / SNMP command
+    $host,      # 2 / scal / SNMP host (agent)
+    $community, # 3 / scal / SNMP community
+    $mibs,      # 4 / aref / list of MIBs to load
+    $object,    # 5 / scal / SNMP object to retrieve
+    $columns,   # 6 / aref / columns (undef = all columns)
+    $cback      # 7 / sub  / callback
+  ) = @_;
+
+  #--- other variables
+
+  my $delay = 1;
+  my %result;
+
+  #--- make $columns an arrayref
+
+  if($columns && !ref($columns)) {
+    $columns = [ $columns ];
+  }
+
+  #--- initiate debugging
+
+  if($ENV{'SPAM_DEBUG'}) {
+    open($fh, '>>', "debug.snmp_object.$$.log");
+    if($fh) {
+      # FIXME:$mibs may be arrayref, this should be handled here
+      printf $fh "--> SNMP OBJECT %s::%s", $mibs, $object;
+      if($args[2] =~ /\@(\d+)$/) {
+        printf $fh " (%d)", $1;
+      }
+      print $fh "\n";
+    }
+  }
+
+  #--- initial callback call
+
+  if($cback) {
+    my $rv = $cback->(undef, $cnt);
+    $delay = $rv if $rv > 0;
+  }
+
+  #--- get set of MIB tree entry points
+
+  my @tree_entries = ($object);
+  if($columns && ref($columns)) {
+    @tree_entries = @$columns;
+  }
+  printf $fh "--> ENTRY POINTS: %s\n", join(',', @tree_entries);
+
+  #--- entry points loop ----------------------------------------------------
+
+  for my $entry (@tree_entries) {
+    my %re;
+    my $cnt = 0;
+
+  #--- read loop ------------------------------------------------------------
+
+    my $r = snmp_lineread($cmd, $host, $community, $mibs, $entry, sub {
+      my $l = shift;
+      my $tm2;
+
+  #--- FIXME: skip lines that don't contain '='
+
+  # This is ugly hack to work around the way snmp-utils display long binary
+  # strings (type "Hex-STRING"): these are displayed on multiple lines, which
+  # causes problems with current way of parsing the output. So this should
+  # be reimplemented to accomodate this, but meanwhile we just slurp the hex
+  # values on the first line and discard the rest.
+
+      return if $l !~ /=/;
+
+  #--- split into variable and value
+
+      my ($var, $val) = split(/ = /, $l);
+
+  #--- drop the "No Such Instance" result
+
+      return if $val =~ /^No Such Instance/;
+
+  #--- parse the right side (value)
+
+      my $rval = snmp_value_parse($val);
+      if($ENV{'SPAM_DEBUG'}) {
+        $rval->{'src'} = $l;
+      }
+
+  #--- parse the left side (variable, indexes)
+
+      $var =~ s/^.*:://;  # drop the MIB name
+
+  #--- get indexes
+
+  # left side as output by SNMP utils with -OX option appears in one of the
+  # three forms (with corresponding sections of code below):
+  #
+  #   1. snmpVariable.0
+  #   2. snmpVariable
+  #   3. snmpVariable[idx1][idx2]...[idxN]
+  #
+  # this code converts these forms into an array of the index values
+
+      my @i;
+      my $scalar = 0;
+
+      # case 1: SNMP scalar value denoted by .0
+      if($var =~ s/\.0$//) {
+        $scalar = 1;
+      }
+
+      # case 2: (not sure what is this called in SNMP terminology)
+      elsif($var =~ /^\w+$/) {
+        @i = ();
+      }
+
+      # case 3: one or more indices
+      else {
+        $idx = $var;
+        # following regex parses the object/column name and removes starting
+        # and final square brackets
+        $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
+        $var = $1;
+        @i = split(/\]\[/, $idx);
+        for (@i) {
+          s/^"(.*)"$/$1/;      # drop double quotes around index value
+          s/^STRING:\s*//;     # drop type prefix from strings
+        }
+      }
+
+  #--- store the values
+
+  # following code builds hash that stores the values ($rval in the code);
+  # the structure created is:
+  #
+  # 1. $re -> 0     ->                          value
+  # 2. $re -> undef ->                          value
+  # 3. $re -> idx1  -> ... -> idxN -> column -> value
+
+      # SNMP scalar value
+      if($scalar) {
+        $re{0} = $rval;
+      }
+
+      # unindexed SNMP scalar (scalar without the .0)
+      elsif(scalar(@i) == 0) {
+        $re{undef} = $rval;
+      }
+
+      # SNMP tables, @i holds the indices, $var is column name
+      else {
+        my $h = \%re;
+        for my $j (@i) {
+          $h->{$j} = {} if !exists $h->{$j};
+          $h = $h->{$j};
+        }
+        $h->{$var} = $rval;
+      }
+
+  #--- debugging info
+
+      if($fh) {
+        my $rval_txt = join(',', %$rval);
+        printf $fh "%s.%s = %s\n", $var, join('.', @i), $rval_txt;
+      }
+
+  #--- line counter
+
+      $cnt++;
+
+  #--- callback
+
+      $tm2 = time();
+      if($var1 ne $var) {
+        $cnt = 0;
+        $tm1 = $tm2;
+        $var1 = $var;
+        $cback->($var, $cnt) if $cback;
+      } elsif(($tm2 - $tm1) >= $delay) {
+        $cback->($var, $cnt) if $cback;
+        $tm1 = $tm2;
+      }
+
+  #--- finish callback
+
+      return undef;
+    });
+
+  #--- abort on error
+
+    if($r) {
+      close($fh);
+      return $r;
+    }
+
+  #--- store the result
+
+    %result = (%result, %re);
+
+  #--- finish looping over the MIB tree entries
+
+  }
+
+  #--- finish ---------------------------------------------------------------
+
+  close($fh) if $fh;
+  return \%result;
 }
 
 
