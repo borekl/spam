@@ -686,25 +686,32 @@ sub find_changes
 
       #--- collect the data to compare
 
+      my $ifTable = $h->{'mibs-new'}{'IF-MIB'}{'ifTable'}{$if};
+      my $ifXTable = $h->{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if};
+      my $portTable
+         = $h->{'mibs-new'}{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]};
+      my $vmMembershipTable
+         = $h->{'mibs-new'}{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+
       my @data = (
-        [ 'ifOperStatus', 'n',
-           $old->[0], $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} ],
-	[ 'ifInUcastPkts', 'n',
-	  $old->[1], $h->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'} ],
-	[ 'ifOutUcastPkts', 'n',
-	  $old->[2], $h->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'} ],
-        [ 'vmVlan', 'n',
-          $old->[5], $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'} ],
-        [ 'ifAlias', 's',
-          $old->[6], $h->{'IF-MIB'}{'ifAlias'}{$if}{'value'} ],
-        [ 'portDuplex', 'n',
-          $old->[7], $h->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'} ],
-        [ 'ifSpeed', 'n',
-          $old->[8], ($h->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) ],
-        [ 'port_flags', 'n',
-          $old->[9],  port_flag_pack($h, $if) ],
-        [ 'ifAdminStatus', 'n',
-          $old->[10], $h->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} ],
+        [ 'ifOperStatus', 'n', $old->[0],
+          $ifTable->{'ifOperStatus'}{'value'} ],
+	[ 'ifInUcastPkts', 'n', $old->[1],
+	  $ifTable->{'ifInUcastPkts'}{'value'} ],
+	[ 'ifOutUcastPkts', 'n', $old->[2],
+	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
+        [ 'vmVlan', 'n', $old->[5],
+          $vmMembershipTable->{'vmVlan'}{'value'} ],
+        [ 'ifAlias', 's', $old->[6],
+          $ifXTable->{'ifAlias'}{'value'} ],
+        [ 'portDuplex', 'n', $old->[7],
+          $portTable->{'portDuplex'}{'value'} ],
+        [ 'ifSpeed', 'n', $old->[8],
+          ($ifTable->{'ifSpeed'}{'value'} / 1000000) ],
+        [ 'port_flags', 'n', $old->[9],
+          port_flag_pack_new($h, $if) ],
+        [ 'ifAdminStatus', 'n', $old->[10],
+          $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
           $old->[11], $errdis ]
       );
