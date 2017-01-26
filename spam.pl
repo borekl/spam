@@ -330,7 +330,7 @@ sub poll_host
 
       if(grep($_ eq 'mactable', @{$mib_entry->{'flags'}})) {
         if(!$get_mactable) {
-          tty_message("[$host] Skipping $mib, mactable loading not active\n");
+          tty_message("[$host/OLD] Skipping $mib, mactable loading not active\n");
           next;
         }
       }
@@ -338,7 +338,7 @@ sub poll_host
 
     #--- processing of the MIB is a go
 
-    tty_message("[%s] Processing %s\n", $host, $mib);
+    tty_message("[%s/OLD] Processing %s\n", $host, $mib);
 
     #--- get MIB tree entry point(s)
 
@@ -365,7 +365,7 @@ sub poll_host
           sub {
             my ($var, $cnt) = @_;
             return if !$var;
-            my $msg = "[$host] Loading $mib::$var";
+            my $msg = "[$host/OLD] Loading $mib::$var";
             if($vlan) { $msg .= " $vlan"; }
             if($cnt) { $msg .= " ($cnt)"; }
             tty_message("$msg\n");
@@ -376,7 +376,7 @@ sub poll_host
 
         if(!ref($r)) {
           tty_message(
-            "[%s] Processing %s (failed, %s)\n",
+            "[%s/OLD] Processing %s (failed, %s)\n",
             $host, $mib, $r
           );
         }
@@ -406,7 +406,101 @@ sub poll_host
     }
   }
 
-  #--- prune non-ethernet interface
+  #--------------------------------------------------------------------------
+  #--- NEW MIB READING CODE STARTS HERE -------------------------------------
+  #--------------------------------------------------------------------------
+
+  for my $mib_entry (@{$cfg->{'mibs-new'}}) {
+    my $mib = $mib_entry->{'mib'};
+    my @vlans = ( undef );
+
+    for my $object (@{$mib_entry->{'objects'}}) {
+
+  #--- match platform string
+
+      my $include_re = $object->{'include'} // undef;
+      my $exclude_re = $object->{'exclude'} // undef;
+      next if $include_re && $platform !~ /$include_re/;
+      next if $exclude_re && $platform =~ /$exclude_re/;
+
+  #--- process additional flags
+
+      if(exists $object->{'flags'}) {
+        my $object_flags = $object->{'flags'};
+        if(!ref($object_flags)) { $object_flags = [ $object_flags ]; }
+
+        # 'vlans' flag; this causes to VLAN number to be added to the
+        # community string (as community@vlan) and the tree retrieval is
+        # iterated over all known VLANs; this means that vtpVlanName must be
+        # already retrieved; this is required for reading MAC addresses from
+        # switch via BRIDGE-MIB
+
+        if(grep($_ eq 'vlans', @$object_flags)) {
+          @vlans = keys %{$swdata{$host}{'mibs-new'}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}};
+        }
+
+        if(grep($_ eq 'vlan1', @$object_flags)) {
+          @vlans = ( 1 );
+        }
+
+        if(grep($_ eq 'mactable', @$object_flags)) {
+          if(!$get_mactable) {
+            tty_message("[$host] Skipping $mib, mactable loading not active\n");
+            next;
+          }
+        }
+      }
+
+  #--- iterate over vlans
+
+      for my $vlan (@vlans) {
+        next if $vlan > 999;
+        my $cmtvlan = $community . ($vlan ? "\@$vlan" : '');
+
+  #--- retrieve the SNMP object
+
+        my $r = snmp_get_object(
+          'snmpwalk', $host, $cmtvlan, $mib,
+          $object->{'table'} // $object->{'scalar'},
+          $object->{'columns'} // undef,
+          sub {
+            my ($var, $cnt) = @_;
+            return if !$var;
+            my $msg = "[$host] Loading $mib::$var";
+            if($vlan) { $msg .= " $vlan"; }
+            if($cnt) { $msg .= " ($cnt)"; }
+            tty_message("$msg\n");
+          }
+        );
+
+  #--- handle error
+
+        if(!ref($r)) {
+          tty_message(
+            "[%s] Processing %s (failed, %s)\n",
+            $host, $mib, $r
+          );
+        }
+
+  #--- process result
+
+        else {
+          my $object_name = $object->{'table'} // $object->{'scalar'};
+          if($vlan) {
+            $swdata{$host}{'mibs-new'}{$mib}{$vlan}{$object_name} = $r;
+          } else {
+            $swdata{$host}{'mibs-new'}{$mib}{$object_name} = $r;
+          }
+        }
+      }
+    }
+  }
+
+  #--------------------------------------------------------------------------
+  #--- NEW MIB READING ENDS HERE --------------------------------------------
+  #--------------------------------------------------------------------------
+
+  #--- prune non-ethernet interface --- OLD ---
 
   # Delete all interfaces that are not of ifType ethernetCsmacd; note, that
   # they are only deleted from ifName! This requires IF-MIB::ifType to be
@@ -414,7 +508,7 @@ sub poll_host
 
   my @ifs_to_prune;
   if(exists $swdata{$host}{'IF-MIB'}{'ifType'}) {
-    tty_message("[$host] Pruning non-ethernet interfaces (started)\n");
+    tty_message("[$host/OLD] Pruning non-ethernet interfaces (started)\n");
     for my $if (keys %{$swdata{$host}{'IF-MIB'}{'ifName'}}) {
       if(
         # interfaces of type other than 'ethernetCsmacd'
@@ -427,56 +521,93 @@ sub poll_host
       }
     }
     if(@ifs_to_prune) {
-      tty_message("[$host] %d interfaces will be pruned\n", scalar(@ifs_to_prune));
+      tty_message("[$host/OLD] %d interfaces will be pruned\n", scalar(@ifs_to_prune));
       for(@ifs_to_prune) { delete $swdata{$host}{'IF-MIB'}{'ifName'}{$_}; }
     }
-    tty_message("[$host] Pruning non-ethernet interfaces (finished)\n");
+    tty_message("[$host/OLD] Pruning non-ethernet interfaces (finished)\n");
   }
 
-  #--- create portname->ifindex hash
+  #--- prune non-ethernet interfaces --- NEW ---
+  #--- create portName -> ifindex hash --- NEW ---
 
-  # we build temporary ifIndex->ifName hash (because our regular hash in
-  # swdata has additional level of indirection) and then reverse the hash
-
+  my $cnt_prune = 0;
   my (%by_ifindex, %by_ifname);
-  for my $if (keys %{$swdata{$host}{'IF-MIB'}{'ifName'}}) {
-    $by_ifindex{$if} = $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'};
-  }
-  %by_ifname = reverse %by_ifindex;
-  $swdata{$host}{'idx'}{'portToIfIndex'} = \%by_ifname;
-
-  #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex
-
-  # some CISCO MIBs use this kind of indexing instead of ifindex
-
-  my %by_portindex;
-  if($swdata{$host}{'CISCO-STACK-MIB'}) {
-    $s = $swdata{$host}{'CISCO-STACK-MIB'}{'portIfIndex'};
-    for my $pmIndex (keys %$s) {
-      for my $pIndex (keys %{$s->{$pmIndex}}) {
-        $by_portindex{
-          $s->{$pmIndex}{$pIndex}{'value'}
-        } = [ $pmIndex, $pIndex ];
+  if(
+    exists $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifTable'} &&
+    exists $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifXTable'}
+  ) {
+    tty_message("[$host] Pruning non-ethernet interfaces (started)\n");
+    for my $if (keys %{ $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifTable'} }) {
+      if(
+        # interfaces of type other than 'ethernetCsmacd'
+        $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
+          ne 'ethernetCsmacd'
+        # special case; some interfaces are ethernetCsmacd and yet they are
+        # not real interfaces (good job, Cisco) and cause trouble
+        || $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
+          =~ /^vl/i
+      ) {
+        # matching interfaces are deleted
+        delete $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifTable'}{$if};
+        delete $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if};
+        $cnt_prune++;
+      } else {
+        #non-matching interfaces are indexed
+        $by_ifindex{$if}
+        = $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
       }
     }
-    $swdata{$host}{'idx'}{'ifIndexToPortIndex'} = \%by_portindex;
+    %by_ifname = reverse %by_ifindex;
+    $swdata{$host}{'idx'}{'portToIfIndex'} = \%by_ifname;
+    tty_message(
+      "[$host] Pruning non-ethernet interfaces (finished, %d pruned)\n",
+      $cnt_prune
+    );
+  } else {
+    die "ifTable/ifXTable don't exist on $host";
   }
 
-  #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
+  #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex --- NEW ---
+
+  # some CISCO MIBs use this kind of indexing instead of ifIndex
+
+  my %by_portindex;
+  if(exists $swdata{$host}{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'}) {
+    my $s = $swdata{$host}{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'};
+    for my $idx_mod (keys %$s) {
+      for my $idx_port (keys %{$s->{$idx_mod}}) {
+        $by_portindex{$s->{$idx_mod}{$idx_port}{'portIfIndex'}{'value'}}
+        = [ $idx_mod, $idx_port ];
+      }
+    }
+    $swdata{$host}{'ifIndexToPortIndex'} = \%by_portindex;
+  }
+
+  #--- create mapping from IF-MIB to BRIDGE-MIB interfaces --- NEW ---
 
   my %by_dot1d;
-  if($swdata{$host}{'BRIDGE-MIB'}{1}{'dot1dBasePortIfIndex'}) {
-    for my $vlan (keys %{$swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanName'}{1}}) {
-      for my $dot1d (keys %{$swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}}) {
+  if(
+    exists $swdata{$host}{'mibs-new'}{'BRIDGE-MIB'}{1}{'dot1dBasePortTable'}
+  ) {
+    my @vlans
+    = keys %{
+      $swdata{$host}{'mibs-new'}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
+    };
+    for my $vlan (@vlans) {
+      my @dot1idxs
+      = keys %{
+        $swdata{$host}{'mibs-new'}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+      };
+      for my $dot1d (@dot1idxs) {
         $by_dot1d{
-          $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}{$dot1d}{'value'}
+          $swdata{$host}{'mibs-new'}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
         } = $dot1d;
       }
     }
     $swdata{$host}{'idx'}{'ifIndexToDot1d'} = \%by_dot1d;
   }
 
-  #--- process entity information
+  #--- process entity information --- NEW ---
 
   $swdata{$host}{'hw'} = snmp_entity_to_hwinfo($swdata{$host});
 
