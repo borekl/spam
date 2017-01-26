@@ -236,17 +236,19 @@ sub snmp_get_arptable
 sub snmp_entity_to_hwinfo
 {
   my ($h) = @_;
-  my $ent = $h->{'ENTITY-MIB'};
+  my $ent = $h->{'mibs-new'}{'ENTITY-MIB'};
   my %hw;
   my $cidx = 1000;     # incremental index for non-module components
 
   #--- iterate ver entPhysicalTable 
 
-  for my $idx (sort keys %{$ent->{'entPhysicalClass'}}) {
-    my $class = $ent->{'entPhysicalClass'}{$idx}{'enum'};
-    my $physname = $ent->{'entPhysicalName'}{$idx}{'value'};
-    my $container = $ent->{'entPhysicalContainedIn'}{$idx}{'value'};
-    my $c_physname = $ent->{'entPhysicalName'}{$container}{'value'};
+  for my $idx (sort { $a <=> $b } keys %{$ent->{'entPhysicalTable'}}) {
+    my $pt = $ent->{'entPhysicalTable'}{$idx};
+    my $class = $pt->{'entPhysicalClass'}{'enum'};
+    my $physname = $pt->{'entPhysicalName'}{'value'};
+    my $container = $pt->{'entPhysicalContainedIn'}{'value'};
+    my $c_physname
+       = $ent->{'entPhysicalTable'}{$container}{'entPhysicalName'}{'value'};
 
     #--- power supply, chassis
 
@@ -260,13 +262,13 @@ sub snmp_entity_to_hwinfo
         $hw{$chassis}{$cidx}{'type'} = 'ps';
       }
       $hw{$chassis}{$cidx}{'descr'}
-      = $ent->{'entPhysicalDescr'}{$idx}{'value'};
+      = $pt->{'entPhysicalDescr'}{'value'};
       $hw{$chassis}{$cidx}{'model'}
-      = $ent->{'entPhysicalModelName'}{$idx}{'value'};
+      = $pt->{'entPhysicalModelName'}{'value'};
       $hw{$chassis}{$cidx}{'sn'}
-      = $ent->{'entPhysicalSerialNum'}{$idx}{'value'};
+      = $pt->{'entPhysicalSerialNum'}{'value'};
       $hw{$chassis}{$cidx}{'hwrev'}
-      = $ent->{'entPhysicalHardwareRev'}{$idx}{'value'};
+      = $pt->{'entPhysicalHardwareRev'}{'value'};
       $cidx++;
     }
 
@@ -282,17 +284,17 @@ sub snmp_entity_to_hwinfo
 
       $hw{$chassis}{$slot}{'type'} = 'linecard';
       $hw{$chassis}{$slot}{'model'}
-      = $ent->{'entPhysicalModelName'}{$idx}{'value'};
+      = $pt->{'entPhysicalModelName'}{'value'};
       $hw{$chassis}{$slot}{'sn'}
-      = $ent->{'entPhysicalSerialNum'}{$idx}{'value'};
+      = $pt->{'entPhysicalSerialNum'}{'value'};
       $hw{$chassis}{$slot}{'hwrev'}
-      = $ent->{'entPhysicalHardwareRev'}{$idx}{'value'};
+      = $pt->{'entPhysicalHardwareRev'}{'value'};
       $hw{$chassis}{$slot}{'fwrev'}
-      = $ent->{'entPhysicalFirmwareRev'}{$idx}{'value'};
+      = $pt->{'entPhysicalFirmwareRev'}{'value'};
       $hw{$chassis}{$slot}{'swrev'}
-      = $ent->{'entPhysicalSoftwareRev'}{$idx}{'value'};
+      = $pt->{'entPhysicalSoftwareRev'}{'value'};
       $hw{$chassis}{$slot}{'descr'}
-      = $ent->{'entPhysicalDescr'}{$idx}{'value'};
+      = $pt->{'entPhysicalDescr'}{'value'};
     }
   }
 
