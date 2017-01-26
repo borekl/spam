@@ -709,7 +709,7 @@ sub find_changes
         [ 'ifSpeed', 'n', $old->[8],
           ($ifTable->{'ifSpeed'}{'value'} / 1000000) ],
         [ 'port_flags', 'n', $old->[9],
-          port_flag_pack_new($h, $if) ],
+          port_flag_pack($h, $if) ],
         [ 'ifAdminStatus', 'n', $old->[10],
           $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
@@ -1484,11 +1484,11 @@ sub port_flag_pack
 
   #--- trunking mode
 
-  if(exists $hdata->{'CISCO-VTP-MIB'}) {
+  if(exists $hdata->{'mibs-new'}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}) {
     my $trunk_flag;
-    my $s = $hdata->{'CISCO-VTP-MIB'};
-    if($s->{'vlanTrunkPortDynamicStatus'}{$port}{'enum'} eq 'trunking') {
-      $trunk_flag = $s->{'vlanTrunkPortEncapsulationOperType'}{$port}{'enum'};
+    my $s = $hdata->{'mibs-new'}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$port};
+    if($s->{'vlanTrunkPortDynamicStatus'}{'enum'} eq 'trunking') {
+      $trunk_flag = $s->{'vlanTrunkPortEncapsulationOperType'}{'enum'};
     }
     if($trunk_flag eq 'dot1Q')  { $result |= 8; }
     elsif($trunk_flag eq 'isl') { $result |= 16; }
@@ -1500,11 +1500,12 @@ sub port_flag_pack
 
   #--- 802.1x Auth (from dot1xAuthConfigTable)
 
-  if(exists $hdata->{'IEEE8021-PAE-MIB'}) {
+  if(exists $hdata->{'mibs-new'}{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}) {
     my %dot1x_flag;
-    my $s = $hdata->{'IEEE8021-PAE-MIB'};
-    $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{$port}{'enum'};
-    $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{$port}{'enum'};
+    my $s 
+    = $hdata->{'mibs-new'}{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
+    $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{'enum'};
+    $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{'enum'};
     if($dot1x_flag{'pc'} eq 'forceUnauthorized') { $result |= 128; }
     if($dot1x_flag{'pc'} eq 'auto') { $result |= 256; }
     if($dot1x_flag{'pc'} eq 'forceAuthorized') { $result |= 64; }
@@ -1514,12 +1515,12 @@ sub port_flag_pack
 
   #--- MAC bypass active
 
-  if(exists $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}) {
-    my $s = $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodState'}{$port};
+  if(exists $hdata->{'mibs-new'}{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}) {
+    my $s = $hdata->{'mibs-new'}{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$port};
     for my $sessid (keys %$s) {
       if(
-        $s->{$sessid}{'macAuthBypass'}
-        && $s->{$sessid}{'macAuthBypass'}{'enum'} eq 'authcSuccess'
+        exists $s->{$sessid}{'macAuthBypass'}
+        && $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'} eq 'authcSuccess'
       ) {
         $result |= 2048;
       }
@@ -1528,34 +1529,48 @@ sub port_flag_pack
 
   #--- CDP
 
-  if(exists $hdata->{'CISCO-CDP-MIB'}) {
-    if(exists $hdata->{'CISCO-CDP-MIB'}{'cdpCacheCapabilities'}{$port}) {
+  if(exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}) {
+    if(exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}{'cdpCacheCapabilities'}) {
       $result |= 1;
     }
   }
 
   #--- power over ethernet
 
-  if(exists $hdata->{'POWER-ETHERNET-MIB'}) {
+  if(exists $hdata->{'mibs-new'}{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}) {
     my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$port};
-    my $s = $hdata->{'POWER-ETHERNET-MIB'}{'pethPsePortDetectionStatus'};
-    if(exists $s->{$pi->[0]}{$pi->[1]}) {
+    if(
+      exists
+        $hdata->{'mibs-new'}
+                {'POWER-ETHERNET-MIB'}
+                {'pethPsePortTable'}
+                {$pi->[0]}{$pi->[1]}
+                {'pethPsePortDetectionStatus'}
+    ) {
+      my $s = $hdata->{'mibs-new'}
+                      {'POWER-ETHERNET-MIB'}
+                      {'pethPsePortTable'}
+                      {$pi->[0]}{$pi->[1]}
+                      {'pethPsePortDetectionStatus'};
+
       $result |= 4096;
-      $result |= 8192 if $s->{$pi->[0]}{$pi->[1]}{'enum'} ne 'disabled';
-      $result |= 16384 if$s->{$pi->[0]}{$pi->[1]}{'enum'} eq 'deliveringPower';
+      $result |= 8192 if $s->{'enum'} ne 'disabled';
+      $result |= 16384 if $s->{'enum'} eq 'deliveringPower';
     }
   }
 
   #--- STP root port
 
-  if(exists $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'}) {
-    my $dot1d_stpr = $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
-    for my $vlan (keys %{$hdata->{'BRIDGE-MIB'}}) {
+  if(exists $hdata->{'mibs-new'}{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'}) {
+    my $dot1d_stpr = $hdata->{'mibs-new'}{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
+    for my $vlan (keys %{$hdata->{'mibs-new'}{'BRIDGE-MIB'}}) {
+      # the keys under BRIDGE-MIB are both a) vlans b) object names
+      # that are not defined per-vlan (such as dot1dStpRootPort);
+      # that's we need to filter non-vlans out here
       next if $vlan !~ /^\d+$/;
       if(
-        exists $hdata->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}
-        && $hdata->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}{'value'}
-        == $dot1d_stpr
+        exists $hdata->{'mibs-new'}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+                       {$dot1d_stpr}
       ) {
         $result |= 4;
         last;
@@ -1565,10 +1580,12 @@ sub port_flag_pack
 
   #--- STP portfast
 
-  if(exists $hdata->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortMode'}) {
+  if(exists $hdata->{'mibs-new'}{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}) {
     my $port_dot1d = $hdata->{'idx'}{'ifIndexToDot1d'}{$port};
     my $portmode
-    = $hdata->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortMode'}{$port_dot1d}{'enum'};
+    = $hdata->{'mibs-new'}{'CISCO-STP-EXTENSIONS-MIB'}
+              {'stpxFastStartPortTable'}{$port_dot1d}{'stpxFastStartPortMode'}
+              {'enum'};
     if($portmode eq 'enable' || $portmode eq 'enableForTrunk') {
       $result |= 2;
     }
