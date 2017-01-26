@@ -608,7 +608,7 @@ sub snmp_get_object
   #--- other variables
 
   my $delay = 1;
-  my %result;
+  my %re;
 
   #--- make $columns an arrayref
 
@@ -648,7 +648,6 @@ sub snmp_get_object
   #--- entry points loop ----------------------------------------------------
 
   for my $entry (@tree_entries) {
-    my %re;
     my $cnt = 0;
 
   #--- read loop ------------------------------------------------------------
@@ -789,10 +788,6 @@ sub snmp_get_object
       return $r;
     }
 
-  #--- store the result
-
-    %result = (%result, %re);
-
   #--- finish looping over the MIB tree entries
 
   }
@@ -800,7 +795,7 @@ sub snmp_get_object
   #--- finish ---------------------------------------------------------------
 
   close($fh) if $fh;
-  return \%result;
+  return \%re;
 }
 
 
