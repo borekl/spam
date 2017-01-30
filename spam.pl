@@ -1168,7 +1168,7 @@ sub sql_transaction
 sub sql_mactable_update
 {
   my $host = shift;
-  my $h = $swdata{$host}{'BRIDGE-MIB'};
+  my $h = $swdata{$host}{'mibs-new'}{'BRIDGE-MIB'};
   my $dbh = dbconn('spam');
   my $ret;
   my @update;              # update plan
@@ -1222,33 +1222,46 @@ sub sql_mactable_update
     ]
   );
 
+  #--- get list of VLANs, exclude non-numeric keys (those do not denote VLANs
+  #--- but SNMP objects)
+
+  my @vlans = sort { $a <=> $b } grep(/^\d+$/, keys %$h);
+
   #--- gather update plan ---
 
-  printf $debug_fh "--> CREATE UPDATE PLAN\n" if $debug_fh;
-  for my $vlan (keys %$h) {
-    for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbStatus'}}) {
+  if($debug_fh) {
+    printf $debug_fh "--> CREATE UPDATE PLAN\n";
+    printf $debug_fh "--> VLANS: %s\n", join(',', @vlans);
+  }
+  for my $vlan (@vlans) {
+    printf $debug_fh "--> MACS IN VLAN %d: %d\n",
+      $vlan, scalar(keys %{$h->{$vlan}{'dot1dTpFdbTable'}})
+      if $debug_fh;
+    for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbTable'}}) {
       my ($q, @fields, @bind);
+      my $dot1dTpFdbTable = $h->{$vlan}{'dot1dTpFdbTable'};
+      my $dot1dBasePortTable = $h->{$vlan}{'dot1dBasePortTable'};
 
       #--- get ifindex value
 
-      my $dot1d = $h->{$vlan}{'dot1dTpFdbPort'}{$mac}{'value'};
-      my $if = $h->{$vlan}{'dot1dBasePortIfIndex'}{$dot1d}{'value'};
+      my $dot1d = $dot1dTpFdbTable->{$mac}{'dot1dTpFdbPort'}{'value'};
+      my $if = $dot1dBasePortTable->{$dot1d}{'dot1dBasePortIfIndex'}{'value'};
 
       #--- skip uninteresting MACs (note, that we're not filtering 'static'
       #--- entries: ports with port security seem to report their MACs as
       #--- static in Cisco IOS)
 
       next if
-        $h->{$vlan}{'dot1dTpFdbStatus'}{$mac}{'enum'} eq 'invalid' ||
-        $h->{$vlan}{'dot1dTpFdbStatus'}{$mac}{'enum'} eq 'self';
+        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'invalid' ||
+        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'self';
 
       #--- skip MACs on ports we are not tracking (such as port channels etc)
 
-      next if !exists $swdata{$host}{'IF-MIB'}{'ifName'}{$if};
+      next if !exists $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifTable'}{$if};
 
       #--- skip MACs on ports that are receiving CDP
 
-      next if exists $swdata{$host}{'CISCO-CDP-MIB'}{'cdpCacheCapabilities'}{$if};
+      next if exists $swdata{$host}{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
 
       #--- normalize MAC, get formatted timestamp
 
@@ -1261,7 +1274,9 @@ sub sql_mactable_update
           'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
         );
         @bind = (
-          $host, $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'}, $aux, $mac
+          $host,
+          $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
+          $aux, $mac
         );
         $q = sprintf(
           q{UPDATE mactable SET %s WHERE mac = ?},
@@ -1274,7 +1289,8 @@ sub sql_mactable_update
           'mac', 'host', 'portname', 'lastchk', 'active'
         );
         @bind = (
-          $mac, $host, $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'},
+          $mac, $host,
+          $swdata{$host}{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
           $aux, 't'
         );
         $q = sprintf(
