@@ -677,21 +677,19 @@ sub find_changes
 
     if(swdata_status_get($host, $k)) {
 
-      #--- update: entry is not new, check whether it has changed ---
-
-      my $old = swdata_status_get($host, $k);
-      my $update_flag;
-      my $descr = $h->{'IF-MIB'}{'ifAlias'}{$if};
-      my $errdis = 0; # currently unavailable
-
-      #--- collect the data to compare
-
       my $ifTable = $h->{'mibs-new'}{'IF-MIB'}{'ifTable'}{$if};
       my $ifXTable = $h->{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if};
       my $portTable
-         = $h->{'mibs-new'}{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]};
+         = $h->{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
          = $h->{'mibs-new'}{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+
+      #--- update: entry is not new, check whether it has changed ---
+
+      my $old = swdata_status_get($host, $k);
+      my $errdis = 0; # currently unavailable
+
+      #--- collect the data to compare
 
       my @data = (
         [ 'ifOperStatus', 'n', $old->[0],
@@ -719,7 +717,8 @@ sub find_changes
       #--- perform comparison
 
       my $cmp_acc;
-      printf $debug_fh "--> PORT %s\n", $k if $debug_fh;
+      printf $debug_fh
+        "--> PORT %s (if=%d, pi=%d/%d)\n", $k, $if, @$pi if $debug_fh;
       for my $d (@data) {
         my $cmp;
         if($d->[1] eq 's') {
@@ -727,7 +726,7 @@ sub find_changes
         } else {
           $cmp = $d->[2] != $d->[3];
         }
-        printf $debug_fh  "%s: old:%s new:%s -> %s\n", $d->[0], $d->[2], $d->[3],
+        printf $debug_fh  "%s: old:%s new:%s -> %s\n", @$d[0,2,3],
           $cmp ? 'NO MATCH' : 'MATCH'
           if $debug_fh;
         $cmp_acc ||= $cmp;
@@ -811,6 +810,12 @@ sub sql_status_update
     my $if = $idx->{$k->[1]};
     my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$if};
     my $current_time = strftime("%c", localtime());
+    my $ifTable = $hdata->{'mibs-new'}{'IF-MIB'}{'ifTable'}{$if};
+    my $ifXTable = $hdata->{'mibs-new'}{'IF-MIB'}{'ifXTable'}{$if};
+    my $vmMembershipTable
+       = $hdata->{'mibs-new'}{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+    my $portTable
+       = $hdata->{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
     #--- INSERT
 
@@ -824,18 +829,18 @@ sub sql_status_update
       @bind = (
         $host,
         $k->[1],
-        $hdata->{'IF-MIB'}{'ifOperStatus'}{$if}{'enum'} eq 'up' ? 'true' : 'false',
-        $hdata->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'},
-        $hdata->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'},
+        $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
+        $ifTable->{'ifInUcastPkts'}{'value'},
+        $ifTable->{'ifOutUcastPkts'}{'value'},
         $current_time,
         $current_time,
         $if,
-        $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'},
-        $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'},
-        $hdata->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'},
-        ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
+        $vmMembershipTable->{'vmVlan'}{'value'},
+        $ifXTable->{'ifAlias'}{'value'},
+        $portTable->{'portDuplex'}{'value'},
+        ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
         port_flag_pack($hdata, $if),
-        $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 'true' : 'false',
+        $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
       );
@@ -860,16 +865,16 @@ sub sql_status_update
         );
         @bind = (
           $current_time,
-          $hdata->{'IF-MIB'}{'ifOperStatus'}{$if}{'enum'} eq 'up' ? 'true' : 'false',
-          $hdata->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'},
-          $hdata->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'},
+          $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
+          $ifTable->{'ifInUcastPkts'}{'value'},
+          $ifTable->{'ifOutUcastPkts'}{'value'},
           $if,
-          $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'},
-          $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'} =~ s/'/''/gr,
-          $hdata->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'},
-          ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
+          $vmMembershipTable->{'vmVlan'}{'value'},
+          $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
+          $portTable->{'portDuplex'}{'value'},
+          ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
           port_flag_pack($hdata, $if),
-          $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 't':'f',
+          $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'
         );
