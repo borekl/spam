@@ -1489,7 +1489,10 @@ sub port_flag_pack
 
   #--- trunking mode
 
-  if(exists $hdata->{'mibs-new'}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}) {
+  if(
+    exists $hdata->{'mibs-new'}{'CISCO-VTP-MIB'}
+    && exists $hdata->{'mibs-new'}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}
+  ) {
     my $trunk_flag;
     my $s = $hdata->{'mibs-new'}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$port};
     if($s->{'vlanTrunkPortDynamicStatus'}{'enum'} eq 'trunking') {
@@ -1505,7 +1508,10 @@ sub port_flag_pack
 
   #--- 802.1x Auth (from dot1xAuthConfigTable)
 
-  if(exists $hdata->{'mibs-new'}{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}) {
+  if(
+    exists $hdata->{'mibs-new'}{'IEEE8021-PAE-MIB'}
+    && exists $hdata->{'mibs-new'}{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}
+  ) {
     my %dot1x_flag;
     my $s 
     = $hdata->{'mibs-new'}{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
@@ -1520,7 +1526,10 @@ sub port_flag_pack
 
   #--- MAC bypass active
 
-  if(exists $hdata->{'mibs-new'}{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}) {
+  if(
+    exists $hdata->{'mibs-new'}{'CISCO-AUTH-FRAMEWORK-MIB'}
+    && exists $hdata->{'mibs-new'}{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
+  ) {
     my $s = $hdata->{'mibs-new'}{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$port};
     for my $sessid (keys %$s) {
       if(
@@ -1534,10 +1543,12 @@ sub port_flag_pack
 
   #--- CDP
 
-  if(exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}) {
-    if(exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}{'cdpCacheCapabilities'}) {
-      $result |= 1;
-    }
+  if(
+    exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}
+    && exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+    && exists $hdata->{'mibs-new'}{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}
+  ) {
+    $result |= 1;
   }
 
   #--- power over ethernet
@@ -1566,7 +1577,10 @@ sub port_flag_pack
 
   #--- STP root port
 
-  if(exists $hdata->{'mibs-new'}{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'}) {
+  if(
+    exists $hdata->{'mibs-new'}{'BRIDGE-MIB'}
+    && exists $hdata->{'mibs-new'}{'BRIDGE-MIB'}{'dot1dStpRootPort'}
+  ) {
     my $dot1d_stpr = $hdata->{'mibs-new'}{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
     for my $vlan (keys %{$hdata->{'mibs-new'}{'BRIDGE-MIB'}}) {
       # the keys under BRIDGE-MIB are both a) vlans b) object names
@@ -1585,7 +1599,10 @@ sub port_flag_pack
 
   #--- STP portfast
 
-  if(exists $hdata->{'mibs-new'}{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}) {
+  if(
+    exists $hdata->{'mibs-new'}{'CISCO-STP-EXTENSIONS-MIB'}
+    && exists $hdata->{'mibs-new'}{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
+  ) {
     my $port_dot1d = $hdata->{'idx'}{'ifIndexToDot1d'}{$port};
     my $portmode
     = $hdata->{'mibs-new'}{'CISCO-STP-EXTENSIONS-MIB'}
