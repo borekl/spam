@@ -580,7 +580,7 @@ sub poll_host
         = [ $idx_mod, $idx_port ];
       }
     }
-    $swdata{$host}{'ifIndexToPortIndex'} = \%by_portindex;
+    $swdata{$host}{'idx'}{'ifIndexToPortIndex'} = \%by_portindex;
   }
 
   #--- create mapping from IF-MIB to BRIDGE-MIB interfaces --- NEW ---
