@@ -439,9 +439,14 @@ sub poll_host
           @vlans = keys %{$swdata{$host}{'mibs-new'}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}};
         }
 
+        # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
+        # value of 1; these two are mutually exclusive
+
         if(grep($_ eq 'vlan1', @$object_flags)) {
           @vlans = ( 1 );
         }
+
+        # 'mactable' MIBs should only be read when --mactable switch is active
 
         if(grep($_ eq 'mactable', @$object_flags)) {
           if(!$get_mactable) {
