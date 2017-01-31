@@ -295,121 +295,6 @@ sub poll_host
 
   #--- load supported MIB trees --------------------------------------------
 
-  for my $mib_entry (@{$cfg->{'mibs'}}) {
-    my $mib = $mib_entry->{'mib'};    # MIB name
-    my @vlans = ( undef );            # vlans to iterate over
-
-    #--- match platform string
-
-    my $include_re = $mib_entry->{'include'} // undef;
-    my $exclude_re = $mib_entry->{'exclude'} // undef;
-    next if $include_re && $platform !~ /$include_re/;
-    next if $exclude_re && $platform =~ /$exclude_re/;
-
-    #--- process additional flags
-
-    if(exists $mib_entry->{'flags'}) {
-
-      # 'vlans' flag; this causes to VLAN number to be added to the community
-      # string (as community@vlan) and the tree retrieval is iterated over all
-      # known VLANs; this means that vtpVlanName must be already retrieved;
-      # this is required for reading MAC addresses from switch via BRIDGE-MIB
-
-      if(grep($_ eq 'vlans', @{$mib_entry->{'flags'}})) {
-        @vlans = keys %{$swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanName'}{1}};
-      }
-
-      # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
-      # value of 1; these two are mutually exclusive
-
-      if(grep($_ eq 'vlan1', @{$mib_entry->{'flags'}})) {
-        @vlans = ( 1 );
-      }
-
-      # 'mactable' MIBs should only be read when --mactable switch is active
-
-      if(grep($_ eq 'mactable', @{$mib_entry->{'flags'}})) {
-        if(!$get_mactable) {
-          tty_message("[$host/OLD] Skipping $mib, mactable loading not active\n");
-          next;
-        }
-      }
-    }
-
-    #--- processing of the MIB is a go
-
-    tty_message("[%s/OLD] Processing %s\n", $host, $mib);
-
-    #--- get MIB tree entry point(s)
-
-    my $mib_entry_points = $mib_entry->{'entry'};
-    if(!ref($mib_entry_points)) {
-      $mib_entry_points = [ $mib_entry_points ];
-    }
-
-    #--- iterate over vlans
-
-    for my $vlan (@vlans) {
-      next if $vlan > 999;
-      my $cmtvlan = $community . ($vlan ? "\@$vlan" : '');
-
-    #--- iterate over MIB tree entry points
-
-      for my $mib_subtree (@$mib_entry_points) {
-
-    #--- read the tree from one entry point
-
-        my $r = snmp_get_tree(
-          'snmpwalk', $host, $cmtvlan, $mib,
-          $mib_subtree,
-          sub {
-            my ($var, $cnt) = @_;
-            return if !$var;
-            my $msg = "[$host/OLD] Loading $mib::$var";
-            if($vlan) { $msg .= " $vlan"; }
-            if($cnt) { $msg .= " ($cnt)"; }
-            tty_message("$msg\n");
-          }
-        );
-
-    #--- handle error
-
-        if(!ref($r)) {
-          tty_message(
-            "[%s/OLD] Processing %s (failed, %s)\n",
-            $host, $mib, $r
-          );
-        }
-
-    #--- process results
-
-    # note, in perl "%hash3 = (%hash1, %hash2)" merges hash1 with hash2 and
-    # puts the result in hash3
-
-        else {
-          if($vlan) {
-            if(ref($swdata{$host}{$mib}{$vlan})) {
-              %{$swdata{$host}{$mib}{$vlan}}
-              = (%{$swdata{$host}{$mib}{$vlan}}, %$r);
-            } else {
-              $swdata{$host}{$mib}{$vlan} = $r;
-            }
-          } else {
-            if(ref($swdata{$host}{$mib})) {
-              %{$swdata{$host}{$mib}} = (%{$swdata{$host}{$mib}}, %$r);
-            } else {
-              $swdata{$host}{$mib} = $r;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  #--------------------------------------------------------------------------
-  #--- NEW MIB READING CODE STARTS HERE -------------------------------------
-  #--------------------------------------------------------------------------
-
   for my $mib_entry (@{$cfg->{'mibs-new'}}) {
     my $mib = $mib_entry->{'mib'};
     my @vlans = ( undef );
@@ -507,39 +392,7 @@ sub poll_host
     }
   }
 
-  #--------------------------------------------------------------------------
-  #--- NEW MIB READING ENDS HERE --------------------------------------------
-  #--------------------------------------------------------------------------
-
-  #--- prune non-ethernet interface --- OLD ---
-
-  # Delete all interfaces that are not of ifType ethernetCsmacd; note, that
-  # they are only deleted from ifName! This requires IF-MIB::ifType to be
-  # loaded
-
-  my @ifs_to_prune;
-  if(exists $swdata{$host}{'IF-MIB'}{'ifType'}) {
-    tty_message("[$host/OLD] Pruning non-ethernet interfaces (started)\n");
-    for my $if (keys %{$swdata{$host}{'IF-MIB'}{'ifName'}}) {
-      if(
-        # interfaces of type other than 'ethernetCsmacd'
-        $swdata{$host}{'IF-MIB'}{'ifType'}{$if}{'enum'} ne 'ethernetCsmacd'
-        # special cases; some interfaces are ethernetCsmacd and yet they are
-        # not real interfaces (good job, Cisco) and cause trouble
-        || $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'} =~ /^vl/i
-      ) {
-        push(@ifs_to_prune, $if);
-      }
-    }
-    if(@ifs_to_prune) {
-      tty_message("[$host/OLD] %d interfaces will be pruned\n", scalar(@ifs_to_prune));
-      for(@ifs_to_prune) { delete $swdata{$host}{'IF-MIB'}{'ifName'}{$_}; }
-    }
-    tty_message("[$host/OLD] Pruning non-ethernet interfaces (finished)\n");
-  }
-
-  #--- prune non-ethernet interfaces --- NEW ---
-  #--- create portName -> ifindex hash --- NEW ---
+  #--- prune non-ethernet interfaces and create portName -> ifIndex hash
 
   my $cnt_prune = 0;
   my (%by_ifindex, %by_ifname);
@@ -578,7 +431,7 @@ sub poll_host
     die "ifTable/ifXTable don't exist on $host";
   }
 
-  #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex --- NEW ---
+  #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex
 
   # some CISCO MIBs use this kind of indexing instead of ifIndex
 
@@ -594,7 +447,7 @@ sub poll_host
     $swdata{$host}{'idx'}{'ifIndexToPortIndex'} = \%by_portindex;
   }
 
-  #--- create mapping from IF-MIB to BRIDGE-MIB interfaces --- NEW ---
+  #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
 
   my %by_dot1d;
   if(
@@ -618,7 +471,7 @@ sub poll_host
     $swdata{$host}{'idx'}{'ifIndexToDot1d'} = \%by_dot1d;
   }
 
-  #--- process entity information --- NEW ---
+  #--- process entity information
 
   $swdata{$host}{'hw'} = snmp_entity_to_hwinfo($swdata{$host});
 
