@@ -160,6 +160,20 @@ sub snmp_get_arptable
   my %arptable;
   my $cfg = load_config();
 
+  #--- MIB and object to use for arptable processing; note, that only the
+  #--- first MIB object with flag 'arptable' will be used
+
+  my ($mib_name, $object);
+  MIBLOOP: for my $mib (@{$cfg->{'mibs-new'}}) {
+    $mib_name = $mib->{'mib'};
+    for $object_iter (@{$mib->{'objects'}}) {
+      if(grep { $_ eq 'arptable' } @{$object_iter->{'flags'}}) {
+        $object = $object_iter;
+        last MIBLOOP;
+      }
+    }
+  }
+
   #-------------------------------------------------------------------------
   #--- read the relevant MIB sections --------------------------------------
   #-------------------------------------------------------------------------
@@ -174,23 +188,22 @@ sub snmp_get_arptable
 
   #--- read the MIB tree
 
-    for my $tree_root (@{$cfg->{'snmp'}{'arptable'}{'entries'}}) {
-      $r = snmp_get_tree(
-        'snmpwalk',
-        $arp_source->[0],
-        $cmty,
-        $cfg->{'snmp'}{'arptable'}{'mib'},
-        $tree_root
-      );
+    $r = snmp_get_object(
+      'snmpwalk',
+      $arp_source->[0],
+      $cmty,
+      $mib_name,
+      $object->{'table'},
+      $object->{'columns'}
+    );
 
   #--- handle the result
 
-      if(!ref($r)) {
-        die sprintf("failed to get arptable from %s (%s)", $arp_source->[0], $r);
-      } else {
-        my $t = $tree{$arp_source->[0]};
-        %$t = ( %$t, %$r );
-      }
+    if(!ref($r)) {
+      die sprintf("failed to get arptable from %s (%s)", $arp_source->[0], $r);
+    } else {
+      my $t = $tree{$arp_source->[0]};
+      %$t = ( %$t, %$r );
     }
 
   #--- display message through callback
@@ -205,12 +218,12 @@ sub snmp_get_arptable
   #-------------------------------------------------------------------------
 
   for my $host (keys %tree) {
-    for my $if (keys %{$tree{$host}{'ipNetToMediaPhysAddress'}}) {
-      for my $ip (keys %{$tree{$host}{'ipNetToMediaPhysAddress'}{$if}}) {
+    for my $if (keys %{$tree{$host}}) {
+      for my $ip (keys %{$tree{$host}{$if}}) {
         if(
-          $tree{$host}{'ipNetToMediaType'}{$if}{$ip}{'enum'} eq 'dynamic'
+          $tree{$host}{$if}{$ip}{'ipNetToMediaType'}{'enum'} eq 'dynamic'
         ) {
-          my $mac = $tree{$host}{'ipNetToMediaPhysAddress'}{$if}{$ip}{'value'};
+          my $mac = $tree{$host}{$if}{$ip}{'ipNetToMediaPhysAddress'}{'value'};
           $mac = join(':', map {
             if(length($_) < 2) { $_ = '0' . $_; } else { $_; }
           } split(/:/, $mac));

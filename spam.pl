@@ -454,6 +454,12 @@ sub poll_host
             next;
           }
         }
+
+        # 'arptable' is only relevant for reading arptables from _routers_;
+        # here we just skip it
+
+        next if grep($_ eq 'arptable', @$object_flags);
+
       }
 
   #--- iterate over vlans
