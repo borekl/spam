@@ -1711,6 +1711,8 @@ sub sql_switch_info_update
   my $dbh = dbconn('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
+  my $managementDomainTable
+  = $swdata{$host}{'mibs-new'}{'CISCO-VTP-MIB'}{'managementDomainTable'}{1};
 
   #--- ensure database connection
 
@@ -1747,8 +1749,8 @@ sub sql_switch_info_update
         $stat->{p_errdis},
         $stat->{p_inact},
         $stat->{p_used},
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainName'}{1}{'value'},
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainLocalMode'}{1}{'value'},
+        $managementDomainTable->{'managementDomainName'}{'value'},
+        $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
         $stat->{platform}
       );
@@ -1777,8 +1779,8 @@ sub sql_switch_info_update
         $stat->{p_inact},
         $stat->{p_used},
         strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainName'}{1}{'value'},
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainLocalMode'}{1}{'value'},
+        $managementDomainTable->{'managementDomainName'}{'value'},
+        $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         $stat->{platform},
         $host
       );
@@ -1803,8 +1805,8 @@ sub sql_switch_info_update
   #--- ???: why is this updated HERE? ---
   # $swdata{HOST}{stats}{vtpdomain,vtpmode} are not used anywhere
 
-  $stat->{vtpdomain} = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainName'}{1}{'value'},
-  $stat->{vtpmode} = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainLocalMode'}{1}{'value'},
+  $stat->{vtpdomain} = $managementDomainTable->{'managementDomainName'}{'value'};
+  $stat->{vtpmode} = $managementDomainTable->{'managementDomainLocalMode'}{'value'};
 
   #--- return successfully
 
