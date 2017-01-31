@@ -1441,20 +1441,28 @@ sub switch_info
 
   #--- count ---
 
-  foreach my $if (keys %{$h->{'IF-MIB'}{'ifName'}}) {
-    my $portname = $h->{'IF-MIB'}{'ifName'}{$if}{'value'};
+  foreach my $if (keys %{$h->{'mibs-new'}{'IF-MIB'}{'ifTable'}}) {
+    my $ifTable = $h->{'mibs-new'}{'IF-MIB'}{'ifTable'};
+    my $ifXTable = $h->{'mibs-new'}{'IF-MIB'}{'ifXTable'};
+    my $portname = $ifXTable->{$if}{'ifName'}{'value'};
     $stat->{p_total}++;
     $stat->{p_patch}++ if exists $port2cp->{$host}{$portname};
-    $stat->{p_act}++ if $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} == 1;
+    $stat->{p_act}++
+      if $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up';
     # p_errdis used to count errordisable ports, but required SNMP variable
     # is no longer available
     #--- unregistered ports
-    if($knownports && ($h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} == 1)) {
-      if(!exists $port2cp->{$host}{$portname}) {
-        if(!exists $h->{'CISCO-CDP-MIB'}{'cdpCacheDeviceId'}{$if}) {
-          $stat->{p_illact}++;
-        }
-      }
+    if(
+      $knownports
+      && $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up'
+      && !exists $port2cp->{$host}{$portname}
+      && !(
+        exists $h->{'mibs-new'}{'CISCO-CDP-MIB'}
+        && exists $h->{'mibs-new'}{'CISCO-CDP-MIB'}{$if}
+        && exists $h->{'mibs-new'}{'CISCO-CDP-MIB'}{$if}{'cdpCacheTable'}
+      )
+    ) {
+      $stat->{p_illact}++;
     }
     #--- used ports
     # ports that were used within period defined by "inactivethreshold2"
