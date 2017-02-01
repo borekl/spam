@@ -239,7 +239,8 @@ sub poll_host
   #--- other variables -----------------------------------------------------
 
   my $community = $cfg->{'community'};
-  my $s;      # aux variable used for shortening access deep into $swdata
+  my $s;         # aux variable used for shortening access deep into $swdata
+  my $platform;  # platform identification string (from sysObjectID)
 
   #--- host-specific community override ------------------------------------
 
@@ -257,24 +258,6 @@ sub poll_host
   if(!inet_aton($host)) {
     tty_message("[$host] Hostname cannot be resolved\n");
     return 'DNS resolution failed';
-  }
-
-  #--- get system info
-
-  tty_message("[$host] Getting host system info (started)\n");
-  my ($sysinfo, $platform, $uptime) = snmp_system_info($host, $community);
-  if(!ref($sysinfo)) {
-    tty_message("[$host] Getting host system info (failed, %s)\n", $sysinfo);
-    return 'Cannot get system info';
-  } else {
-    tty_message(
-      "[$host] System info: platform=%s boottime=%s\n",
-      $platform, strftime('%Y-%m-%d', localtime($uptime))
-    );
-    $swdata{$host}{'stats'}{'platform'} = $platform;
-    $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
-    $swdata{$host}{'stats'}{'syslocation'}
-    = $sysinfo->{'sysLocation'}{0}{'value'}
   }
 
   #--- load last status from backend db ------------------------------------
@@ -295,18 +278,42 @@ sub poll_host
 
   #--- load supported MIB trees --------------------------------------------
 
+  # The first MIB must contain reading sysObjectID, sysLocation and
+  # sysUpTime. If these cannot be loaded; the whole function fails.
+
+  my $is_first_mib = 1;
+
   for my $mib_entry (@{$cfg->{'mibs-new'}}) {
     my $mib = $mib_entry->{'mib'};
+    my $mib_key = $mib;
     my @vlans = ( undef );
 
     for my $object (@{$mib_entry->{'objects'}}) {
 
   #--- match platform string
 
-      my $include_re = $object->{'include'} // undef;
-      my $exclude_re = $object->{'exclude'} // undef;
-      next if $include_re && $platform !~ /$include_re/;
-      next if $exclude_re && $platform =~ /$exclude_re/;
+      if(!$is_first_mib) {
+        my $include_re = $object->{'include'} // undef;
+        my $exclude_re = $object->{'exclude'} // undef;
+        next if $include_re && $platform !~ /$include_re/;
+        next if $exclude_re && $platform =~ /$exclude_re/;
+      }
+
+  #--- include additional MIBs
+
+  # this implements the 'addmib' object key; we use this to load product
+  # MIBs that translate sysObjectID into nice textual platform identifiers;
+  # note that the retrieved values will be stored under the first MIB name
+  # in the array @$mib
+
+      if($object->{'addmib'}) {
+        my $additional_mibs = $object->{'addmib'};
+        if(!ref($additional_mibs)) {
+          $additional_mibs = [ $additional_mibs ];
+        }
+        $mib = [ $mib ];
+        push(@$mib, @$additional_mibs);
+      }
 
   #--- process additional flags
 
@@ -383,13 +390,39 @@ sub poll_host
         else {
           my $object_name = $object->{'table'} // $object->{'scalar'};
           if($vlan) {
-            $swdata{$host}{'mibs-new'}{$mib}{$vlan}{$object_name} = $r;
+            $swdata{$host}{'mibs-new'}{$mib_key}{$vlan}{$object_name} = $r;
           } else {
-            $swdata{$host}{'mibs-new'}{$mib}{$object_name} = $r;
+            $swdata{$host}{'mibs-new'}{$mib_key}{$object_name} = $r;
           }
         }
       }
     }
+
+  #--- first MIB entry is special as it gives us information about the host
+
+    if($is_first_mib) {
+      my $sys = $swdata{$host}{'mibs-new'}{'SNMPv2-MIB'};
+      $platform = $sys->{'sysObjectID'}{0}{'value'};
+      $platform =~ s/^.*:://;
+      if(!$platform) {
+        tty_message("[$host] Getting host system info failed\n");
+        return "Cannot load platform identification";
+      }
+      $swdata{$host}{'stats'}{'platform'} = $platform;
+      my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
+      $uptime = time() - int($uptime / 100);
+      $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
+      $swdata{$host}{'stats'}{'syslocation'}
+      = $sys->{'sysLocation'}{0}{'value'};
+
+      tty_message(
+        "[$host] System info: platform=%s boottime=%s\n",
+        $platform, strftime('%Y-%m-%d', localtime($uptime))
+      );
+
+      $is_first_mib = 0;
+    }
+
   }
 
   #--- prune non-ethernet interfaces and create portName -> ifIndex hash
