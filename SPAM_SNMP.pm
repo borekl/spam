@@ -116,7 +116,7 @@ sub snmp_get_arptable
   #--- first MIB object with flag 'arptable' will be used
 
   my ($mib_name, $object);
-  MIBLOOP: for my $mib (@{$cfg->{'mibs-new'}}) {
+  MIBLOOP: for my $mib (@{$cfg->{'mibs'}}) {
     $mib_name = $mib->{'mib'};
     for $object_iter (@{$mib->{'objects'}}) {
       if(grep { $_ eq 'arptable' } @{$object_iter->{'flags'}}) {
@@ -201,7 +201,7 @@ sub snmp_get_arptable
 sub snmp_entity_to_hwinfo
 {
   my ($h) = @_;
-  my $ent = $h->{'mibs-new'}{'ENTITY-MIB'};
+  my $ent = $h->{'ENTITY-MIB'};
   my %hw;
   my $cidx = 1000;     # incremental index for non-module components
 
