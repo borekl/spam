@@ -17,7 +17,6 @@ use integer;
 @ISA = qw(Exporter);
 @EXPORT = qw(
   snmp_entity_to_hwinfo
-  snmp_system_info
   snmp_get_arptable
   snmp_get_tree
   snmp_get_object
@@ -88,52 +87,6 @@ sub snmp_lineread
   #--- perform the read and finish
 
   return file_lineread($cmd, '-|', $fn);
-}
-
-
-#===========================================================================
-# Get SNMPv2-MIB system tree; this contains some essential info about the
-# SNMP host incl. platform, uptime, location etc.
-#
-# Arguments: 1. host
-#            2. community
-# Returns:   1. SNMP tree (hashref) or error string
-#            2. platform string from sysObjectID
-#            3. system uptime converted into UNIX epoch format
-#===========================================================================
-
-sub snmp_system_info
-{
-  my ($host, $community) = @_;
-  my $cfg = load_config();
-
-  #--- the SNMPv2-MIB::system tree
-
-  my $r = snmp_get_tree(
-    'snmpwalk',
-    $host,
-    $community,
-    $cfg->{'snmp'}{'system'}{'mib'},
-    $cfg->{'snmp'}{'system'}{'entries'}[0],
-  );
-
-  #--- process the output
-
-  if(!ref($r)) {
-    return $r;
-  } else {
-
-  #--- strip the MIB from the left-side
-
-    my $sysobjid = $r->{'sysObjectID'}{0}{'value'};
-    $sysobjid =~ s/^.*:://;
-
-  #--- convert uptime time-ticks to UNIX epoch value
-
-    my $sysuptime = $r->{'sysUpTimeInstance'}{'value'};
-    $sysuptime = time() - int($sysuptime / 100);
-    return ($r, $sysobjid, $sysuptime);
-  }
 }
 
 
