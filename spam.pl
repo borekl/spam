@@ -436,7 +436,10 @@ sub poll_host
   # some CISCO MIBs use this kind of indexing instead of ifIndex
 
   my %by_portindex;
-  if(exists $swdata{$host}{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'}) {
+  if(
+    exists $swdata{$host}{'mibs-new'}{'CISCO-STACK-MIB'}
+    && exists $swdata{$host}{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'}
+  ) {
     my $s = $swdata{$host}{'mibs-new'}{'CISCO-STACK-MIB'}{'portTable'};
     for my $idx_mod (keys %$s) {
       for my $idx_port (keys %{$s->{$idx_mod}}) {
