@@ -438,7 +438,7 @@ sub snmp_get_object
   if($columns && ref($columns)) {
     @tree_entries = @$columns;
   }
-  printf $fh "--> ENTRY POINTS: %s\n", join(',', @tree_entries);
+  printf $fh "--> ENTRY POINTS: %s\n", join(',', @tree_entries) if $fh;
 
   #--- entry points loop ----------------------------------------------------
 
