@@ -683,15 +683,17 @@ sub snmp_get_object
 
       my ($var, $val) = split(/ = /, $l);
 
-  #--- drop the "No Such Instance" result
-
-      return if $val =~ /^No Such Instance/;
-
   #--- parse the right side (value)
 
       my $rval = snmp_value_parse($val);
       if($ENV{'SPAM_DEBUG'}) {
         $rval->{'src'} = $l;
+      }
+
+  #--- drop the "No Such Instance/Object" result
+
+      if($rval->{'value'} =~ /^No Such (Instance|Object)/) {
+        return;
       }
 
   #--- parse the left side (variable, indexes)
@@ -808,7 +810,7 @@ sub snmp_get_object
   #--- finish ---------------------------------------------------------------
 
   close($fh) if $fh;
-  return \%re;
+  return scalar(keys %re) ? \%re : 'No instances found';
 }
 
 
