@@ -165,14 +165,14 @@ shared.dispatch = function(evt, state_in)
   }
   
   //--- central dispatch
-  
+
   switch(state.sel) {
 
     case 'swlist':
       selsh = 'sw';
       if(state.arg) { selsh += '/' + state.arg; }
       if(state.host) { selsh += '/' + state.host; }
-      new modSwitchList(shared, state);
+      if(!state.host) { new modSwitchList(shared, state); }
       break;
   
     case 'srctool' :
