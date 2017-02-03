@@ -122,7 +122,8 @@ shared.set_value_from_storage = function(el)
   Central dispatching. This function will invoke various parts of the
   application based on URL or based on internal state as saved with
   History API pushState/replaceState functions. The function is invoked
-  either as callback handler (for 'click' or 'popstate' events)
+  either as callback handler (for 'click' or 'popstate' events) or directly
+  from other parts of the program.
  *--------------------------------------------------------------------------*/
 
 shared.dispatch = function(evt, state_in)
@@ -164,14 +165,14 @@ shared.dispatch = function(evt, state_in)
   }
   
   //--- central dispatch
-  
+
   switch(state.sel) {
 
     case 'swlist':
       selsh = 'sw';
       if(state.arg) { selsh += '/' + state.arg; }
       if(state.host) { selsh += '/' + state.host; }
-      new modSwitchList(shared, state);
+      if(!state.host) { new modSwitchList(shared, state); }
       break;
   
     case 'srctool' :
