@@ -447,6 +447,9 @@ sub snmp_get_object
 
   #--- read loop ------------------------------------------------------------
 
+    printf $fh "--> SNMP COMMAND: %s\n",
+      snmp_command($cmd, $host, $community, $mibs, $entry)
+      if $fh;
     my $r = snmp_lineread($cmd, $host, $community, $mibs, $entry, sub {
       my $l = shift;
       my $tm2;
