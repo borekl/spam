@@ -245,6 +245,7 @@ sub snmp_entity_to_hwinfo
 
     if(
       $class eq 'module'
+      && $c_physname
       && $c_physname =~ /^(?:Chassis (\d) |)Physical Slot (\d)+$/
     ) {
       my $slot = $2;
