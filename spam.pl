@@ -379,10 +379,17 @@ sub poll_host
   #--- handle error
 
         if(!ref($r)) {
-          tty_message(
-            "[%s] Processing %s (failed, %s)\n",
-            $host, $mib, $r
-          );
+          if($vlan) {
+            tty_message(
+              "[%s] Processing %s/%d (failed, %s)\n",
+              $host, $mib, $vlan, $r
+            );
+          } else {
+            tty_message(
+              "[%s] Processing %s (failed, %s)\n",
+              $host, $mib, $r
+            );
+          }
         }
 
   #--- process result
