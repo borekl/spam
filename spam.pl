@@ -239,8 +239,8 @@ sub poll_host
   #--- other variables -----------------------------------------------------
 
   my $community = $cfg->{'community'};
-  my $s;         # aux variable used for shortening access deep into $swdata
-  my $platform;  # platform identification string (from sysObjectID)
+  my $s = $swdata{$host} = {};
+  my $platform;
 
   #--- host-specific community override ------------------------------------
 
@@ -328,7 +328,22 @@ sub poll_host
         # switch via BRIDGE-MIB
 
         if(grep($_ eq 'vlans', @$object_flags)) {
-          @vlans = keys %{$swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}};
+          if(
+            exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}
+            && exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}
+          ) {
+            my %h;
+            my $vmMembershipTable
+            = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'};
+            for my $if (keys %$vmMembershipTable) {
+              $h{
+                $vmMembershipTable->{$if}{'vmVlan'}{'value'}
+              } = undef;
+            }
+            if(scalar(keys %h)) {
+              @vlans = sort { $a <=> $b } keys %h;
+            }
+          }
         }
 
         # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
@@ -480,10 +495,10 @@ sub poll_host
     exists $swdata{$host}{'CISCO-STACK-MIB'}
     && exists $swdata{$host}{'CISCO-STACK-MIB'}{'portTable'}
   ) {
-    my $s = $swdata{$host}{'CISCO-STACK-MIB'}{'portTable'};
-    for my $idx_mod (keys %$s) {
-      for my $idx_port (keys %{$s->{$idx_mod}}) {
-        $by_portindex{$s->{$idx_mod}{$idx_port}{'portIfIndex'}{'value'}}
+    my $t = $s->{'CISCO-STACK-MIB'}{'portTable'};
+    for my $idx_mod (keys %$t) {
+      for my $idx_port (keys %{$t->{$idx_mod}}) {
+        $by_portindex{$t->{$idx_mod}{$idx_port}{'portIfIndex'}{'value'}}
         = [ $idx_mod, $idx_port ];
       }
     }
