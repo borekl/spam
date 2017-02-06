@@ -12,7 +12,11 @@ require Exporter;
 use SPAMv2 qw(load_config file_lineread);
 use Data::Dumper;
 
+use warnings;
+use strict;
 use integer;
+
+our (@ISA, @EXPORT);
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
@@ -118,7 +122,7 @@ sub snmp_get_arptable
   my ($mib_name, $object);
   MIBLOOP: for my $mib (@{$cfg->{'mibs'}}) {
     $mib_name = $mib->{'mib'};
-    for $object_iter (@{$mib->{'objects'}}) {
+    for my $object_iter (@{$mib->{'objects'}}) {
       if(grep { $_ eq 'arptable' } @{$object_iter->{'flags'}}) {
         $object = $object_iter;
         last MIBLOOP;
@@ -404,6 +408,8 @@ sub snmp_get_object
 
   my $delay = 1;
   my %re;
+  my $fh;
+  my ($var1, $tm1) = ('', 0);
 
   #--- make $columns an arrayref
 
@@ -417,19 +423,15 @@ sub snmp_get_object
     open($fh, '>>', "debug.snmp_object.$$.log");
     if($fh) {
       # FIXME:$mibs may be arrayref, this should be handled here
-      printf $fh "--> SNMP OBJECT %s::%s", $mibs, $object;
-      if($args[2] =~ /\@(\d+)$/) {
-        printf $fh " (%d)", $1;
-      }
-      print $fh "\n";
+      printf $fh "--> SNMP OBJECT %s::%s\n", $mibs, $object;
     }
   }
 
   #--- initial callback call
 
   if($cback) {
-    my $rv = $cback->(undef, $cnt);
-    $delay = $rv if $rv > 0;
+    my $rv = $cback->(undef, 0);
+    $delay = $rv if ($rv // 0) > 0;
   }
 
   #--- get set of MIB tree entry points
@@ -511,7 +513,7 @@ sub snmp_get_object
 
       # case 3: one or more indices
       else {
-        $idx = $var;
+        my $idx = $var;
         # following regex parses the object/column name and removes starting
         # and final square brackets
         $idx =~ s/^([^\[]*)\[(.*)\]$/$2/;
