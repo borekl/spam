@@ -239,7 +239,8 @@ sub poll_host
   #--- other variables -----------------------------------------------------
 
   my $community = $cfg->{'community'};
-  my $s;      # aux variable used for shortening access deep into $swdata
+  my $s = $swdata{$host} = {};
+  my $platform;
 
   #--- host-specific community override ------------------------------------
 
@@ -257,24 +258,6 @@ sub poll_host
   if(!inet_aton($host)) {
     tty_message("[$host] Hostname cannot be resolved\n");
     return 'DNS resolution failed';
-  }
-
-  #--- get system info
-
-  tty_message("[$host] Getting host system info (started)\n");
-  my ($sysinfo, $platform, $uptime) = snmp_system_info($host, $community);
-  if(!ref($sysinfo)) {
-    tty_message("[$host] Getting host system info (failed, %s)\n", $sysinfo);
-    return 'Cannot get system info';
-  } else {
-    tty_message(
-      "[$host] System info: platform=%s boottime=%s\n",
-      $platform, strftime('%Y-%m-%d', localtime($uptime))
-    );
-    $swdata{$host}{'stats'}{'platform'} = $platform;
-    $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
-    $swdata{$host}{'stats'}{'syslocation'}
-    = $sysinfo->{'sysLocation'}{0}{'value'}
   }
 
   #--- load last status from backend db ------------------------------------
@@ -295,73 +278,109 @@ sub poll_host
 
   #--- load supported MIB trees --------------------------------------------
 
+  # The first MIB must contain reading sysObjectID, sysLocation and
+  # sysUpTime. If these cannot be loaded; the whole function fails.
+
+  my $is_first_mib = 1;
+
   for my $mib_entry (@{$cfg->{'mibs'}}) {
-    my $mib = $mib_entry->{'mib'};    # MIB name
-    my @vlans = ( undef );            # vlans to iterate over
+    my $mib = $mib_entry->{'mib'};
+    my $mib_key = $mib;
+    my @vlans = ( undef );
 
-    #--- match platform string
+    for my $object (@{$mib_entry->{'objects'}}) {
 
-    my $include_re = $mib_entry->{'include'} // undef;
-    my $exclude_re = $mib_entry->{'exclude'} // undef;
-    next if $include_re && $platform !~ /$include_re/;
-    next if $exclude_re && $platform =~ /$exclude_re/;
+  #--- match platform string
 
-    #--- process additional flags
-
-    if(exists $mib_entry->{'flags'}) {
-
-      # 'vlans' flag; this causes to VLAN number to be added to the community
-      # string (as community@vlan) and the tree retrieval is iterated over all
-      # known VLANs; this means that vtpVlanName must be already retrieved;
-      # this is required for reading MAC addresses from switch via BRIDGE-MIB
-
-      if(grep($_ eq 'vlans', @{$mib_entry->{'flags'}})) {
-        @vlans = keys %{$swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanName'}{1}};
+      if(!$is_first_mib) {
+        my $include_re = $object->{'include'} // undef;
+        my $exclude_re = $object->{'exclude'} // undef;
+        next if $include_re && $platform !~ /$include_re/;
+        next if $exclude_re && $platform =~ /$exclude_re/;
       }
 
-      # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
-      # value of 1; these two are mutually exclusive
+  #--- include additional MIBs
 
-      if(grep($_ eq 'vlan1', @{$mib_entry->{'flags'}})) {
-        @vlans = ( 1 );
-      }
+  # this implements the 'addmib' object key; we use this to load product
+  # MIBs that translate sysObjectID into nice textual platform identifiers;
+  # note that the retrieved values will be stored under the first MIB name
+  # in the array @$mib
 
-      # 'mactable' MIBs should only be read when --mactable switch is active
-
-      if(grep($_ eq 'mactable', @{$mib_entry->{'flags'}})) {
-        if(!$get_mactable) {
-          tty_message("[$host] Skipping $mib, mactable loading not active\n");
-          next;
+      if($object->{'addmib'}) {
+        my $additional_mibs = $object->{'addmib'};
+        if(!ref($additional_mibs)) {
+          $additional_mibs = [ $additional_mibs ];
         }
+        $mib = [ $mib ];
+        push(@$mib, @$additional_mibs);
       }
-    }
 
-    #--- processing of the MIB is a go
+  #--- process additional flags
 
-    tty_message("[%s] Processing %s\n", $host, $mib);
+      if(exists $object->{'flags'}) {
+        my $object_flags = $object->{'flags'};
+        if(!ref($object_flags)) { $object_flags = [ $object_flags ]; }
 
-    #--- get MIB tree entry point(s)
+        # 'vlans' flag; this causes to VLAN number to be added to the
+        # community string (as community@vlan) and the tree retrieval is
+        # iterated over all known VLANs; this means that vtpVlanName must be
+        # already retrieved; this is required for reading MAC addresses from
+        # switch via BRIDGE-MIB
 
-    my $mib_entry_points = $mib_entry->{'entry'};
-    if(!ref($mib_entry_points)) {
-      $mib_entry_points = [ $mib_entry_points ];
-    }
+        if(grep($_ eq 'vlans', @$object_flags)) {
+          if(
+            exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}
+            && exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}
+          ) {
+            my %h;
+            my $vmMembershipTable
+            = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'};
+            for my $if (keys %$vmMembershipTable) {
+              $h{
+                $vmMembershipTable->{$if}{'vmVlan'}{'value'}
+              } = undef;
+            }
+            if(scalar(keys %h)) {
+              @vlans = sort { $a <=> $b } keys %h;
+            }
+          }
+        }
 
-    #--- iterate over vlans
+        # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
+        # value of 1; these two are mutually exclusive
 
-    for my $vlan (@vlans) {
-      next if $vlan > 999;
-      my $cmtvlan = $community . ($vlan ? "\@$vlan" : '');
+        if(grep($_ eq 'vlan1', @$object_flags)) {
+          @vlans = ( 1 );
+        }
 
-    #--- iterate over MIB tree entry points
+        # 'mactable' MIBs should only be read when --mactable switch is active
 
-      for my $mib_subtree (@$mib_entry_points) {
+        if(grep($_ eq 'mactable', @$object_flags)) {
+          if(!$get_mactable) {
+            tty_message("[$host] Skipping $mib, mactable loading not active\n");
+            next;
+          }
+        }
 
-    #--- read the tree from one entry point
+        # 'arptable' is only relevant for reading arptables from _routers_;
+        # here we just skip it
 
-        my $r = snmp_get_tree(
+        next if grep($_ eq 'arptable', @$object_flags);
+
+      }
+
+  #--- iterate over vlans
+
+      for my $vlan (@vlans) {
+        next if $vlan > 999;
+        my $cmtvlan = $community . ($vlan ? "\@$vlan" : '');
+
+  #--- retrieve the SNMP object
+
+        my $r = snmp_get_object(
           'snmpwalk', $host, $cmtvlan, $mib,
-          $mib_subtree,
+          $object->{'table'} // $object->{'scalar'},
+          $object->{'columns'} // undef,
           sub {
             my ($var, $cnt) = @_;
             return if !$var;
@@ -372,91 +391,115 @@ sub poll_host
           }
         );
 
-    #--- handle error
+  #--- handle error
 
         if(!ref($r)) {
-          tty_message(
-            "[%s] Processing %s (failed, %s)\n",
-            $host, $mib, $r
-          );
+          if($vlan) {
+            tty_message(
+              "[%s] Processing %s/%d (failed, %s)\n",
+              $host, $mib, $vlan, $r
+            );
+          } else {
+            tty_message(
+              "[%s] Processing %s (failed, %s)\n",
+              $host, $mib, $r
+            );
+          }
         }
 
-    #--- process results
-
-    # note, in perl "%hash3 = (%hash1, %hash2)" merges hash1 with hash2 and
-    # puts the result in hash3
+  #--- process result
 
         else {
+          my $object_name = $object->{'table'} // $object->{'scalar'};
           if($vlan) {
-            if(ref($swdata{$host}{$mib}{$vlan})) {
-              %{$swdata{$host}{$mib}{$vlan}}
-              = (%{$swdata{$host}{$mib}{$vlan}}, %$r);
-            } else {
-              $swdata{$host}{$mib}{$vlan} = $r;
-            }
+            $swdata{$host}{$mib_key}{$vlan}{$object_name} = $r;
           } else {
-            if(ref($swdata{$host}{$mib})) {
-              %{$swdata{$host}{$mib}} = (%{$swdata{$host}{$mib}}, %$r);
-            } else {
-              $swdata{$host}{$mib} = $r;
-            }
+            $swdata{$host}{$mib_key}{$object_name} = $r;
           }
         }
       }
     }
+
+  #--- first MIB entry is special as it gives us information about the host
+
+    if($is_first_mib) {
+      my $sys = $swdata{$host}{'SNMPv2-MIB'};
+      $platform = $sys->{'sysObjectID'}{0}{'value'};
+      $platform =~ s/^.*:://;
+      if(!$platform) {
+        tty_message("[$host] Getting host system info failed\n");
+        return "Cannot load platform identification";
+      }
+      $swdata{$host}{'stats'}{'platform'} = $platform;
+      my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
+      $uptime = time() - int($uptime / 100);
+      $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
+      $swdata{$host}{'stats'}{'syslocation'}
+      = $sys->{'sysLocation'}{0}{'value'};
+
+      tty_message(
+        "[$host] System info: platform=%s boottime=%s\n",
+        $platform, strftime('%Y-%m-%d', localtime($uptime))
+      );
+
+      $is_first_mib = 0;
+    }
+
   }
 
-  #--- prune non-ethernet interface
+  #--- prune non-ethernet interfaces and create portName -> ifIndex hash
 
-  # Delete all interfaces that are not of ifType ethernetCsmacd; note, that
-  # they are only deleted from ifName! This requires IF-MIB::ifType to be
-  # loaded
-
-  my @ifs_to_prune;
-  if(exists $swdata{$host}{'IF-MIB'}{'ifType'}) {
+  my $cnt_prune = 0;
+  my (%by_ifindex, %by_ifname);
+  if(
+    exists $swdata{$host}{'IF-MIB'}{'ifTable'} &&
+    exists $swdata{$host}{'IF-MIB'}{'ifXTable'}
+  ) {
     tty_message("[$host] Pruning non-ethernet interfaces (started)\n");
-    for my $if (keys %{$swdata{$host}{'IF-MIB'}{'ifName'}}) {
+    for my $if (keys %{ $swdata{$host}{'IF-MIB'}{'ifTable'} }) {
       if(
         # interfaces of type other than 'ethernetCsmacd'
-        $swdata{$host}{'IF-MIB'}{'ifType'}{$if}{'enum'} ne 'ethernetCsmacd'
-        # special cases; some interfaces are ethernetCsmacd and yet they are
+        $swdata{$host}{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
+          ne 'ethernetCsmacd'
+        # special case; some interfaces are ethernetCsmacd and yet they are
         # not real interfaces (good job, Cisco) and cause trouble
-        || $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'} =~ /^vl/i
+        || $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
+          =~ /^vl/i
       ) {
-        push(@ifs_to_prune, $if);
+        # matching interfaces are deleted
+        delete $swdata{$host}{'IF-MIB'}{'ifTable'}{$if};
+        delete $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if};
+        $cnt_prune++;
+      } else {
+        #non-matching interfaces are indexed
+        $by_ifindex{$if}
+        = $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
       }
     }
-    if(@ifs_to_prune) {
-      tty_message("[$host] %d interfaces will be pruned\n", scalar(@ifs_to_prune));
-      for(@ifs_to_prune) { delete $swdata{$host}{'IF-MIB'}{'ifName'}{$_}; }
-    }
-    tty_message("[$host] Pruning non-ethernet interfaces (finished)\n");
+    %by_ifname = reverse %by_ifindex;
+    $swdata{$host}{'idx'}{'portToIfIndex'} = \%by_ifname;
+    tty_message(
+      "[$host] Pruning non-ethernet interfaces (finished, %d pruned)\n",
+      $cnt_prune
+    );
+  } else {
+    die "ifTable/ifXTable don't exist on $host";
   }
-
-  #--- create portname->ifindex hash
-
-  # we build temporary ifIndex->ifName hash (because our regular hash in
-  # swdata has additional level of indirection) and then reverse the hash
-
-  my (%by_ifindex, %by_ifname);
-  for my $if (keys %{$swdata{$host}{'IF-MIB'}{'ifName'}}) {
-    $by_ifindex{$if} = $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'};
-  }
-  %by_ifname = reverse %by_ifindex;
-  $swdata{$host}{'idx'}{'portToIfIndex'} = \%by_ifname;
 
   #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex
 
-  # some CISCO MIBs use this kind of indexing instead of ifindex
+  # some CISCO MIBs use this kind of indexing instead of ifIndex
 
   my %by_portindex;
-  if($swdata{$host}{'CISCO-STACK-MIB'}) {
-    $s = $swdata{$host}{'CISCO-STACK-MIB'}{'portIfIndex'};
-    for my $pmIndex (keys %$s) {
-      for my $pIndex (keys %{$s->{$pmIndex}}) {
-        $by_portindex{
-          $s->{$pmIndex}{$pIndex}{'value'}
-        } = [ $pmIndex, $pIndex ];
+  if(
+    exists $swdata{$host}{'CISCO-STACK-MIB'}
+    && exists $swdata{$host}{'CISCO-STACK-MIB'}{'portTable'}
+  ) {
+    my $t = $s->{'CISCO-STACK-MIB'}{'portTable'};
+    for my $idx_mod (keys %$t) {
+      for my $idx_port (keys %{$t->{$idx_mod}}) {
+        $by_portindex{$t->{$idx_mod}{$idx_port}{'portIfIndex'}{'value'}}
+        = [ $idx_mod, $idx_port ];
       }
     }
     $swdata{$host}{'idx'}{'ifIndexToPortIndex'} = \%by_portindex;
@@ -465,11 +508,21 @@ sub poll_host
   #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
 
   my %by_dot1d;
-  if($swdata{$host}{'BRIDGE-MIB'}{1}{'dot1dBasePortIfIndex'}) {
-    for my $vlan (keys %{$swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanName'}{1}}) {
-      for my $dot1d (keys %{$swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}}) {
+  if(
+    exists $swdata{$host}{'BRIDGE-MIB'}{1}{'dot1dBasePortTable'}
+  ) {
+    my @vlans
+    = keys %{
+      $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
+    };
+    for my $vlan (@vlans) {
+      my @dot1idxs
+      = keys %{
+        $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+      };
+      for my $dot1d (@dot1idxs) {
         $by_dot1d{
-          $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}{$dot1d}{'value'}
+          $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
         } = $dot1d;
       }
     }
@@ -546,34 +599,39 @@ sub find_changes
 
     if(swdata_status_get($host, $k)) {
 
+      my $ifTable = $h->{'IF-MIB'}{'ifTable'}{$if};
+      my $ifXTable = $h->{'IF-MIB'}{'ifXTable'}{$if};
+      my $portTable
+         = $h->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
+      my $vmMembershipTable
+         = $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+
       #--- update: entry is not new, check whether it has changed ---
 
       my $old = swdata_status_get($host, $k);
-      my $update_flag;
-      my $descr = $h->{'IF-MIB'}{'ifAlias'}{$if};
       my $errdis = 0; # currently unavailable
 
       #--- collect the data to compare
 
       my @data = (
-        [ 'ifOperStatus', 'n',
-           $old->[0], $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} ],
-	[ 'ifInUcastPkts', 'n',
-	  $old->[1], $h->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'} ],
-	[ 'ifOutUcastPkts', 'n',
-	  $old->[2], $h->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'} ],
-        [ 'vmVlan', 'n',
-          $old->[5], $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'} ],
-        [ 'ifAlias', 's',
-          $old->[6], $h->{'IF-MIB'}{'ifAlias'}{$if}{'value'} ],
-        [ 'portDuplex', 'n',
-          $old->[7], $h->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'} ],
-        [ 'ifSpeed', 'n',
-          $old->[8], ($h->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) ],
-        [ 'port_flags', 'n',
-          $old->[9],  port_flag_pack($h, $if) ],
-        [ 'ifAdminStatus', 'n',
-          $old->[10], $h->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} ],
+        [ 'ifOperStatus', 'n', $old->[0],
+          $ifTable->{'ifOperStatus'}{'value'} ],
+	[ 'ifInUcastPkts', 'n', $old->[1],
+	  $ifTable->{'ifInUcastPkts'}{'value'} ],
+	[ 'ifOutUcastPkts', 'n', $old->[2],
+	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
+        [ 'vmVlan', 'n', $old->[5],
+          $vmMembershipTable->{'vmVlan'}{'value'} ],
+        [ 'ifAlias', 's', $old->[6],
+          $ifXTable->{'ifAlias'}{'value'} ],
+        [ 'portDuplex', 'n', $old->[7],
+          $portTable->{'portDuplex'}{'value'} ],
+        [ 'ifSpeed', 'n', $old->[8],
+          ($ifTable->{'ifSpeed'}{'value'} / 1000000) ],
+        [ 'port_flags', 'n', $old->[9],
+          port_flag_pack($h, $if) ],
+        [ 'ifAdminStatus', 'n', $old->[10],
+          $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
           $old->[11], $errdis ]
       );
@@ -581,7 +639,8 @@ sub find_changes
       #--- perform comparison
 
       my $cmp_acc;
-      printf $debug_fh "--> PORT %s\n", $k if $debug_fh;
+      printf $debug_fh
+        "--> PORT %s (if=%d, pi=%d/%d)\n", $k, $if, @$pi if $debug_fh;
       for my $d (@data) {
         my $cmp;
         if($d->[1] eq 's') {
@@ -589,7 +648,7 @@ sub find_changes
         } else {
           $cmp = $d->[2] != $d->[3];
         }
-        printf $debug_fh  "%s: old:%s new:%s -> %s\n", $d->[0], $d->[2], $d->[3],
+        printf $debug_fh  "%s: old:%s new:%s -> %s\n", @$d[0,2,3],
           $cmp ? 'NO MATCH' : 'MATCH'
           if $debug_fh;
         $cmp_acc ||= $cmp;
@@ -673,6 +732,12 @@ sub sql_status_update
     my $if = $idx->{$k->[1]};
     my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$if};
     my $current_time = strftime("%c", localtime());
+    my $ifTable = $hdata->{'IF-MIB'}{'ifTable'}{$if};
+    my $ifXTable = $hdata->{'IF-MIB'}{'ifXTable'}{$if};
+    my $vmMembershipTable
+       = $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+    my $portTable
+       = $hdata->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
     #--- INSERT
 
@@ -686,18 +751,18 @@ sub sql_status_update
       @bind = (
         $host,
         $k->[1],
-        $hdata->{'IF-MIB'}{'ifOperStatus'}{$if}{'enum'} eq 'up' ? 'true' : 'false',
-        $hdata->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'},
-        $hdata->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'},
+        $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
+        $ifTable->{'ifInUcastPkts'}{'value'},
+        $ifTable->{'ifOutUcastPkts'}{'value'},
         $current_time,
         $current_time,
         $if,
-        $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'},
-        $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'},
-        $hdata->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'},
-        ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
+        $vmMembershipTable->{'vmVlan'}{'value'},
+        $ifXTable->{'ifAlias'}{'value'},
+        $portTable->{'portDuplex'}{'value'},
+        ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
         port_flag_pack($hdata, $if),
-        $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 'true' : 'false',
+        $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
       );
@@ -722,16 +787,16 @@ sub sql_status_update
         );
         @bind = (
           $current_time,
-          $hdata->{'IF-MIB'}{'ifOperStatus'}{$if}{'enum'} eq 'up' ? 'true' : 'false',
-          $hdata->{'IF-MIB'}{'ifInUcastPkts'}{$if}{'value'},
-          $hdata->{'IF-MIB'}{'ifOutUcastPkts'}{$if}{'value'},
+          $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
+          $ifTable->{'ifInUcastPkts'}{'value'},
+          $ifTable->{'ifOutUcastPkts'}{'value'},
           $if,
-          $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmVlan'}{$if}{'value'},
-          $hdata->{'IF-MIB'}{'ifAlias'}{$if}{'value'} =~ s/'/''/gr,
-          $hdata->{'CISCO-STACK-MIB'}{'portDuplex'}{$pi->[0]}{$pi->[1]}{'value'},
-          ($hdata->{'IF-MIB'}{'ifSpeed'}{$if}{'value'} / 1000000) =~ s/\..*$//r,
+          $vmMembershipTable->{'vmVlan'}{'value'},
+          $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
+          $portTable->{'portDuplex'}{'value'},
+          ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
           port_flag_pack($hdata, $if),
-          $hdata->{'IF-MIB'}{'ifAdminStatus'}{$if}{'value'} == 1 ? 't':'f',
+          $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'
         );
@@ -1079,33 +1144,46 @@ sub sql_mactable_update
     ]
   );
 
+  #--- get list of VLANs, exclude non-numeric keys (those do not denote VLANs
+  #--- but SNMP objects)
+
+  my @vlans = sort { $a <=> $b } grep(/^\d+$/, keys %$h);
+
   #--- gather update plan ---
 
-  printf $debug_fh "--> CREATE UPDATE PLAN\n" if $debug_fh;
-  for my $vlan (keys %$h) {
-    for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbStatus'}}) {
+  if($debug_fh) {
+    printf $debug_fh "--> CREATE UPDATE PLAN\n";
+    printf $debug_fh "--> VLANS: %s\n", join(',', @vlans);
+  }
+  for my $vlan (@vlans) {
+    printf $debug_fh "--> MACS IN VLAN %d: %d\n",
+      $vlan, scalar(keys %{$h->{$vlan}{'dot1dTpFdbTable'}})
+      if $debug_fh;
+    for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbTable'}}) {
       my ($q, @fields, @bind);
+      my $dot1dTpFdbTable = $h->{$vlan}{'dot1dTpFdbTable'};
+      my $dot1dBasePortTable = $h->{$vlan}{'dot1dBasePortTable'};
 
       #--- get ifindex value
 
-      my $dot1d = $h->{$vlan}{'dot1dTpFdbPort'}{$mac}{'value'};
-      my $if = $h->{$vlan}{'dot1dBasePortIfIndex'}{$dot1d}{'value'};
+      my $dot1d = $dot1dTpFdbTable->{$mac}{'dot1dTpFdbPort'}{'value'};
+      my $if = $dot1dBasePortTable->{$dot1d}{'dot1dBasePortIfIndex'}{'value'};
 
       #--- skip uninteresting MACs (note, that we're not filtering 'static'
       #--- entries: ports with port security seem to report their MACs as
       #--- static in Cisco IOS)
 
       next if
-        $h->{$vlan}{'dot1dTpFdbStatus'}{$mac}{'enum'} eq 'invalid' ||
-        $h->{$vlan}{'dot1dTpFdbStatus'}{$mac}{'enum'} eq 'self';
+        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'invalid' ||
+        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'self';
 
       #--- skip MACs on ports we are not tracking (such as port channels etc)
 
-      next if !exists $swdata{$host}{'IF-MIB'}{'ifName'}{$if};
+      next if !exists $swdata{$host}{'IF-MIB'}{'ifTable'}{$if};
 
       #--- skip MACs on ports that are receiving CDP
 
-      next if exists $swdata{$host}{'CISCO-CDP-MIB'}{'cdpCacheCapabilities'}{$if};
+      next if exists $swdata{$host}{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
 
       #--- normalize MAC, get formatted timestamp
 
@@ -1118,7 +1196,9 @@ sub sql_mactable_update
           'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
         );
         @bind = (
-          $host, $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'}, $aux, $mac
+          $host,
+          $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
+          $aux, $mac
         );
         $q = sprintf(
           q{UPDATE mactable SET %s WHERE mac = ?},
@@ -1131,7 +1211,8 @@ sub sql_mactable_update
           'mac', 'host', 'portname', 'lastchk', 'active'
         );
         @bind = (
-          $mac, $host, $swdata{$host}{'IF-MIB'}{'ifName'}{$if}{'value'},
+          $mac, $host,
+          $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
           $aux, 't'
         );
         $q = sprintf(
@@ -1282,20 +1363,28 @@ sub switch_info
 
   #--- count ---
 
-  foreach my $if (keys %{$h->{'IF-MIB'}{'ifName'}}) {
-    my $portname = $h->{'IF-MIB'}{'ifName'}{$if}{'value'};
+  foreach my $if (keys %{$h->{'IF-MIB'}{'ifTable'}}) {
+    my $ifTable = $h->{'IF-MIB'}{'ifTable'};
+    my $ifXTable = $h->{'IF-MIB'}{'ifXTable'};
+    my $portname = $ifXTable->{$if}{'ifName'}{'value'};
     $stat->{p_total}++;
     $stat->{p_patch}++ if exists $port2cp->{$host}{$portname};
-    $stat->{p_act}++ if $h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} == 1;
+    $stat->{p_act}++
+      if $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up';
     # p_errdis used to count errordisable ports, but required SNMP variable
     # is no longer available
     #--- unregistered ports
-    if($knownports && ($h->{'IF-MIB'}{'ifOperStatus'}{$if}{'value'} == 1)) {
-      if(!exists $port2cp->{$host}{$portname}) {
-        if(!exists $h->{'CISCO-CDP-MIB'}{'cdpCacheDeviceId'}{$if}) {
-          $stat->{p_illact}++;
-        }
-      }
+    if(
+      $knownports
+      && $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up'
+      && !exists $port2cp->{$host}{$portname}
+      && !(
+        exists $h->{'CISCO-CDP-MIB'}
+        && exists $h->{'CISCO-CDP-MIB'}{$if}
+        && exists $h->{'CISCO-CDP-MIB'}{$if}{'cdpCacheTable'}
+      )
+    ) {
+      $stat->{p_illact}++;
     }
     #--- used ports
     # ports that were used within period defined by "inactivethreshold2"
@@ -1346,11 +1435,14 @@ sub port_flag_pack
 
   #--- trunking mode
 
-  if(exists $hdata->{'CISCO-VTP-MIB'}) {
+  if(
+    exists $hdata->{'CISCO-VTP-MIB'}
+    && exists $hdata->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}
+  ) {
     my $trunk_flag;
-    my $s = $hdata->{'CISCO-VTP-MIB'};
-    if($s->{'vlanTrunkPortDynamicStatus'}{$port}{'enum'} eq 'trunking') {
-      $trunk_flag = $s->{'vlanTrunkPortEncapsulationOperType'}{$port}{'enum'};
+    my $s = $hdata->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$port};
+    if($s->{'vlanTrunkPortDynamicStatus'}{'enum'} eq 'trunking') {
+      $trunk_flag = $s->{'vlanTrunkPortEncapsulationOperType'}{'enum'};
     }
     if($trunk_flag eq 'dot1Q')  { $result |= 8; }
     elsif($trunk_flag eq 'isl') { $result |= 16; }
@@ -1362,11 +1454,15 @@ sub port_flag_pack
 
   #--- 802.1x Auth (from dot1xAuthConfigTable)
 
-  if(exists $hdata->{'IEEE8021-PAE-MIB'}) {
+  if(
+    exists $hdata->{'IEEE8021-PAE-MIB'}
+    && exists $hdata->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}
+  ) {
     my %dot1x_flag;
-    my $s = $hdata->{'IEEE8021-PAE-MIB'};
-    $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{$port}{'enum'};
-    $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{$port}{'enum'};
+    my $s 
+    = $hdata->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
+    $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{'enum'};
+    $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{'enum'};
     if($dot1x_flag{'pc'} eq 'forceUnauthorized') { $result |= 128; }
     if($dot1x_flag{'pc'} eq 'auto') { $result |= 256; }
     if($dot1x_flag{'pc'} eq 'forceAuthorized') { $result |= 64; }
@@ -1376,12 +1472,15 @@ sub port_flag_pack
 
   #--- MAC bypass active
 
-  if(exists $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}) {
-    my $s = $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodState'}{$port};
+  if(
+    exists $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}
+    && exists $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
+  ) {
+    my $s = $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$port};
     for my $sessid (keys %$s) {
       if(
-        $s->{$sessid}{'macAuthBypass'}
-        && $s->{$sessid}{'macAuthBypass'}{'enum'} eq 'authcSuccess'
+        exists $s->{$sessid}{'macAuthBypass'}
+        && $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'} eq 'authcSuccess'
       ) {
         $result |= 2048;
       }
@@ -1390,34 +1489,50 @@ sub port_flag_pack
 
   #--- CDP
 
-  if(exists $hdata->{'CISCO-CDP-MIB'}) {
-    if(exists $hdata->{'CISCO-CDP-MIB'}{'cdpCacheCapabilities'}{$port}) {
-      $result |= 1;
-    }
+  if(
+    exists $hdata->{'CISCO-CDP-MIB'}
+    && exists $hdata->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+    && exists $hdata->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}
+  ) {
+    $result |= 1;
   }
 
   #--- power over ethernet
 
-  if(exists $hdata->{'POWER-ETHERNET-MIB'}) {
+  if(exists $hdata->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}) {
     my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$port};
-    my $s = $hdata->{'POWER-ETHERNET-MIB'}{'pethPsePortDetectionStatus'};
-    if(exists $s->{$pi->[0]}{$pi->[1]}) {
+    if(
+      exists
+        $hdata->{'POWER-ETHERNET-MIB'}
+                {'pethPsePortTable'}
+                {$pi->[0]}{$pi->[1]}
+                {'pethPsePortDetectionStatus'}
+    ) {
+      my $s = $hdata->{'POWER-ETHERNET-MIB'}
+                      {'pethPsePortTable'}
+                      {$pi->[0]}{$pi->[1]}
+                      {'pethPsePortDetectionStatus'};
+
       $result |= 4096;
-      $result |= 8192 if $s->{$pi->[0]}{$pi->[1]}{'enum'} ne 'disabled';
-      $result |= 16384 if$s->{$pi->[0]}{$pi->[1]}{'enum'} eq 'deliveringPower';
+      $result |= 8192 if $s->{'enum'} ne 'disabled';
+      $result |= 16384 if $s->{'enum'} eq 'deliveringPower';
     }
   }
 
   #--- STP root port
 
-  if(exists $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'}) {
+  if(
+    exists $hdata->{'BRIDGE-MIB'}
+    && exists $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}
+  ) {
     my $dot1d_stpr = $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
     for my $vlan (keys %{$hdata->{'BRIDGE-MIB'}}) {
+      # the keys under BRIDGE-MIB are both a) vlans b) object names
+      # that are not defined per-vlan (such as dot1dStpRootPort);
+      # that's we need to filter non-vlans out here
       next if $vlan !~ /^\d+$/;
       if(
-        exists $hdata->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}
-        && $hdata->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortIfIndex'}{'value'}
-        == $dot1d_stpr
+        exists $hdata->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
       ) {
         $result |= 4;
         last;
@@ -1427,10 +1542,15 @@ sub port_flag_pack
 
   #--- STP portfast
 
-  if(exists $hdata->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortMode'}) {
+  if(
+    exists $hdata->{'CISCO-STP-EXTENSIONS-MIB'}
+    && exists $hdata->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
+  ) {
     my $port_dot1d = $hdata->{'idx'}{'ifIndexToDot1d'}{$port};
     my $portmode
-    = $hdata->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortMode'}{$port_dot1d}{'enum'};
+    = $hdata->{'CISCO-STP-EXTENSIONS-MIB'}
+              {'stpxFastStartPortTable'}{$port_dot1d}{'stpxFastStartPortMode'}
+              {'enum'};
     if($portmode eq 'enable' || $portmode eq 'enableForTrunk') {
       $result |= 2;
     }
@@ -1510,6 +1630,8 @@ sub sql_switch_info_update
   my $dbh = dbconn('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
+  my $managementDomainTable
+  = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainTable'}{1};
 
   #--- ensure database connection
 
@@ -1546,8 +1668,8 @@ sub sql_switch_info_update
         $stat->{p_errdis},
         $stat->{p_inact},
         $stat->{p_used},
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainName'}{1}{'value'},
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainLocalMode'}{1}{'value'},
+        $managementDomainTable->{'managementDomainName'}{'value'},
+        $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
         $stat->{platform}
       );
@@ -1576,8 +1698,8 @@ sub sql_switch_info_update
         $stat->{p_inact},
         $stat->{p_used},
         strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainName'}{1}{'value'},
-        $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainLocalMode'}{1}{'value'},
+        $managementDomainTable->{'managementDomainName'}{'value'},
+        $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         $stat->{platform},
         $host
       );
@@ -1602,8 +1724,8 @@ sub sql_switch_info_update
   #--- ???: why is this updated HERE? ---
   # $swdata{HOST}{stats}{vtpdomain,vtpmode} are not used anywhere
 
-  $stat->{vtpdomain} = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainName'}{1}{'value'},
-  $stat->{vtpmode} = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainLocalMode'}{1}{'value'},
+  $stat->{vtpdomain} = $managementDomainTable->{'managementDomainName'}{'value'};
+  $stat->{vtpmode} = $managementDomainTable->{'managementDomainLocalMode'}{'value'};
 
   #--- return successfully
 
