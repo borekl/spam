@@ -1366,8 +1366,8 @@ sub switch_info
       && !exists $port2cp->{$host}{$portname}
       && !(
         exists $h->{'CISCO-CDP-MIB'}
-        && exists $h->{'CISCO-CDP-MIB'}{$if}
-        && exists $h->{'CISCO-CDP-MIB'}{$if}{'cdpCacheTable'}
+        && exists $h->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+        && exists $h->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
       )
     ) {
       $stat->{p_illact}++;
