@@ -914,7 +914,10 @@ sub sql_search
   
   #--- normalize search parameters
   
-  if($par->{'mode'} ne 'portlist') {
+  if(
+    $par->{'mode'} ne 'portlist'
+    && $par->{'mode'} ne 'portinfo'
+  ) {
     $re{'params'}{'normalized'} = $par = normalize_search($par);
   }
   
@@ -1079,7 +1082,8 @@ sub sql_portinfo
     'site' => $site, 
     'host' => $host, 
     'portname' => $portname,
-    'view' => 'v_portinfo'
+    'view' => 'v_portinfo',
+    'mode' => 'portinfo',
   );
   
   #--- get data from db
