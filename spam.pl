@@ -328,22 +328,8 @@ sub poll_host
         # switch via BRIDGE-MIB
 
         if(grep($_ eq 'vlans', @$object_flags)) {
-          if(
-            exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}
-            && exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}
-          ) {
-            my %h;
-            my $vmMembershipTable
-            = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'};
-            for my $if (keys %$vmMembershipTable) {
-              $h{
-                $vmMembershipTable->{$if}{'vmVlan'}{'value'}
-              } = undef;
-            }
-            if(scalar(keys %h)) {
-              @vlans = sort { $a <=> $b } keys %h;
-            }
-          }
+          @vlans = snmp_get_active_vlans($s);
+          if(!@vlans) { @vlans = ( undef ); }
         }
 
         # 'vlan1' flag; this is similar to 'vlans', but it only iterates over

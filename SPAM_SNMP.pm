@@ -23,6 +23,7 @@ our (@ISA, @EXPORT);
   snmp_entity_to_hwinfo
   snmp_get_arptable
   snmp_get_object
+  snmp_get_active_vlans
 );
 
 
@@ -599,6 +600,62 @@ sub snmp_get_object
 
   close($fh) if $fh;
   return scalar(keys %re) ? \%re : 'No instances found';
+}
+
+
+#==========================================================================
+# Function that tries to collate list of active VLANs, ie. VLANs in actual
+# use on a switch as opposed to just configured VLANs. Currently, we are
+# using two sources:
+#
+#  * vmVlan from vlanMembershipTable
+#  * cafSessionAuthVlan from cafSessionTable
+#==========================================================================
+
+sub snmp_get_active_vlans
+{
+  #--- arguments
+
+  my ($s) = @_;
+
+  #--- other variables
+
+  my %vlans;
+
+  #--- dynamic VLANs configured by user authentication
+
+  if(
+    exists $s->{'CISCO-AUTH-FRAMEWORK-MIB'}
+    && exists $s->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionTable'}
+  ) {
+    my $cafSessionTable = $s->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionTable'};
+    for my $if (keys %$cafSessionTable) {
+      for my $sid (keys %{$cafSessionTable->{$if}}) {
+        if(exists $cafSessionTable->{$if}{$sid}{'cafSessionAuthVlan'}) {
+          my $v = $cafSessionTable->{$if}{$sid}{'cafSessionAuthVlan'}{'value'};
+          $vlans{$v} = undef if $v > 0 && $v < 1000;
+        }
+      }
+    }
+  }
+
+  #--- static VLANs
+
+  if(
+    exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}
+    && exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}
+  ) {
+    my $vmMembershipTable
+    = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'};
+    for my $if (keys %$vmMembershipTable) {
+      my $v = $vmMembershipTable->{$if}{'vmVlan'}{'value'};
+      $vlans{$v} = undef if $v > 0 && $v < 1000;
+    }
+  }
+
+  #--- finish
+
+  return sort { $a <=> $b } keys %vlans;
 }
 
 
