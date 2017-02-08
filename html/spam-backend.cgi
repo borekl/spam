@@ -1952,9 +1952,14 @@ if($#ARGV == -1) {
 #--- switch list -------------------------------------------------------------
 
 if($req eq 'swlist') {
-  print $js->encode(
-    sql_select('spam', 'SELECT * FROM v_swinfo', [], \&mangle_swlist)
-  );
+  my $re = sql_select('spam', 'SELECT * FROM v_swinfo', [], \&mangle_swlist);
+  if(
+    (grep { $_->{'stale'} } @{$re->{'result'}})
+    && $debug
+  ) {
+    $re->{'showstale'} = 1;
+  }
+  print $js->encode($re);
 }
 
 #--- search tool -------------------------------------------------------------

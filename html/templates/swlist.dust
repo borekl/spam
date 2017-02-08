@@ -8,9 +8,9 @@
   <span class="lnk swgrp" data-grp="sho">Shops</span>
   <span class="lnk swgrp" data-grp="bsc">BSC</span>
   <span class="lnk swgrp" data-grp="oth">Other</span>
-  {?debug}
+  {?showstale}
   <span class="lnk swgrp warn" data-grp="stl">!</span>
-  {/debug}
+  {/showstale}
 </div>
 
 <table id="swlist">
