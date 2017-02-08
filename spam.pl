@@ -1908,7 +1908,6 @@ tty_message(
 
 my $get_arptable = 0;
 my $get_mactable = 1;
-my $quick_mode = 0;
 my $no_lock = 0;           # inhibit creation of lock file
 my $tasks_max = 8;         # maximum number of background tasks
 my $tasks_cur = 0;         # current number of background tasks
@@ -1924,7 +1923,7 @@ if(!GetOptions('host=s'     => \@poll_hosts,
                'help|?'     => \$help,
                'mactable!'  => \$get_mactable,
                'maint'      => \$maint,
-               'quick!'     => \$quick_mode,
+               'quick'      => sub { $get_arptable = $get_mactable = 0; },
                'arpservers' => \$list_arpservers,
                'hosts'      => \$list_hosts,
                'tasks=i'    => \$tasks_max,
@@ -1943,9 +1942,6 @@ if($help) {
 if($tasks_max < 0 || $tasks_max > 16) {
   print "Number of tasks invalid\n\n";
   exit(1);
-}
-if($quick_mode == 1) {
-  $get_arptable = $get_mactable = 0;
 }
 if($list_arpservers || $list_hosts) {
   $no_lock = 1;
