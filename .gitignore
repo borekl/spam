@@ -12,7 +12,7 @@ html/templates.js
 html/templates/templates.js
 html/bundle.js
 spam.cfg
-spam.cfg.json
+/spam.cfg.json
 node_modules/
 npm-debug.log
 assets
