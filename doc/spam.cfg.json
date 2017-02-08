@@ -32,7 +32,7 @@
   
   #--- Host that will be queried for VTP VLAN database
 
-  "vlanserver" : [ [ "stoS00", "600meC73nerOK", "Stodulky" ] ],
+  "vlanserver" : [ [ "stoS00", "***", "Stodulky" ] ],
   
   #--- older ARP table entries will be purged during maintenance
 
