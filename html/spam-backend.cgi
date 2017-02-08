@@ -3,7 +3,7 @@
 #=============================================================================
 # SWITCH PORTS ACTIVITY MONITOR -- BACKEND
 # """"""""""""""""""""""""""""""""""""""""
-# 2015 Borek Lupomesky <borek.lupomesky@vodafone.com>
+# 2015-2017 Borek Lupomesky <borek.lupomesky@vodafone.com>
 #
 # Backend script for client-side JavaScript.
 #=============================================================================
