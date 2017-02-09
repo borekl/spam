@@ -290,6 +290,8 @@ sub poll_host
     my @vlans = ( undef );
 
     for my $object (@{$mib_entry->{'objects'}}) {
+      my $object_flags = $object->{'flags'} // undef;
+      if(!ref($object_flags)) { $object_flags = [ $object_flags ]; }
 
   #--- match platform string
 
@@ -318,9 +320,7 @@ sub poll_host
 
   #--- process additional flags
 
-      if(exists $object->{'flags'}) {
-        my $object_flags = $object->{'flags'};
-        if(!ref($object_flags)) { $object_flags = [ $object_flags ]; }
+      if($object_flags) {
 
         # 'vlans' flag; this causes to VLAN number to be added to the
         # community string (as community@vlan) and the tree retrieval is
