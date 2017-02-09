@@ -21,6 +21,7 @@ use SPAMv2;
 use SPAM_SNMP;
 use Socket;
 use Data::Dumper;
+use Try::Tiny;
 
 $| = 1;
 
