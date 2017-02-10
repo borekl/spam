@@ -39,6 +39,7 @@ our @EXPORT = qw(
   multipush
   file_lineread
   sql_show_query
+  hash_create_index
 );
 
 
@@ -660,6 +661,66 @@ sub sql_show_query
   #--- finish
 
   return $qry;
+}
+
+
+#=============================================================================
+# Utility function for creating hash indexes. The arguments are:
+#
+#   1. hashref of a point from which the index will be built
+#   2. value which will be put as leaf
+#   R. the rest is list of indices
+#
+# Let's suppose we have hash %h, value 123 and list of indexes 'a', 'b' and
+# 'c'. The invocation looks like this:
+#
+#   hash_create_index(\%h, 123, undef, 'a', 'b', 'c')
+#
+# The hash will look like this after this call:
+#
+#   %h = ( 'a' => { 'b' => { 'c' => 123 } } )
+#
+# Subsequent calls on the same hash will non-destructively add more indexes:
+#
+#   hash_create_index(\%, 456, undef, 'a', 'b', 'd')
+#
+# For resulting hash:
+#
+#   %h = ( 'a' => { 'b' => { 'c' => 123, 'd' => 456 } } );
+#
+# The number of indices must not vary though, otherwise unexpected behaviour
+# can result.
+#
+# If the leaf value already exists and both this value and the new value
+# supplied in argument 2 are hashref, then the function will merge these two
+# hashrefs into one unified hash.  If the two values are not both hashrefs,
+# then the old value in the hash will be overwritten with the new.
+#=============================================================================
+
+sub hash_create_index
+{
+  my $h = shift;    # 1. href / mount point
+  my $v = shift;    # 2. any  / value
+  my $g = $h;
+
+  for(my $i = 0; $i < scalar(@_) - 1; $i++) {
+    my $index = $_[$i];
+    $g->{$index} = {} if !exists $g->{$index};
+    $g = $g->{$index}
+  }
+
+  my $last_index = $_[scalar(@_)-1];
+  if(
+    exists $g->{$last_index}
+    && ref($g->{$last_index}) eq 'HASH'
+    && defined $v
+    && ref($v) eq 'HASH'
+  ) {
+    my %h = ( %{$g->{$last_index}}, %$v );
+    $g->{$last_index} = \%h;
+  } else {
+    $g->{$last_index} = $v;
+  }
 }
 
 

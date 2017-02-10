@@ -9,7 +9,7 @@
 
 package SPAM_SNMP;
 require Exporter;
-use SPAMv2 qw(load_config file_lineread);
+use SPAMv2 qw(load_config file_lineread hash_create_index);
 use Data::Dumper;
 
 use warnings;
@@ -548,12 +548,7 @@ sub snmp_get_object
 
       # SNMP tables, @i holds the indices, $var is column name
       else {
-        my $h = \%re;
-        for my $j (@i) {
-          $h->{$j} = {} if !exists $h->{$j};
-          $h = $h->{$j};
-        }
-        $h->{$var} = $rval;
+        hash_create_index(\%re, { $var => $rval }, @i);
       }
 
   #--- debugging info
