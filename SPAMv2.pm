@@ -631,36 +631,28 @@ sub file_lineread
 
 sub sql_show_query
 {
-  my ($qry, $vals) = @_;
-
-  #---  handle $vals being single scalar or undefined
-
-  if($vals && !ref($vals)) {
-    $vals = [ $vals ];
-  } elsif(!$vals) {
-    $vals = [];
-  }
+  my $query = shift;
+  my @values = splice @_, 0;
 
   #--- squash extraneous whitespace, replace newlines
 
-  $qry =~ s/\n/ /g;
-  $qry =~ s/\s{2,}/ /g;
+  $query =~ s/\n/ /g;
+  $query =~ s/\s{2,}/ /g;
 
   #--- do the placeholders replacement
 
-  for(my $i = 0; $i < scalar(@$vals); $i++) {
-    my $val = $vals->[$i];
+  for my $val (@values) {
     if(defined $val) {
       $val = "'$val'" if $val !~ /^\d+$/;
     } else {
       $val = 'NULL';
     }
-    $qry =~ s/\?/$val/;
+    $query =~ s/\?/$val/;
   }
 
   #--- finish
 
-  return $qry;
+  return $query;
 }
 
 
