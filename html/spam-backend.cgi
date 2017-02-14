@@ -206,7 +206,7 @@ sub sql_select
   
   $re{'debug'} = $debug;
   if($debug) {
-    $re{'query'} = sql_show_query($query, $args);
+    $re{'query'} = sql_show_query($query, @$args);
   }
 
   eval { #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
@@ -1637,7 +1637,7 @@ sub sql_add_patches
       if(!$r) {
         $re{'errwhy'} = 'Failed to insert data into database';
         $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
-        $re{'query'} = sql_show_query($qry, \@values);
+        $re{'query'} = sql_show_query($qry, @values);
         $re{'formrow'} = $i;
 
         # interpret the error
@@ -1667,7 +1667,7 @@ sub sql_add_patches
       if(!$r) {
         $re{'errwhy'} = 'Failed to update data in the database';
         $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
-        $re{'query'} = sql_show_query($qry, \@values);
+        $re{'query'} = sql_show_query($qry, @values);
         $re{'formrow'} = $i;
         die "ABORT\n";
       }
@@ -1747,7 +1747,7 @@ sub sql_del_patch
   #--- perform query
   
   $qry = 'DELETE FROM porttable WHERE host = ? AND portname = ?';
-  $re{'query'} = sql_show_query($qry, [ $host, $portname ]);
+  $re{'query'} = sql_show_query($qry, $host, $portname);
   $r = $db_spam->do($qry, undef, $host, $portname);
   $re{'dbrv'} = $r;
   if(!defined $r) {
@@ -1804,7 +1804,7 @@ sub sql_modwire
     if(!$location) {
       $qry = 'DELETE FROM modwire WHERE host = ? AND m = ? AND n = ?';
       @fld = ( $host, $m, $n );
-      $re{'query'} = sql_show_query($qry, \@fld);
+      $re{'query'} = sql_show_query($qry, @fld);
       $r = $dbh->do($qry, undef, @fld);
       $re{'dbrv'} = $r;
       if(!$r) {
@@ -1825,7 +1825,7 @@ sub sql_modwire
         SET location = ?, chg_who = ?, chg_where = ?, chg_when = now()
         WHERE host = ? AND m = ? AND n = ?";
       @fld = ($location, $ENV{REMOTE_USER}, $ENV{REMOTE_ADDR}, $host, $m, $n);
-      $re{'query'} = sql_show_query($qry, \@fld);
+      $re{'query'} = sql_show_query($qry, @fld);
       $r = $dbh->do($qry, undef, @fld);
       $re{'dbrv'} = $r;
       if(!$r) {
@@ -1838,7 +1838,7 @@ sub sql_modwire
           ( host, m, n, location, chg_who, chg_where )
           VALUES ( ?, ?, ?, ?, ?, ? )";
         @fld = ($host, $m, $n, $location, $ENV{REMOTE_USER}, $ENV{REMOTE_ADDR});
-        $re{'query'} = sql_show_query($qry, \@fld);
+        $re{'query'} = sql_show_query($qry, @fld);
         $r = $dbh->do($qry, undef, @fld);
         $re{'dbrv'} = $r;
         if(!$r) {

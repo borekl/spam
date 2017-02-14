@@ -996,7 +996,7 @@ sub sql_transaction
       printf $fh "---> TRANSACTION LOG START\n";
       for my $row (@$update) {
         printf $fh "%d. %s\n", $line++,
-          sql_show_query($row->[0], [ @{$row}[1 .. scalar(@$row)-1] ]);
+          sql_show_query(@$row);
       }
       printf $fh "---> TRANSACTION LOG END\n";
     }
