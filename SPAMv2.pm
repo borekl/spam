@@ -40,6 +40,8 @@ our @EXPORT = qw(
   file_lineread
   sql_show_query
   hash_create_index
+  hash_iterator
+  hash_index_access
 );
 
 
@@ -713,6 +715,55 @@ sub hash_create_index
   } else {
     $g->{$last_index} = $v;
   }
+}
+
+
+#=============================================================================
+# Hash iterator with specified maximum depth of iteration.
+#=============================================================================
+
+sub hash_iterator
+{
+  #--- arguments
+
+  my (
+    $h,       # 1. href / hash being iterated
+    $depth,   # 2. scal / maximum iteration depth
+    $cb,      # 3. sub  / callback
+    $rec      # 4. aref / internal, path trace
+  ) = @_;
+
+  #--- main
+
+  if(!defined $rec) { $rec = []; }
+  for my $key (keys %$h) {
+    my $rec_inner = [ @$rec ];
+    if(ref($h->{$key}) && $depth-1) {
+      hash_iterator($h->{$key}, $depth-1, $cb, [ @$rec_inner, $key]);
+    } else {
+      $cb->($h->{$key}, (@$rec_inner, $key));
+    }
+  }
+}
+
+
+#=============================================================================
+# Function for accessing complex hash tree using path indices.
+#=============================================================================
+
+sub hash_index_access
+{
+  my $h = shift;
+  my @idx = @_;
+
+  for my $k (@idx) {
+    if(ref $h && exists $h->{$k}) {
+      $h = $h->{$k}
+    } else {
+      return undef;
+    }
+  }
+  return $h;
 }
 
 

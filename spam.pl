@@ -405,6 +405,26 @@ sub poll_host
           }
         }
       }
+
+  #--- process "save" flag
+
+  # this saves the MIB table into database, only supported for tables, not
+  # scalars
+
+      if(grep($_ eq 'save', @$object_flags)) {
+        tty_message("[$host] Saving %s (started)\n", $object->{'table'});
+        my $r = sql_save_snmp_object($host, $object->{'table'});
+        if(!ref $r) {
+          tty_message("[$host] Saving %s (failed)\n", $object->{'table'});
+        } else {
+          tty_message(
+            "[$host] Saving %s (finished, i=%d,u=%d,d=%d)\n",
+            $object->{'table'},
+            @{$r}{qw(insert update delete)}
+          );
+        }
+      }
+
     }
 
   #--- first MIB entry is special as it gives us information about the host
@@ -1882,6 +1902,256 @@ sub sql_autoreg
       tty_message("[$host] Auto-registration failed ($e)\n");
     }
   }
+}
+
+
+#===========================================================================
+# This function saves SNMP table into database.
+#===========================================================================
+
+sub sql_save_snmp_object
+{
+  #--- arguments
+
+  my (
+    $host,         # 1. (strg) switch name
+    $snmp_object   # 2. (strg) SNMP table to be saved
+  ) = @_;
+
+  #--- other variables
+
+  my $dbh = dbconn('spam');
+  my $cfg = load_config();
+  my %stats = ( 'insert' => 0, 'update' => 0, 'delete' => 0 );
+  my $err;
+  my $debug_fh;
+
+  #--- open debug file
+
+  if($ENV{'SPAM_DEBUG'}) {
+    open($debug_fh, '>', "debug.save_snmp_object.$$.log");
+    if($debug_fh) {
+      printf $debug_fh
+        "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object;
+    }
+  }
+
+  #=========================================================================
+  #=== try block start =====================================================
+  #=========================================================================
+
+  try {
+
+  #--- ensure database connection
+
+    if(!ref($dbh)) {
+      die 'Cannot connect to database (spam)';
+    }
+
+  #--- find the configuration object
+
+    my $object_config;
+    FINDCFG: for my $mib_cfg (@{$cfg->{'mibs'}}) {
+      for my $obj_cfg (@{$mib_cfg->{'objects'}}) {
+        if(
+          exists $obj_cfg->{'table'}
+          && $obj_cfg->{'table'} eq $snmp_object
+        ) {
+          $object_config = $obj_cfg;
+          last FINDCFG;
+        }
+      }
+    }
+    my @object_index;
+    if(ref($object_config->{'index'})) {
+      @object_index = @{$object_config->{'index'}};
+    } else {
+      @object_index = ( $object_config->{'index'} );
+    }
+    printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
+      if $debug_fh;
+
+  #--- find the object in $swdata
+
+  # for sake of brevity, the caller only specifies object name, so we have
+  # to search for the actual object in the tree; there's one problem though:
+  # we have mingled the MIB keys with other non-MIB keys; so at this point
+  # we are relying on MIBs always ending in "-MIB", if MIBs that don't
+  # comply with this naming convention appear, we will need to use subtree
+  # for MIBs
+
+    my $object;
+    FINDOBJ: for my $mib (keys %{$swdata{$host}}) {
+      next if $mib !~ /-MIB$/;
+      for my $obj (keys %{$swdata{$host}{$mib}}) {
+        if($obj eq $snmp_object) {
+          $object = $swdata{$host}{$mib}{$obj};
+          last FINDOBJ;
+        }
+      }
+    }
+    if(!$object) {
+      die "Object $snmp_object does not exist";
+    }
+
+  #--- load the current state to %old
+
+    my %old;
+    my $old_row_count = 0;
+    my $table = "snmp_$snmp_object";
+    my $query = "SELECT * FROM $table WHERE host = ?";
+    my $sth = $dbh->prepare($query);
+    my $r = $sth->execute($host);
+    if(!$r) {
+      die "Database query failed\n" .  $sth->errstr() . "\n";
+    }
+    while(my $h = $sth->fetchrow_hashref()) {
+      hash_create_index(
+        \%old, $h,
+        map { $h->{lc($_)}; } @object_index
+      );
+      $old_row_count++;
+    }
+    if($debug_fh) {
+      printf $debug_fh "--> LOADED %d CURRENT ROWS, DUMP FOLLOWS\n",
+        $old_row_count;
+      print $debug_fh Dumper(\%old), "\n";
+      print $debug_fh "--> CURRENT ROWS DUMP END\n";
+    }
+
+  #--- collect update plan; there are three conceptual steps:
+  #--- 1. entries that do not exist in %old (= loaded from database) will be
+  #---    inserted as new
+  #--- 2. entries that do exist in %old will be updated in place
+  #--- 3. entries that do exist in %old but not in $object (= retrieved via
+  #---    SNMP) will be deleted
+
+    my @update_plan;
+
+  #--- iterate over the SNMP-loaded data
+
+    hash_iterator(
+      $object,
+      scalar(@object_index),
+      sub {
+        my $leaf = shift;
+        my @idx = @_;
+        my $val_old = hash_index_access(\%old, @idx);
+        my (@fields, @values, $query, @cond);
+
+  #--- UPDATE - note, that we are not actually checking, if the data
+  #--- changed; just existence of the same (host, @index) will cause all
+  #--- columns to be overwritten with new values and 'chg_when' field
+  #--- updated
+
+        if($val_old) {
+          $stats{'update'}++;
+          push(@update_plan,
+            [
+              sprintf(
+                'UPDATE snmp_%s SET %s WHERE %s',
+                $object_config->{'table'},
+                join(',', ('chg_when = current_timestamp', map { "$_ = ?" } @{$object_config->{'columns'}})),
+                join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
+              ),
+              ( map {
+                exists $leaf->{$_} ? $leaf->{$_}{'value'} : undef
+              } @{$object_config->{'columns'}} ),
+              $host, @idx,
+            ]
+          );
+
+  #--- mark the entry loaded from database as saved; entries that don't have
+  #--- this flag will be deleted
+
+          $val_old->{'_saved'} = 1;
+        }
+
+  #--- INSERT
+
+        else {
+          $stats{'insert'}++;
+          push(@update_plan,
+            [
+              sprintf(
+                'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
+                $object_config->{'table'},
+                join(',',
+                  ('host', @object_index, @{$object_config->{'columns'}})
+                ),
+                join(',',
+                  ('?') x (1 + scalar(@object_index) + scalar(@{$object_config->{'columns'}}))
+                ),
+              ),
+              $host, @idx,
+              map {
+                exists $leaf->{$_} ? $leaf->{$_}{'value'} : undef
+              } @{$object_config->{'columns'}}
+            ]
+          );
+        }
+      }
+    );
+
+  #--- DELETE
+
+    hash_iterator(
+      \%old,
+      scalar(@object_index),
+      sub {
+        my $leaf = shift;
+        my @idx = splice @_, 0;
+
+        if(!exists $leaf->{'_saved'}) {
+          $stats{'delete'}++;
+          push(@update_plan,
+            [
+              sprintf(
+                'DELETE FROM snmp_%s WHERE %s',
+                $object_config->{'table'},
+                join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
+              ),
+              $host, @idx
+            ]
+          );
+        }
+      }
+    );
+
+  #--- debug output
+
+    if($debug_fh) {
+      printf $debug_fh
+        "--> UPDATE PLAN START (%d rows, %d inserts, %d updates, %d deletes)\n",
+        scalar(@update_plan), @stats{'insert','update', 'delete'};
+      for my $row (@update_plan) {
+        print $debug_fh sql_show_query(@$row), "\n";
+      }
+      print $debug_fh "--> UPDATE PLAN END\n";
+    }
+
+  #--- perform database transaction
+
+    if(@update_plan) {
+      my $e = sql_transaction(\@update_plan);
+      die $e if $e;
+    }
+
+  }
+
+  #=========================================================================
+  #=== catch block =========================================================
+  #=========================================================================
+
+  catch {
+    $err = $_;
+    printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
+  };
+
+  #--- finish
+
+  close($debug_fh) if $debug_fh;
+  return $err // \%stats;
 }
 
 
