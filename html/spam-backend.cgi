@@ -1133,7 +1133,21 @@ sub sql_portinfo
     for my $k (qw(mac_age mac_age_fmt ip_age ip_age_fmt)) { 
       delete $re->{'search'}{'result'}{$k};
     }
-  
+
+  #--- CDP information
+
+    $re->{'cdp'} = sql_select(
+      'spam',
+      'SELECT * FROM snmp_cdpcachetable WHERE host = ? AND cdpcacheifindex = ?',
+      [ $host, $re->{'search'}{'result'}{'ifindex'} ]
+    );
+    if($re->{'cdp'}{'status'} ne 'ok' || !@{$re->{'cdp'}{'result'}}) {
+      delete $re->{'cdp'};
+    } else {
+      $re->{'search'}{'result'}{'cdp'} = $re->{'cdp'}{'result'};
+      delete $re->{'cdp'}{'result'};
+    }
+
   }
   
   #--- finish

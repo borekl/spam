@@ -9,6 +9,7 @@ CREATE TABLE snmp_cdpCacheTable (
   cdpCachePlatform     varchar(64),
   cdpCacheDeviceId     varchar(64),
   cdpcacheSysName      varchar(64),
+  cdpCacheDevicePort   varchar(64),
   creat_when           TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   chg_when             TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY ( host, cdpCacheIfIndex, cdpCacheDeviceIndex )

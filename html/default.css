@@ -690,6 +690,12 @@ span.pi-age {
   margin-left : 0.8em;
 }
 
+span.pi-field {
+  color : #888;
+  font-size : 75%;
+  margin-left : 0.8em;
+}
+
 /*--- "actions" section ----------------------------------------------------*/
 
 div.pi-actions {

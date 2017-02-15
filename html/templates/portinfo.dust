@@ -199,6 +199,24 @@
     </div>
   {/ip}
 
+  {?cdp}
+    <div class="pi-subsec">
+      <span class="pi-subhead">CDP INFORMATION</span>
+      {#cdp}
+        <br>{cdpcacheplatform}<span class="pi-field">platform</span>
+        {?cdpcachedeviceid}
+        <br>{cdpcachedeviceid}<span class="pi-field">device id</span>
+        {/cdpcachedeviceid}
+        {?cdpcachedeviceport}
+        <br>{cdpcachedeviceport}<span class="pi-field">device port</span>
+        {/cdpcachedeviceport}
+        {?cdpcachesysname}
+        <br>{cdpcachesysname}<span class="pi-field">sysname</span>
+        {/cdpcachesysname}
+      {/cdp}
+    </div>
+  {/cdp}
+
 </div>
 
 </div> {!--- pi-bottom -----------------------------------------------------!}
