@@ -2029,7 +2029,7 @@ sub sql_save_snmp_object
       );
       $old_row_count++;
     }
-    if($debug_fh) {
+    if($debug_fh && $old_row_count) {
       printf $debug_fh "--> LOADED %d CURRENT ROWS, DUMP FOLLOWS\n",
         $old_row_count;
       print $debug_fh Dumper(\%old), "\n";
