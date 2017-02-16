@@ -1933,7 +1933,7 @@ sub sql_save_snmp_object
   #--- open debug file
 
   if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>', "debug.save_snmp_object.$$.log");
+    open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
     if($debug_fh) {
       printf $debug_fh
         "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object;
