@@ -522,8 +522,8 @@ sub snmp_get_object
         $var = $1;
         @i = split(/\]\[/, $idx);
         for (@i) {
-          s/^"(.*)"$/$1/;      # drop double quotes around index value
-          s/^STRING:\s*//;     # drop type prefix from strings
+          s/^["'](.*)["']$/$1/; # drop double quotes around index value
+          s/^STRING:\s*//;      # drop type prefix from strings
         }
       }
 
