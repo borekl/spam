@@ -411,7 +411,10 @@ sub poll_host
   # this saves the MIB table into database, only supported for tables, not
   # scalars
 
-      if(grep($_ eq 'save', @$object_flags)) {
+      if(
+        grep($_ eq 'save', @$object_flags)
+        && $swdata{$host}{$mib_key}{$object->{'table'}}
+      ) {
         tty_message("[$host] Saving %s (started)\n", $object->{'table'});
         my $r = sql_save_snmp_object($host, $object->{'table'});
         if(!ref $r) {
