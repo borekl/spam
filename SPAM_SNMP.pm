@@ -335,8 +335,10 @@ sub snmp_value_parse
   elsif($value =~ /^Hex-STRING:\s+(.*)$/) {
     $re{'type'} = 'Hex-STRING';
     my @v = split(/\s/, $1);
-    if(scalar(@v) == 6) {
+    if(scalar(@v) == 6) { # mac address
       $re{'value'} = lc(join(':', @v));
+    } elsif(scalar(@v) == 4) { # IP address
+      $re{'value'} = join('.', map { hex; } @v);
     } else {
       $re{'value'} = lc($1);
     }
