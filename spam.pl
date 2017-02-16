@@ -1923,8 +1923,9 @@ sub sql_save_snmp_object
   my $dbh = dbconn('spam');
   my $cfg = load_config();
   my %stats = ( 'insert' => 0, 'update' => 0, 'delete' => 0 );
-  my $err;
-  my $debug_fh;
+  my $err;                 # error message
+  my $debug_fh;            # debug file handle
+  my $ref_time = time();   # reference 'now' point of time
 
   #--- open debug file
 
@@ -1933,6 +1934,8 @@ sub sql_save_snmp_object
     if($debug_fh) {
       printf $debug_fh
         "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object;
+      printf $debug_fh
+        "--> REFERENCE TIME: %s\n", scalar(localtime($ref_time));
     }
   }
 
@@ -1999,7 +2002,18 @@ sub sql_save_snmp_object
     my %old;
     my $old_row_count = 0;
     my $table = "snmp_$snmp_object";
-    my $query = "SELECT * FROM $table WHERE host = ?";
+
+    my @fields = (
+      '*',
+      "$ref_time - extract(epoch from date_trunc('second', chg_when)) AS chg_age"
+    );
+
+    my $query = sprintf(
+      'SELECT %s FROM %s WHERE host = ?',
+      join(', ', @fields),
+      $table
+    );
+
     my $sth = $dbh->prepare($query);
     my $r = $sth->execute($host);
     if(!$r) {
@@ -2061,10 +2075,9 @@ sub sql_save_snmp_object
             ]
           );
 
-  #--- mark the entry loaded from database as saved; entries that don't have
-  #--- this flag will be deleted
+  #--- set the age of the entry to zero, so it's not selected for deletion
 
-          $val_old->{'_saved'} = 1;
+          $val_old->{'chg_age'} = 0;
         }
 
   #--- INSERT
@@ -2095,28 +2108,31 @@ sub sql_save_snmp_object
 
   #--- DELETE
 
-    hash_iterator(
-      \%old,
-      scalar(@object_index),
-      sub {
-        my $leaf = shift;
-        my @idx = splice @_, 0;
+    my $dbmaxage = $object_config->{'dbmaxage'} // undef;
+    if(defined $dbmaxage) {
+      hash_iterator(
+        \%old,
+        scalar(@object_index),
+        sub {
+          my $leaf = shift;
+          my @idx = splice @_, 0;
 
-        if(!exists $leaf->{'_saved'}) {
-          $stats{'delete'}++;
-          push(@update_plan,
-            [
-              sprintf(
-                'DELETE FROM snmp_%s WHERE %s',
-                $object_config->{'table'},
-                join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
-              ),
-              $host, @idx
-            ]
-          );
+          if($leaf->{'chg_age'} > $dbmaxage) {
+            $stats{'delete'}++;
+            push(@update_plan,
+              [
+                sprintf(
+                  'DELETE FROM snmp_%s WHERE %s',
+                  $object_config->{'table'},
+                  join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
+                ),
+                $host, @idx
+              ]
+            );
+          }
         }
-      }
-    );
+      );
+    }
 
   #--- debug output
 
