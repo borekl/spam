@@ -284,6 +284,10 @@ sub snmp_value_parse
   my $value = shift;
   my %re;
 
+  #--- remove leading/trailing whitespace
+
+  s/^\s+//, s/\s+$// for $value;
+
   #--- integer
 
   if($value =~ /^INTEGER:\s+(\d+)$/) {
@@ -304,6 +308,10 @@ sub snmp_value_parse
   elsif($value =~ /^STRING:\s+(.*)$/) {
     $re{'type'} = 'STRING';
     $re{'value'} = $1;
+  }
+  elsif($value =~ /^STRING:$/) {
+    $re{'type'} = 'STRING';
+    $re{'value'} = undef;
   }
 
   #--- gauge
@@ -372,6 +380,41 @@ sub snmp_value_parse
 
 
 #==========================================================================
+# Function for (optional) mangling of values retrieved from SNMP. This is
+# configured throug a mapping in config under key "mib-types": which is a
+# hash of "MIB object" to "type", where type is what is passed into this
+# function. This allows us to perform additional conversion stop, for
+# example convert Hex-STRING to IP address.
+#==========================================================================
+
+sub snmp_value_transform
+{
+  #--- arguments
+
+  my (
+    $rval,      # 1. right-value as created by snmp_value_parse)
+    $type       # 2. type tag, configured in config
+  ) = @_;
+
+  #--- inet4
+
+  if($type eq 'inet4') {
+    $rval->{'value_orig'} = $rval->{'value'};
+    if($rval->{'type'} eq 'Hex-STRING') {
+      my @v = split /\s/, $rval->{'value'};
+      if(scalar(@v) == 4) {
+        my $new_val = join('.', map { hex; } @v);
+        if($new_val eq '0.0.0.0') { $new_val = undef; }
+        $rval->{'value'} = $new_val;
+      }
+    } else {
+      $rval->{'value'} = undef;
+    }
+  }
+}
+
+
+#==========================================================================
 # Get SNMP object and store it into a hashref. First five arguments are
 # the same as for snmp_lineread(), sixth argument is optional callback
 # that receives line count as argument (for displaying progress indication)
@@ -408,6 +451,7 @@ sub snmp_get_object
 
   #--- other variables
 
+  my $cfg = load_config();
   my $delay = 1;
   my %re;
   my $fh;
@@ -481,13 +525,17 @@ sub snmp_get_object
 
   #--- drop the "No Such Instance/Object" result
 
-      if($rval->{'value'} =~ /^No Such (Instance|Object)/) {
+      if(
+        $rval->{'value'}
+        && $rval->{'value'} =~ /^No Such (Instance|Object)/
+      ) {
         return;
       }
 
   #--- parse the left side (variable, indexes)
 
       $var =~ s/^.*:://;  # drop the MIB name
+
 
   #--- get indexes
 
@@ -527,6 +575,12 @@ sub snmp_get_object
         }
       }
 
+  #--- value transform
+
+      if(exists $cfg->{'mib-types'}{$var}) {
+        snmp_value_transform($rval, $cfg->{'mib-types'}{$var});
+      }
+
   #--- store the values
 
   # following code builds hash that stores the values ($rval in the code);
@@ -554,7 +608,7 @@ sub snmp_get_object
   #--- debugging info
 
       if($fh) {
-        my $rval_txt = join(',', %$rval);
+        my $rval_txt = join(',', map { $_ // '' } %$rval);
         printf $fh "%s.%s = %s\n", $var, join('.', @i), $rval_txt;
       }
 

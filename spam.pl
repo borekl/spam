@@ -411,7 +411,10 @@ sub poll_host
   # this saves the MIB table into database, only supported for tables, not
   # scalars
 
-      if(grep($_ eq 'save', @$object_flags)) {
+      if(
+        grep($_ eq 'save', @$object_flags)
+        && $swdata{$host}{$mib_key}{$object->{'table'}}
+      ) {
         tty_message("[$host] Saving %s (started)\n", $object->{'table'});
         my $r = sql_save_snmp_object($host, $object->{'table'});
         if(!ref $r) {
@@ -1930,7 +1933,7 @@ sub sql_save_snmp_object
   #--- open debug file
 
   if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>', "debug.save_snmp_object.$$.log");
+    open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
     if($debug_fh) {
       printf $debug_fh
         "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object;
@@ -2026,7 +2029,7 @@ sub sql_save_snmp_object
       );
       $old_row_count++;
     }
-    if($debug_fh) {
+    if($debug_fh && $old_row_count) {
       printf $debug_fh "--> LOADED %d CURRENT ROWS, DUMP FOLLOWS\n",
         $old_row_count;
       print $debug_fh Dumper(\%old), "\n";

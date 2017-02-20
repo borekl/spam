@@ -217,6 +217,20 @@
     </div>
   {/cdp}
 
+  {?.auth}
+    <div class="pi-subsec">
+      <span class="pi-subhead">AUTHENTICATION</span>
+      {#auth}
+        <br>{cafsessionauthusername}
+        {~s} / {cafsessionauthvlan}
+        {?.cafsessionvlangroupname}
+          {~s} / {cafsessionvlangroupname}
+        {/cafsessionvlangroupname}
+        <span class="pi-age">{chg_age_fmt}</span>
+      {/auth}
+    </div>
+  {/auth}
+
 </div>
 
 </div> {!--- pi-bottom -----------------------------------------------------!}

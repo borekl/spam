@@ -1148,6 +1148,20 @@ sub sql_portinfo
       delete $re->{'cdp'}{'result'};
     }
 
+  #--- auth info
+
+    $re->{'auth'} = sql_select(
+      'spam',
+      'SELECT *, fmt_inactivity(current_timestamp - chg_when) AS chg_age_fmt, '
+      . 'extract(epoch from (current_timestamp - chg_when))::int AS chg_age '
+      . 'FROM snmp_cafsessiontable WHERE host = ? AND ifindex = ? '
+      . 'AND cafsessionauthusername IS NOT NULL',
+      [ $host, $re->{'search'}{'result'}{'ifindex'} ]
+    );
+    if($re->{'auth'}{'status'} eq 'ok' && @{$re->{'auth'}{'result'}}) {
+      $re->{'search'}{'result'}{'auth'} = $re->{'auth'}{'result'};
+    }
+
   }
   
   #--- finish
