@@ -963,6 +963,16 @@ sub sql_search
     sql_get_swinfo(\%re, $par->{'host'});
     $vss = $re{'swinfo'}{'result'}{'vss'} // 0;
   }
+
+  #--- modular switch?
+
+  my $modular = 0;
+  if(
+    exists $re{'hwinfo'}
+    && grep { $_->{'type'} eq 'linecard' } @{$re{'hwinfo'}{'result'}}
+  ) {
+    $modular = 1;
+  }
   
   #--- decide what view to use
 
@@ -970,10 +980,10 @@ sub sql_search
     $view = $par->{'view'};
   }
   elsif($par->{'mode'} eq 'portlist') {
-    $view = $re{'hwinfo'} ? 'v_port_list_mod' : 'v_port_list';
+    $view = $modular ? 'v_port_list_mod' : 'v_port_list';
   }
   elsif($par->{'host'} || $par->{'portname'}) {
-    $view = $re{'hwinfo'} ? 'v_search_status_mod' : 'v_search_status';
+    $view = $modular ? 'v_search_status_mod' : 'v_search_status';
   }
   elsif($par->{'outcp'}) {
     $view = 'v_search_outlet';
