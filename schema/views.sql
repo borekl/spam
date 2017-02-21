@@ -140,16 +140,16 @@ CREATE OR REPLACE VIEW v_search_status_raw AS
     location, vlan,
     -- patching record
     p.chg_who AS chg_who,
-    to_char(p.chg_when, 'FMHH24:MM, FMMonth FMDD, YYYY') AS chg_when,
+    to_char(p.chg_when, 'FMHH24:MI, FMMonth FMDD, YYYY') AS chg_when,
     fmt_inactivity(current_timestamp - p.chg_when) AS chg_age_fmt,
     -- port inactivity
     extract(epoch from (s.lastchk - s.lastchg))::int AS inact,
     fmt_inactivity(s.lastchk - s.lastchg) AS inact_fmt,
-    to_char(s.lastchg, 'FMHH24:MM, FMMonth FMDD, YYYY') AS inact_date,
+    to_char(s.lastchg, 'FMHH24:MI, FMMonth FMDD, YYYY') AS inact_date,
     --- port last check 
     extract(epoch from (current_timestamp - s.lastchk))::int AS lastchk_age,
     fmt_inactivity(current_timestamp - s.lastchk) AS lastchk_age_fmt,
-    to_char(s.lastchk, 'FMHH24:MM, FMMonth FMDD, YYYY') AS lastchk_date
+    to_char(s.lastchk, 'FMHH24:MI, FMMonth FMDD, YYYY') AS lastchk_date
   FROM
     status s 
     LEFT JOIN porttable p USING ( host, portname )
