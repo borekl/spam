@@ -481,6 +481,11 @@ div.fl_xauth   { color : green; }
 div.fl_xfauth  { color : #777; }
 div.fl_mab     { color : blue; }
 
+/*--- VLAN info ---*/
+
+span.authvlan {
+  color : green;
+}
 
 /*----------------------------------------------------------------------------
    SEARCH TOOL

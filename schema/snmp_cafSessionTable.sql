@@ -12,6 +12,7 @@ CREATE TABLE snmp_cafSessionTable (
   cafSessionVlanGroupName varchar(32),
   creat_when              TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   chg_when                TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  fresh                   boolean,
   PRIMARY KEY ( host, ifIndex, cafSessionId )
 );
 
