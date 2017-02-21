@@ -167,13 +167,16 @@ DROP VIEW IF EXISTS v_port_list;
 
 CREATE OR REPLACE VIEW v_port_list AS
   SELECT 
-    *,
+    v.*,
+    cst.cafsessionauthvlan,
+    cst.fresh,
     ( SELECT count(mac) 
       FROM mactable 
       WHERE v.host = host AND v.portname = portname AND active = 't'
     ) AS maccnt
   FROM 
     v_search_status_raw v
+    LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
   ORDER BY 
     host,
     substring(portname from '^[a-zA-Z]+'),
@@ -191,13 +194,16 @@ DROP VIEW IF EXISTS v_port_list_mod;
 
 CREATE OR REPLACE VIEW v_port_list_mod AS
   SELECT 
-    *,
+    v.*,
+    cst.cafsessionauthvlan,
+    cst.fresh,
     ( SELECT count(mac) 
       FROM mactable 
       WHERE v.host = host AND v.portname = portname AND active = 't'
     ) AS maccnt
   FROM 
     v_search_status_raw v
+    LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
   ORDER BY 
     host,
     port_order(portname);

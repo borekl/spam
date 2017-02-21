@@ -1,3 +1,19 @@
 <td class="num">
-  {vlan}
+  {@eq key=status value=1}
+    {?fresh}
+      {?cafsessionauthvlan}
+        {@ne key=cafsessionauthvlan value=0}
+          <span class="authvlan">{cafsessionauthvlan}</span>
+        {:else}
+          {vlan}
+        {/ne}
+      {:else}
+        {vlan}
+      {/cafsessionauthvlan}
+    {:else}
+      {vlan}
+    {/fresh}
+  {:else}
+    {vlan}
+  {/eq}
 </td>
