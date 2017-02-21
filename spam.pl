@@ -2043,7 +2043,15 @@ sub sql_save_snmp_object
   #--- 3. entries that do exist in %old but not in $object (= retrieved via
   #---    SNMP) will be deleted
 
-    my @update_plan;
+    my @update_plan = (
+      [
+        sprintf(
+          'UPDATE snmp_%s SET fresh = false WHERE host = ?',
+          $object_config->{'table'}
+        ),
+        $host
+      ]
+    );
 
   #--- iterate over the SNMP-loaded data
 
@@ -2068,7 +2076,11 @@ sub sql_save_snmp_object
               sprintf(
                 'UPDATE snmp_%s SET %s WHERE %s',
                 $object_config->{'table'},
-                join(',', ('chg_when = current_timestamp', map { "$_ = ?" } @{$object_config->{'columns'}})),
+                join(',', (
+                  'chg_when = current_timestamp',
+                  'fresh = true',
+                  map { "$_ = ?" } @{$object_config->{'columns'}}
+                )),
                 join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
               ),
               ( map {
@@ -2093,13 +2105,13 @@ sub sql_save_snmp_object
                 'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
                 $object_config->{'table'},
                 join(',',
-                  ('host', @object_index, @{$object_config->{'columns'}})
+                  ('host', 'fresh', @object_index, @{$object_config->{'columns'}})
                 ),
                 join(',',
-                  ('?') x (1 + scalar(@object_index) + scalar(@{$object_config->{'columns'}}))
+                  ('?') x (2 + scalar(@object_index) + scalar(@{$object_config->{'columns'}}))
                 ),
               ),
-              $host, @idx,
+              $host, 't', @idx,
               map {
                 exists $leaf->{$_} ? $leaf->{$_}{'value'} : undef
               } @{$object_config->{'columns'}}
