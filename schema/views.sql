@@ -180,7 +180,8 @@ CREATE OR REPLACE VIEW v_port_list AS
   ORDER BY 
     host,
     substring(portname from '^[a-zA-Z]+'),
-    port_order(portname);
+    port_order(portname),
+    cst.chg_when;
 
 GRANT SELECT ON v_port_list TO swcgi;
 
@@ -206,7 +207,8 @@ CREATE OR REPLACE VIEW v_port_list_mod AS
     LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
   ORDER BY 
     host,
-    port_order(portname);
+    port_order(portname),
+    cst.chg_when;
 
 GRANT SELECT ON v_port_list_mod TO swcgi;
 

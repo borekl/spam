@@ -1024,6 +1024,12 @@ sub sql_search
       die "$view query failed";
     }
     $re{'search'}{'lines'} = scalar(@{$re{'search'}{'result'}});
+
+    if($par->{'mode'} eq 'portlist') {
+      $re{'search'}{'result'} = query_reduce(
+        $re{'search'}{'result'}, 'portname'
+      );
+    }
   
   };
 
