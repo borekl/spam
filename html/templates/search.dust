@@ -38,6 +38,11 @@
 </tr>
 
 <tr>
+<td>Username:</td>
+<td><input type="text" name="username" size="16" maxlength="16"></td>
+</tr>
+
+<tr>
 <td>&nbsp</td>
 </tr>
 

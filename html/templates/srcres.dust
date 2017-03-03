@@ -38,8 +38,15 @@
     <th>outlet</th>
     <th>inact</th>
     <th>description</th>
+    {#existsfield field=cafsessionauthusername}
+    {:else}
     <th>ip</th>
     <th>mac</th>
+    {/existsfield}
+    {#existsfield field=cafsessionauthusername}
+    <th>authname</th>
+    <th>age</th>
+    {/existsfield}
   </tr>
 
 </thead>
@@ -71,8 +78,21 @@
     {>"port-outcp" /}
     {>"port-inactivity" /}
     {>"port-description" /}
+
+    {!--- don't display IP/MAC when searching by auth username !}
+
+    {#existsfield field=cafsessionauthusername}
+    {:else}
     {>"port-ipaddr" /}
     {>"port-mac" /}
+    {/existsfield}
+
+    {!--- following fields only relevant when searching for auth username !}
+
+    {#existsfield field=cafsessionauthusername}
+    {>"port-authname" /}
+    {>"port-authage" /}
+    {/existsfield}
 
   </tr>
   {/n}

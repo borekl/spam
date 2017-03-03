@@ -33,6 +33,21 @@ var
 
 
 /*--------------------------------------------------------------------------*
+  Dust.js context helper that returns true/false if a field (specified as
+  "field" parameter) exists in search response fields list.
+ *--------------------------------------------------------------------------*/
+
+function ctxHelperExistsField(chunk, context, bodies, params)
+{
+  var
+    search = context.get('search'),
+    fields = search.fields;
+
+  return fields.indexOf(params.field) === -1 ? false : true;
+}
+
+
+/*--------------------------------------------------------------------------*
   Refresh handler
  *--------------------------------------------------------------------------*/
 
@@ -60,6 +75,7 @@ function processPortList()
   var r = myCfg.beResponse;
   
   if('search' in r && r.search.status == 'ok') {
+    r.existsfield = ctxHelperExistsField;
     dust.render(myCfg.template, r, function(err, out) {
       jq_mount = $(myCfg.mount);
       jq_mount.html(out);
