@@ -180,7 +180,8 @@ CREATE OR REPLACE VIEW v_port_list AS
   ORDER BY 
     host,
     substring(portname from '^[a-zA-Z]+'),
-    port_order(portname);
+    port_order(portname),
+    cst.chg_when;
 
 GRANT SELECT ON v_port_list TO swcgi;
 
@@ -206,7 +207,8 @@ CREATE OR REPLACE VIEW v_port_list_mod AS
     LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
   ORDER BY 
     host,
-    port_order(portname);
+    port_order(portname),
+    cst.chg_when;
 
 GRANT SELECT ON v_port_list_mod TO swcgi;
 
@@ -308,3 +310,26 @@ CREATE OR REPLACE VIEW v_search_mac AS
     LEFT JOIN out2cp o USING ( cp, site );
 
 GRANT SELECT ON v_search_mac TO swcgi;
+
+
+----------------------------------------------------------------------------
+-- Search Tool query to be used when searching by user
+----------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS v_search_user;
+
+CREATE OR REPLACE VIEW v_search_user AS
+  SELECT
+    s.*,
+    cst.cafsessionauthusername,
+    cst.chg_when as cst_chg_when,
+    fmt_inactivity(current_timestamp - cst.chg_when) as cst_chg_age
+  FROM
+    v_search_status_raw s
+    LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
+  ORDER BY
+    host,
+    cafsessionauthusername,
+    cst_chg_when DESC;
+
+GRANT SELECT ON v_search_user TO swcgi;

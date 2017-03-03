@@ -773,6 +773,7 @@ sub search_ip
 }
 
 
+
 #=============================================================================
 # Function to determine how we match MAC
 #
@@ -872,6 +873,59 @@ sub search_outcp
 
 
 #=============================================================================
+# Search for common string
+#
+# Supported searches:
+# - regexp case-insensitive search (leading /)
+# - exact search (leading =)
+# - substring case-insensitive search
+#=============================================================================
+
+sub search_common_string
+{
+  #--- arguments
+
+  my $cond = shift;      # 1. SQL WHERE condition element arrayref
+  my $args = shift;      # 2. SQL WHERE placeholder value arrayref
+  my $value = shift;     # 3. field value
+  my $field = shift;     # 4. field name
+
+  #--- remove leading apostrophe, if it exists; it was relevant during
+  #--- field normalization
+
+  if($value =~ /^'(.+)/) {
+    $value = $1;
+  }
+
+  #--- regexp search
+
+  if($value =~ /^\/(.+)/) {
+    $value = $1;
+    push(@$cond, "$field ~* ?");
+  }
+
+  #--- exact search
+
+  elsif($value =~ /^=(.+)/) {
+    $value = $1;
+    push(@$cond, "$field = ?");
+  }
+
+  #--- substring search
+  # is there simpler way of doing substring search in PgSQL?
+
+  else {
+    push(@$cond, "position(lower(?) in lower($field))::boolean");
+  }
+
+  #--- finish
+
+  push(@$args, $value);
+}
+
+
+
+#=============================================================================
 # Search the database, function that does the heavy lifting for the Search
 # Tool. The database queries all use views, so they are not defined here. 
 #
@@ -920,9 +974,23 @@ sub sql_search
   ) {
     $re{'params'}{'normalized'} = $par = normalize_search($par);
   }
+
+  #--- parameter suppression function
   
+  # this will be used to suppress certain parameters that are incompatible
+  # with selected database view
+
+  my $param_suppress = sub {
+    for my $sup (@_) {
+      if(exists $par->{$sup}) {
+        $re{'params'}{'suppressed'}{$sup} = $par->{$sup};
+        delete $par->{$sup};
+      }
+    }
+  };
+
   #--- function to do some mangling of data
-  
+
   my $plist = sub {
     my $row = shift;
     # remove undefined keys
@@ -990,14 +1058,22 @@ sub sql_search
   }
   elsif($par->{'mac'} || $par->{'ip'}) {
     $view = 'v_search_mac';
-  } 
+  }
+  elsif($par->{'username'}) {
+    $view = 'v_search_user';
+    $param_suppress->('mac', 'ip');
+  }
   else {
     $view = 'v_search_status';
   }
-  
+
+  if($view ne 'v_search_user') {
+    $param_suppress->('username');
+  }
+
   #--- SQL WHERE conditions
-  
-  for my $k (qw(site outcp host portname mac ip)) {
+
+  for my $k (qw(site outcp host portname mac ip username)) {
     if(exists $par->{$k} && $par->{$k}) {
       if($k eq 'outcp') {
         search_outcp(\@cond, \@args, $par->{$k});
@@ -1007,6 +1083,10 @@ sub sql_search
         search_ip(\@cond, \@args, $par->{$k});
       } elsif($k eq 'mac') {
         search_mac(\@cond, \@args, $par->{$k});
+      } elsif($k eq 'username') {
+        search_common_string(
+          \@cond, \@args, $par->{$k}, 'cafsessionauthusername'
+        );
       } else {
         push(@cond, sprintf('%s = ?', $k));
         push(@args, $par->{$k});
@@ -1034,6 +1114,12 @@ sub sql_search
       die "$view query failed";
     }
     $re{'search'}{'lines'} = scalar(@{$re{'search'}{'result'}});
+
+    if($par->{'mode'} eq 'portlist') {
+      $re{'search'}{'result'} = query_reduce(
+        $re{'search'}{'result'}, 'portname'
+      );
+    }
   
   };
 
@@ -1165,11 +1251,15 @@ sub sql_portinfo
       'SELECT *, fmt_inactivity(current_timestamp - chg_when) AS chg_age_fmt, '
       . 'extract(epoch from (current_timestamp - chg_when))::int AS chg_age '
       . 'FROM snmp_cafsessiontable WHERE host = ? AND ifindex = ? '
-      . 'AND cafsessionauthusername IS NOT NULL',
+      . 'AND cafsessionauthusername IS NOT NULL ORDER BY chg_when DESC',
       [ $host, $re->{'search'}{'result'}{'ifindex'} ]
     );
     if($re->{'auth'}{'status'} eq 'ok' && @{$re->{'auth'}{'result'}}) {
-      $re->{'search'}{'result'}{'auth'} = $re->{'auth'}{'result'};
+      $re->{'search'}{'result'}{'auth'} = query_reduce(
+        $re->{'auth'}{'result'},
+        'host', 'cafsessionauthvlan', 'cafsessionauthusername',
+        'cafsessionvlangroupname'
+      );
     }
 
   }
@@ -2004,7 +2094,7 @@ if($req eq 'swlist') {
 
 if($req eq 'search') {
   my %par;
-  for my $k (qw(site outcp host portname mac ip sortby mode)) {
+  for my $k (qw(site outcp host portname mac ip sortby mode username)) {
     ($par{$k}) = &$arg($k);
   }
   remove_undefs(\%par);  

@@ -42,6 +42,7 @@ our @EXPORT = qw(
   hash_create_index
   hash_iterator
   hash_index_access
+  query_reduce
 );
 
 
@@ -764,6 +765,36 @@ sub hash_index_access
     }
   }
   return $h;
+}
+
+
+#=============================================================================
+# Remove duplicate rows from a query result (array of hashrefs). Duplicity
+# is based on list of key names (fields from database row). Only the first
+# occurence of the duplicate rows is retained.
+#=============================================================================
+
+sub query_reduce
+{
+  my $query_result = shift;
+  my @fields = splice(@_, 0);
+  my @reduced_result;
+
+  for my $row (@$query_result) {
+    if(!grep {
+      my $found = 1;
+      for my $field (@fields) {
+        if($row->{$field} ne $_->{$field}) {
+          $found = 0;
+          last;
+        }
+      }
+      $found;
+    } @reduced_result) {
+      push(@reduced_result, $row);
+    }
+  }
+  return \@reduced_result;
 }
 
 
