@@ -518,22 +518,31 @@ sub poll_host
   #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
 
   my %by_dot1d;
+
   if(
-    exists $swdata{$host}{'BRIDGE-MIB'}{1}{'dot1dBasePortTable'}
+    exists $swdata{$host}{'BRIDGE-MIB'}
+    && exists $swdata{$host}{'CISCO-VTP-MIB'}
+    && exists $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}
+    && exists $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
   ) {
     my @vlans
     = keys %{
       $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
     };
     for my $vlan (@vlans) {
-      my @dot1idxs
-      = keys %{
-        $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
-      };
-      for my $dot1d (@dot1idxs) {
-        $by_dot1d{
-          $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
-        } = $dot1d;
+      if(
+        exists $swdata{$host}{'BRIDGE-MIB'}{$vlan}
+        && exists $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+      ) {
+        my @dot1idxs
+        = keys %{
+          $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+        };
+        for my $dot1d (@dot1idxs) {
+          $by_dot1d{
+            $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
+          } = $dot1d;
+        }
       }
     }
     $swdata{$host}{'idx'}{'ifIndexToDot1d'} = \%by_dot1d;
