@@ -272,7 +272,8 @@ function formSubmit(evt)
       }*/
     }
     
-    // display update summary/conflicting row(s)
+    // display update summary/conflicting row(s), the callback removes the
+    // standard "N matching entries found" message from DOM
     
     if('search' in data && data.search.status == 'ok') {
       new modPortList(
