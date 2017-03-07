@@ -163,6 +163,10 @@ shared.dispatch = function(evt, state_in)
   if(state == null) {
     return; 
   }
+
+  //--- sidebar menu highlights
+
+  $('div.menu#' + state.sel).trigger('spam.select');
   
   //--- central dispatch
 
@@ -236,7 +240,7 @@ $(document).ready(function()
 
   //--- handle sidebar menu highlights
 
-  $('div.menu').on('click', function() {
+  $('div.menu').on('spam.select', function() {
     $('div.selected').removeClass('selected');
     $(this).addClass('selected');
   });
