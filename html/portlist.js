@@ -41,9 +41,13 @@ function ctxHelperExistsField(chunk, context, bodies, params)
 {
   var
     search = context.get('search'),
-    fields = search.fields;
+    fields;
 
-  return fields.indexOf(params.field) === -1 ? false : true;
+  if('fields' in search) {
+    fields = search.fields;
+    return fields.indexOf(params.field) === -1 ? false : true;
+  }
+  return false;
 }
 
 
