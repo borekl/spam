@@ -10,6 +10,7 @@
   cfg.beResponse   ... response from backend
   cfg.mount        ... selector, DOM element or jQuery object
   cfg.template     ... dust.js template to be rendered
+  cfg.error        ... dust.js template in case of error
   cfg.spinner      ... element to add 'spinner' class to it
  *==========================================================================*/
 
@@ -78,7 +79,7 @@ function processPortList()
 {
   var r = myCfg.beResponse;
   
-  if('search' in r && r.search.status == 'ok') {
+  if('search' in r && r.search.status == 'ok' && r.search.lines > 0) {
     r.existsfield = ctxHelperExistsField;
     dust.render(myCfg.template, r, function(err, out) {
       jq_mount = $(myCfg.mount);
@@ -137,6 +138,23 @@ function processPortList()
         success(r);
       }
     });
+  }
+
+  //--- error, the response indicates error or there are 0 lines in the result
+
+  else {
+
+    // 0 lines in the response, this is result of asking for non-existent
+    // switch
+
+    if('search' in r && r.search.status == 'ok' && r.search.lines == 0) {
+      if('error' in myCfg && myCfg.error) {
+        dust.render(myCfg.error , r, function(err, out) {
+          jq_mount = $(myCfg.mount);
+          jq_mount.html(out);
+        });
+      }
+    }
   }
 }
 

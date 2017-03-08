@@ -111,7 +111,8 @@ if(!state.host) {
     { 
       beRequest: { r : "search", host: state.host, mode: "portlist" },
       mount: '#content', 
-      template: 'switch', 
+      template: 'switch',
+      error: 'switch-error',
       spinner: 'div#swlist' 
     }
   );
