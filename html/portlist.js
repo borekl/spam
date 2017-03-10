@@ -12,6 +12,8 @@
   cfg.template     ... dust.js template to be rendered
   cfg.error        ... dust.js template in case of error
   cfg.spinner      ... element to add 'spinner' class to it
+  cfg.norowsok     ... if true zero rows in the backend response is
+                       considered not an error
  *==========================================================================*/
 
 
@@ -79,7 +81,11 @@ function processPortList()
 {
   var r = myCfg.beResponse;
   
-  if('search' in r && r.search.status == 'ok' && r.search.lines > 0) {
+  if(
+    'search' in r
+    && r.search.status == 'ok'
+    && (r.search.lines > 0 || myCfg.norowsok)
+  ) {
     r.existsfield = ctxHelperExistsField;
     dust.render(myCfg.template, r, function(err, out) {
       jq_mount = $(myCfg.mount);

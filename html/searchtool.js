@@ -57,7 +57,10 @@ function submitSearch(evt)
   
   $('button#submit').removeClass('svg-check').addClass('svg-spinner');
   portList = new modPortList(
-    shared, { beRequest: form, mount: 'div#result', template: 'srcres' },
+    shared, {
+      beRequest: form, mount: 'div#result', template: 'srcres',
+      norowsok: true
+    },
     function(search) {
   
   //--- replace form field values with normalized values supplied by the
