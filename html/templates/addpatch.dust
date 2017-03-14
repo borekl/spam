@@ -55,7 +55,7 @@
     <input name="addp_sw00" maxlength="16" size="16">
   </td>
   <td>
-    <input name="addp_pt00" maxlength="16" size="8">
+    <input name="addp_pt00" maxlength="16" size="16">
   </td>
   <td>
     <input name="addp_cp00" maxlength="16" size="16">
