@@ -735,27 +735,32 @@ sub search_portname
 # - CIDR format ("1.2.3.4/24")
 # - wildcard format ("1.2.3.*")
 # - exact match ("1.2.3.0")
+#
+# Note that we're not ensuring correct syntax here; we're just selecting the
+# way the matching is done.
 #=============================================================================
 
 sub search_ip
 {
   #--- arguments
-  
-  my $cond = shift;      # 1. SQL WHERE condition element arrayref
-  my $args = shift;      # 2. SQL WHERE placeholder value arrayref
-  my $ip = shift;        # 3. field value
-  
+
+  my (
+    $cond,      # 1. SQL WHERE condition element arrayref
+    $args,      # 2. SQL WHERE placeholder value arrayref
+    $ip         # 3. field value
+  ) = @_;
+
   #--- CIDR format
   
-  if($ip =~ /^\d+\.\d+\.\d+\.\d+\/\d+$/) {
+  if($ip =~ /^[0-9.]+\/\d{1,2}$/) {
     push(@$cond, 'ip << ?');
   }
-  
+
   #--- wildcard format
-  
+
   elsif(
-    $ip =~ /^([*\d]+\.){1,3}[*\d]+$/ ||
-    $ip =~ /^[*\d]+\.*+$/
+    $ip =~ /^[0-9.*]+$/
+    && $ip =~ /\*/
   ) {
     $ip =~ s/\*/.*/g;
     push(@$cond, 'ip::text ~ ?');
