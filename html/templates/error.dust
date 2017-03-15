@@ -1,0 +1,25 @@
+<p class="srcsummary error">
+  Query failed ({search.errmsg})
+</p>
+
+<table class="dberrmsg">
+  <tbody>
+
+{#search.errdb}
+  {?detail}
+    <tr><td>Detail:</td><td class="errdbcont">{detail}</td></tr>
+  {/detail}
+  {?error}
+    <tr><td>Error:</td><td class="errdbcont">{error}</td></tr>
+  {/error}
+  {?search.query}
+    <tr><td>Query:</td><td class="errdbcont">{search.query}</td></tr>
+  {/search.query}
+  {?lines}
+    <tr><td>Full message:</td>
+    <td class="errdbcont"><pre class="dberrmsg">{#lines}{.}{/lines}</pre></td></tr>
+  {/lines}
+{/search.errdb}
+
+  </tbody>
+</table>

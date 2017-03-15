@@ -59,7 +59,7 @@ function submitSearch(evt)
   portList = new modPortList(
     shared, {
       beRequest: form, mount: 'div#result', template: 'srcres',
-      norowsok: true
+      error: 'error', norowsok: true
     },
     function(search) {
   
@@ -74,6 +74,9 @@ function submitSearch(evt)
     }
     $('button#submit').removeClass('svg-spinner').addClass('svg-check');
 
+  },
+  function(search) {
+    $('button#submit').removeClass('svg-spinner').addClass('svg-check');
   });
 }
  

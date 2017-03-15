@@ -713,3 +713,22 @@ span.pi-errmsg {
   font-weight : bold;
   color : #800;
 }
+
+
+/*----------------------------------------------------------------------------
+   ERROR DISPLAY
+ ----------------------------------------------------------------------------*/
+
+TABLE.dberrmsg {
+  background-color : #eee;
+  padding : 1em;
+  border-collapse : separate;
+}
+
+TD.errdbcont {
+  padding-left : 1em;
+}
+
+PRE.dberrmsg {
+  margin : 0;
+}

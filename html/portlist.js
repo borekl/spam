@@ -19,7 +19,7 @@
 
 module.exports = portList;
 
-function portList(shared, cfg, success) {
+function portList(shared, cfg, success, failure) {
 
 
 /*--------------------------------------------------------------------------*
@@ -150,17 +150,17 @@ function processPortList()
 
   else {
 
-    // 0 lines in the response, this is result of asking for non-existent
-    // switch
-
-    if('search' in r && r.search.status == 'ok' && r.search.lines == 0) {
-      if('error' in myCfg && myCfg.error) {
-        dust.render(myCfg.error , r, function(err, out) {
-          jq_mount = $(myCfg.mount);
-          jq_mount.html(out);
-        });
-      }
+    if('error' in myCfg && myCfg.error) {
+      dust.render(myCfg.error , r, function(err, out) {
+        jq_mount = $(myCfg.mount);
+        jq_mount.html(out);
+      });
     }
+
+    if($.isFunction(failure)) {
+      failure(r);
+    }
+
   }
 }
 
