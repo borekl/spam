@@ -171,7 +171,7 @@ sub snmp_get_arptable
   }
 
   #-------------------------------------------------------------------------
-  #--- transform the data int the format used by spam.pl
+  #--- transform the data into the format used by spam.pl
   #-------------------------------------------------------------------------
 
   for my $host (keys %tree) {
@@ -200,7 +200,7 @@ sub snmp_get_arptable
 # This function retrieves hwinfo (processed select information from
 # entPhysicalTable) and stores it into $swdata{hwinfo}. This function is 
 # a stopgap designed to be fully compatible with previous function that
-# that worked in the old way.
+# worked in the old way.
 #==========================================================================
 
 sub snmp_entity_to_hwinfo
@@ -276,7 +276,7 @@ sub snmp_entity_to_hwinfo
 
 
 #==========================================================================
-# Function for parsing SNMP values as returned snmp-utils.
+# Function for parsing SNMP values as returned by snmp-utils.
 #==========================================================================
 
 sub snmp_value_parse
