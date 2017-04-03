@@ -1016,7 +1016,7 @@ sub sql_transaction
 {
   my $update = shift;
   my $dbh = dbconn('spam');
-  my $r;
+  my ($r, $rv);
   my $fh;         # debugging output filehandle
 
   #--- write the transation to file (for debugging)
@@ -1034,7 +1034,7 @@ sub sql_transaction
     }
   }
 
-  eval { #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  try { #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
   #--- ensure database connection
 
@@ -1072,27 +1072,25 @@ sub sql_transaction
 
     $dbh->commit()
     || die sprintf("Cannot commit database transaction (%s)\n", $dbh->errstr());
+    printf $fh "---> TRANSACTION FINISHED SUCCESSFULLY\n" if $fh;
 
-  }; #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+  } #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-  #--- log debug info into transaction log
+  #--- catch failure
 
-  my $rv;
-  if($@) {
-    chomp($@);
-    $rv = $@;
-    printf $fh "---> TRANSACTION FAILED (%s)\n", $@ if $fh;
+  catch {
+    chomp($_);
+    $rv = $_;
+    printf $fh "---> TRANSACTION FAILED (%s)\n", $_ if $fh;
     if(!$dbh->rollback()) {
       printf $fh "---> TRANSACTION ABORT FAILED (%s)\n", $dbh->errstr() if $fh;
       $rv .= ', ' . $dbh->errstr();
     } else {
       printf $fh "---> TRANSACTION ABORTED SUCCESSFULLY\n" if $fh
     }
-  } else {
-    printf $fh "---> TRANSACTION FINISHED SUCCESSFULLY\n" if $fh;
-  }
+  };
 
-  #--- finish successfully
+  #--- finish
 
   close($fh) if $fh;
   return $rv;
@@ -1649,6 +1647,7 @@ sub sql_switch_info_update
   my $dbh = dbconn('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
+  my $rv;
   my $managementDomainTable
   = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainTable'}{1};
 
@@ -1656,9 +1655,9 @@ sub sql_switch_info_update
 
   if(!ref($dbh)) { return "Cannot connect to database (spam)"; }
 
-  #--- eval begins here ----------------------------------------------------
+  #--- try block begins here -----------------------------------------------
 
-  eval {
+  try {
 
     #--- first decide whether we will be updating or inserting ---
     $sth = $dbh->prepare('SELECT count(*) FROM swstat WHERE host = ?');
@@ -1730,15 +1729,15 @@ sub sql_switch_info_update
     $sth = $dbh->prepare($q);
     my $r = $sth->execute(@args) || die 'DBERR|' . $sth->errstr() . "\n";
 
-  #--- eval ends here ------------------------------------------------------
+  #--- try block ends here -------------------------------------------------
 
+  } catch {
+    chomp;
+    my ($msg, $err) = split(/\|/);
+    if($msg eq 'DBERR') {
+      print $rv = "Database update error ($err) on query '$q'\n";
+    }
   };
-  chomp($@);
-  my ($msg, $err) = split(/\|/,$@);
-  if($msg eq 'DBERR') {
-    print "Database update error ($err) on query '$q'\n";
-    return "Database update error ($err) on query '$q'";
-  }
 
   #--- ???: why is this updated HERE? ---
   # $swdata{HOST}{stats}{vtpdomain,vtpmode} are not used anywhere
@@ -1748,7 +1747,7 @@ sub sql_switch_info_update
 
   #--- return successfully
 
-  return undef;
+  return $rv;
 }
 
 
@@ -2270,7 +2269,7 @@ if(!$no_lock) {
   close(F);
 }
 
-eval {
+try {
 
 	#--- load master configuration file --------------------------------
 
@@ -2559,11 +2558,12 @@ eval {
         }
         tty_message("[main] Concurrent section finished\n");
 
+} catch {
+  if($_ && $_ ne "OK\n") {
+    if (! -t STDOUT) { print "spam: "; }
+    print $@;
+  }
 };
-if($@ && $@ ne "OK\n") {
-  if (! -t STDOUT) { print "spam: "; }
-  print $@;
-}
 
 #--- release lock file ---
 
