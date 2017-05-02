@@ -88,6 +88,13 @@ function processPortList()
   ) {
     r.existsfield = ctxHelperExistsField;
     dust.render(myCfg.template, r, function(err, out) {
+      if(err) {
+        console.log(
+          "dust: failed to render template %s (%s)",
+          myCfg.template, err
+        );
+        return;
+      }
       jq_mount = $(myCfg.mount);
       jq_mount.html(out);
       jq_port_list = jq_mount.find('table.list')
