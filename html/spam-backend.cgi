@@ -1507,9 +1507,10 @@ sub sql_update_summary
   }
   
   #--- finish
-  
+
   $re{'status'} = 'ok';
   $re{'result'} = \@update_summary;
+  $re{'lines'} = scalar(@update_summary);
   return \%re;
 }
 
