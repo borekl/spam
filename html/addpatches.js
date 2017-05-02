@@ -277,7 +277,8 @@ function formSubmit(evt)
     
     if('search' in data && data.search.status == 'ok') {
       new modPortList(
-        shared, { beResponse: data, mount: 'div#addp_updsum', template: 'srcres' },
+        shared,
+        { beResponse: data, mount: 'div#addp_updsum', template: 'srcres' },
         function() { $('div#addp_updsum p.srcsummary').remove(); }
       );
     }
