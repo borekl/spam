@@ -2,13 +2,7 @@
 *.log
 *.gif
 jquery*
-html/css/
-html/chosen*
-html/img/
-html/.htaccess
-html/buttons.css
 html/dust-*.js
-html/templates.js
 html/templates/templates.js
 html/bundle.js
 spam.cfg
