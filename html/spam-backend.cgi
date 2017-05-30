@@ -1078,7 +1078,7 @@ sub sql_search
 
   #--- SQL WHERE conditions
 
-  for my $k (qw(site outcp host portname mac ip username)) {
+  for my $k (qw(site outcp host portname mac ip username inact)) {
     if(exists $par->{$k} && $par->{$k}) {
       if($k eq 'outcp') {
         search_outcp(\@cond, \@args, $par->{$k});
@@ -1092,6 +1092,9 @@ sub sql_search
         search_common_string(
           \@cond, \@args, $par->{$k}, 'cafsessionauthusername'
         );
+      } elsif($k eq 'inact') {
+        push(@cond, 'inact >= ?');
+        push(@args, decode_age($par->{$k}));
       } else {
         push(@cond, sprintf('%s = ?', $k));
         push(@args, $par->{$k});
@@ -2100,7 +2103,7 @@ if($req eq 'swlist') {
 
 if($req eq 'search') {
   my %par;
-  for my $k (qw(site outcp host portname mac ip sortby mode username)) {
+  for my $k (qw(site outcp host portname mac ip sortby mode username inact)) {
     ($par{$k}) = &$arg($k);
   }
   remove_undefs(\%par);  

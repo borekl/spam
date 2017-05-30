@@ -43,6 +43,11 @@
 </tr>
 
 <tr>
+<td>Inactivity:</td>
+<td><input type="text" name="inact" size="8" maxlength="16"></td>
+</tr>
+
+<tr>
 <td>&nbsp</td>
 </tr>
 

@@ -43,6 +43,7 @@ our @EXPORT = qw(
   hash_iterator
   hash_index_access
   query_reduce
+  decode_age
 );
 
 
@@ -795,6 +796,35 @@ sub query_reduce
     }
   }
   return \@reduced_result;
+}
+
+
+#=============================================================================
+# Converts textual age specification (such as 1d20h etc) into seconds.
+#=============================================================================
+
+sub decode_age
+{
+  my $age_txt = shift;
+  my $age_seconds = 0;
+
+  my @components = split(/(?<=[a-z])/, $age_txt);
+
+  for (@components) {
+    /^([0-9]+)([a-z])/i;
+    my ($n, $t) = ($1, $2);
+    if($t eq 's') {
+      $age_seconds += $n;
+    } elsif($t eq 'm') {
+      $age_seconds += $n * 60;
+    } elsif($t eq 'h') {
+      $age_seconds += $n * 3600;
+    } elsif($t eq 'd') {
+      $age_seconds += $n * 86400;
+    }
+  }
+
+  return $age_seconds;
 }
 
 
