@@ -800,13 +800,18 @@ sub query_reduce
 
 
 #=============================================================================
-# Converts textual age specification (such as 1d20h etc) into seconds.
+# Converts textual age specification (such as 1d20h etc) into seconds. If unit
+# is omitted, it defaults to days.
 #=============================================================================
 
 sub decode_age
 {
   my $age_txt = shift;
   my $age_seconds = 0;
+
+  if($age_txt =~ /^\d+$/) {
+    return $age_txt * 86400;
+  }
 
   my @components = split(/(?<=[a-z])/, $age_txt);
 
