@@ -181,7 +181,7 @@ CREATE OR REPLACE VIEW v_port_list AS
     host,
     substring(portname from '^[a-zA-Z]+'),
     port_order(portname),
-    cst.chg_when;
+    cst.chg_when DESC;
 
 GRANT SELECT ON v_port_list TO swcgi;
 
@@ -208,7 +208,7 @@ CREATE OR REPLACE VIEW v_port_list_mod AS
   ORDER BY 
     host,
     port_order(portname),
-    cst.chg_when;
+    cst.chg_when DESC;
 
 GRANT SELECT ON v_port_list_mod TO swcgi;
 
