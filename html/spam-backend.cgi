@@ -1078,7 +1078,7 @@ sub sql_search
 
   #--- SQL WHERE conditions
 
-  for my $k (qw(site outcp host portname mac ip username inact)) {
+  for my $k (qw(site outcp host portname mac ip username inact vlan)) {
     if(exists $par->{$k} && $par->{$k}) {
       if($k eq 'outcp') {
         search_outcp(\@cond, \@args, $par->{$k});
@@ -2103,7 +2103,9 @@ if($req eq 'swlist') {
 
 if($req eq 'search') {
   my %par;
-  for my $k (qw(site outcp host portname mac ip sortby mode username inact)) {
+  for my $k (
+    qw(site outcp host portname mac ip sortby mode username inact vlan)
+  ) {
     ($par{$k}) = &$arg($k);
   }
   remove_undefs(\%par);  

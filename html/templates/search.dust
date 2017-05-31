@@ -48,6 +48,11 @@
 </tr>
 
 <tr>
+<td>VLAN (static):</td>
+<td><input type="text" name="vlan" size="8" maxlength="16"></td>
+</tr>
+
+<tr>
 <td>&nbsp</td>
 </tr>
 
