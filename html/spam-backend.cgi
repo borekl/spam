@@ -1002,7 +1002,6 @@ sub sql_search
     remove_undefs($row);
     # unpack port flags into a hash
     $row->{'flags'} = port_flag_unpack($row->{'flags'});
-    delete $row->{'flags'} if !%{$row->{'flags'}};
     # "knownports" feature
     if(
       exists $row->{'host'} &&
