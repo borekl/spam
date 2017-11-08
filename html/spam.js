@@ -123,7 +123,10 @@ shared.set_value_from_storage = function(el)
   application based on URL or based on internal state as saved with
   History API pushState/replaceState functions. The function is invoked
   either as callback handler (for 'click' or 'popstate' events) or directly
-  from other parts of the program.
+  from other parts of the program. This mode of invocation is distinguished
+  by the first argument 'evt'. If it is non-null, the function is invoked
+  as event handler, otherwise it is called directly and the second argument
+  'state_in' should be provided.
  *--------------------------------------------------------------------------*/
 
 shared.dispatch = function(evt, state_in)
@@ -174,7 +177,9 @@ shared.dispatch = function(evt, state_in)
 
     case 'swlist':
       selsh = 'sw';
-      if(state.arg) { selsh += '/' + state.arg; }
+      if(state.hasOwnProperty('arg') && state.arg[0]) {
+        selsh += '/' + state.arg[0];
+      }
       if(state.host) { selsh += '/' + state.host; }
       if(!state.host) { new modSwitchList(shared, state); }
       break;
@@ -230,9 +235,15 @@ $(document).ready(function()
   //
   // RewriteRule "^/spam/[a-z]{2}/[^/]*$" "/spam/" [PT,L]
 
-  url = document.location.pathname.split('/');
-  state.sel = url[2];
-  state.arg = url[3];
+  state.arg = document.location.pathname
+              .split('/') // decompose into path elements
+              .splice(2)  // drop the first two elements
+              .filter(    // remove empty elements
+                function(s) {
+                  return s != "";
+                }
+              );
+  state.sel = state.arg.shift();
 
   //--- fill in "logged as" display
 

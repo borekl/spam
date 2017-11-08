@@ -91,8 +91,8 @@ function renderSwitchList(data)
   Initialization.
  *--------------------------------------------------------------------------*/
 
-if('arg' in state && state.arg) {
-  state.host = state.arg;
+if('arg' in state && state.arg[0]) {
+  state.host = state.arg[0];
   delete state.arg;
 }
 
