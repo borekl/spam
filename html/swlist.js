@@ -13,8 +13,8 @@ function switchList(shared, state) {
  *--------------------------------------------------------------------------*/
 
 var
-  that = this,
-  modPortList = require('./portlist.js');
+  modPortList = require('./portlist.js'),
+  host;
 
 
 /*--------------------------------------------------------------------------*
@@ -91,26 +91,49 @@ function renderSwitchList(data)
   Initialization.
  *--------------------------------------------------------------------------*/
 
-if('arg' in state && state.arg[0]) {
-  state.host = state.arg[0];
-  delete state.arg;
+//--- we can be called as /sw/ or /sw/HOST/, the latter case should display
+//--- Port List, not Switches Lists */
+
+if(state.hasOwnProperty('arg') && state.arg[0]) {
+  host = state.arg[0];
 }
 
-if(!state.host) {
+//--- if called with no argument, just display the Switch List
+
+if(!host) {
+
+  // show spinner next to the menu entry
   $('div#swlist').addClass('spinner');
+
+  // do an AJAX request to get the switch list data
   $.post(shared.backend, {r:'swlist'}, function(data) {
+
+  // get user's active tab from local storage, set it to 'all' if none is
+  // found
+
     var grp = localStorage.getItem('swlistgrp');
     data.grp = grp ? grp : 'all';
+
+  // set filterhost context helper that sorts the switches into groups that
+  // are switched with the top tabs
+
     data.filterhost = ctxHelperFilterhost;
+
+  // render the page and remove spinner
+
     renderSwitchList(data);
     $('div#swlist').removeClass('spinner');
   });
-} else {
+}
+
+//--- if called with an argument, display a Port List instead
+
+else {
   new modPortList(
-    shared, 
-    { 
-      beRequest: { r : "search", host: state.host, mode: "portlist" },
-      mount: '#content', 
+    shared,
+    {
+      beRequest: { r : "search", host: host, mode: "portlist" },
+      mount: '#content',
       template: 'switch',
       error: 'switch-error',
       spinner: 'div#swlist'
