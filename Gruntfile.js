@@ -13,9 +13,19 @@ module.exports = function(grunt)
    },
    
    browserify: {
-     main : {
+     main: {
        files: {
          'html/bundle.js' : [ 'html/spam.js', 'html/templates/templates.js' ]
+       }
+     },
+     dev: {
+       files: {
+         'html/bundle.js' : [ 'html/spam.js', 'html/templates/templates.js' ]
+       },
+       options: {
+         browserifyOptions: {
+           debug: true
+         }
        }
      }
    },
@@ -53,8 +63,8 @@ module.exports = function(grunt)
  grunt.loadNpmTasks("grunt-contrib-copy");
  grunt.loadNpmTasks('grunt-sed');
 
- grunt.registerTask('default', [ 'dustjs', 'browserify' ]);
- grunt.registerTask('dist-www', [ 'copy:www', 'sed:www' ]);
+ grunt.registerTask('default', [ 'dustjs', 'browserify:dev' ]);
+ grunt.registerTask('dist-www', [ 'dustjs', 'browserify:main', 'copy:www', 'sed:www' ]);
  grunt.registerTask('dist-coll', [ 'copy:coll' ]);
- grunt.registerTask('dist', [ 'copy:www', 'sed:www', 'copy:coll' ]);
+ grunt.registerTask('dist', [  'dustjs', 'browserify:main', 'copy:www', 'sed:www', 'copy:coll' ]);
 }
