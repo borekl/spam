@@ -2,7 +2,7 @@
 
 
 /*--------------------------------------------------------------------------*
-  Initialization (FIXME: Dust really needs to be global?) 
+  Initialization (FIXME: Dust really needs to be global?)
  *--------------------------------------------------------------------------*/
 
 dust = require('dustjs-helpers');
@@ -16,7 +16,7 @@ var
     backend: 'spam-backend.cgi',
     site_mode: {}  // cache of site mode values
   };
-  selcodes = { 
+  selcodes = {
     sw: 'swlist',
     sr: 'srctool',
     ap: 'addpatch',
@@ -44,16 +44,16 @@ shared.get_base = function(sel)
  *--------------------------------------------------------------------------*/
 
 Number.isInteger = Number.isInteger || function(value) {
-  return typeof value === "number" && 
-    isFinite(value) && 
+  return typeof value === "number" &&
+    isFinite(value) &&
     Math.floor(value) === value;
 };
 
 
 /*--------------------------------------------------------------------------*
-  This function populates the "Logged as <login>" message in the sidebar. 
+  This function populates the "Logged as <login>" message in the sidebar.
  *--------------------------------------------------------------------------*/
- 
+
 function populate_login_info(data)
 {
   if(data.status == 'ok' && data.userid) {
@@ -72,12 +72,12 @@ function populate_login_info(data)
 shared.populate_select_sites = function(idx, el, success)
 {
   //--- function to perform the actual creation of OPTION elements
-  
+
   var populate = function(aux) {
-    var 
+    var
       sites,
       jq_option;
-    
+
     if(aux.sites.status == 'ok') {
       sites = aux.sites.result;
       for(var i = 0, len = sites.length; i < len; i++) {
@@ -92,10 +92,10 @@ shared.populate_select_sites = function(idx, el, success)
   };
 
   //--- load data from backend or use cached values
-  
+
   if(auxdata != undefined) {
     populate(auxdata);
-  } else {  
+  } else {
     $.get(shared.backend, {r: 'aux'}, populate, 'json');
   }
 }
@@ -110,7 +110,7 @@ shared.set_value_from_storage = function(el)
 {
   var
     storage = $(el).data('storage');
-  
+
   if(storage) {
     $(el).val(localStorage.getItem(storage));
     $(el).trigger('change');
@@ -217,7 +217,7 @@ shared.dispatch = function(evt, state_in)
   === MAIN =================================================================
  *==========================================================================*/
 
-$(document).ready(function() 
+$(document).ready(function()
 {
   var url, state = {};
 

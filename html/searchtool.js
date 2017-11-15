@@ -1,7 +1,7 @@
 /*==========================================================================*
   SWITCH PORTS ACTIVITY MONITOR / Search Tool
  *==========================================================================*/
- 
+
 
 module.exports = searchTool;
 
@@ -45,7 +45,7 @@ function submitSearch(evt)
 
   var form = { r: 'search' };
   $('input,select').each(function() {
-    var 
+    var
       name = $(this).attr('name'),
       val = $(this).val();
     if((name == 'site' && val != 'any') || (name != 'site' && val)) {
@@ -54,7 +54,7 @@ function submitSearch(evt)
   });
 
   //--- submit form data to backend, get results back
-  
+
   $('button#submit').removeClass('svg-check').addClass('svg-spinner');
   portList = new modPortList(
     shared, {
@@ -79,19 +79,19 @@ function submitSearch(evt)
     $('button#submit').removeClass('svg-spinner').addClass('svg-check');
   });
 }
- 
+
 
 /*--------------------------------------------------------------------------*
   Initialization.
  *--------------------------------------------------------------------------*/
 
-dust.render('search', {}, function(err, out) 
+dust.render('search', {}, function(err, out)
 {
   //--- render initial content
 
   $('#content').html(out);
   $('select[name=site]').each(shared.populate_select_sites);
-  
+
   //--- bind submit/reset buttons
   
   $('button#submit').click('on', submitSearch);

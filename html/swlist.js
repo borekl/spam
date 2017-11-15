@@ -1,7 +1,7 @@
 /*==========================================================================*
   SWITCH PORTS ACTIVITY MONITOR / Switch List
  *==========================================================================*/
- 
+
 
 module.exports = switchList;
 
@@ -24,7 +24,7 @@ var
 function ctxHelperFilterhost(chunk, context, bodies, params)
 {
   var grp = context.get('grp');
-  
+
   if(
     grp == 'all'
     || (grp == 'stl' && context.get('stale') == 1)
@@ -32,7 +32,7 @@ function ctxHelperFilterhost(chunk, context, bodies, params)
   ) {
     chunk.render(bodies.block, context);
   }
-                        
+
   return chunk;
 }
 
@@ -48,12 +48,12 @@ function portList(el)
     arg = { r : "search", host: host, mode: "portlist" };
 
   new modPortList(
-    shared, 
-    { 
-      beRequest: arg, 
-      mount: '#content', 
-      template: 'switch', 
-      spinner: 'div#swlist' 
+    shared,
+    {
+      beRequest: arg,
+      mount: '#content',
+      template: 'switch',
+      spinner: 'div#swlist'
     }
   );
 }
@@ -113,7 +113,7 @@ if(!state.host) {
       mount: '#content', 
       template: 'switch',
       error: 'switch-error',
-      spinner: 'div#swlist' 
+      spinner: 'div#swlist'
     }
   );
 }
