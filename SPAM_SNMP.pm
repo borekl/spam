@@ -78,19 +78,46 @@ sub snmp_command
 
 sub snmp_lineread
 {
-  #--- argument and variables
+  #--- arguments
 
-  my @args = splice(@_, 0, 5);
-  my $fn = shift;
+  my (
+    $cmd,
+    $host,
+    $community,
+    $mib,
+    $entry,
+    $callback
+  ) = @_;
 
   #--- prepare command
 
-  my $cmd = snmp_command(@args);
+  my $cmd = snmp_command($cmd, $host, $community, $mib, $entry);
   if(!$cmd) { return 'Failed to prepare SNMP command'; }
 
-  #--- perform the read and finish
+  #--- iterate over lines while merging multi-line values into single lines
 
-  return file_lineread($cmd, '-|', $fn);
+  my $acc;
+
+  my $r = file_lineread($cmd, '-|', sub {
+    my $l = shift;
+
+    if($l =~ /^${mib}::/) {
+      $callback->($acc) if $acc;
+      $acc = $l;
+    } else {
+      $acc .= $l;
+    }
+    return undef;
+  });
+
+  #--- failed read
+
+  return $r if $r;
+
+  #--- successful read
+
+  $callback->($acc) if $acc;
+  return undef;
 }
 
 
@@ -498,19 +525,12 @@ sub snmp_get_object
     printf $fh "--> SNMP COMMAND: %s\n",
       snmp_command($cmd, $host, $community, $mibs, $entry)
       if $fh;
+
+    my $read_state = 'first';
+
     my $r = snmp_lineread($cmd, $host, $community, $mibs, $entry, sub {
       my $l = shift;
       my $tm2;
-
-  #--- FIXME: skip lines that don't contain '='
-
-  # This is ugly hack to work around the way snmp-utils display long binary
-  # strings (type "Hex-STRING"): these are displayed on multiple lines, which
-  # causes problems with current way of parsing the output. So this should
-  # be reimplemented to accomodate this, but meanwhile we just slurp the hex
-  # values on the first line and discard the rest.
-
-      return if $l !~ /=/;
 
   #--- split into variable and value
 
