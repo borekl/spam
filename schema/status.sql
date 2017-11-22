@@ -12,6 +12,7 @@ CREATE TABLE status (
   lastchk     timestamp with time zone NOT NULL,
   ifindex     bigint                   NOT NULL,
   vlan        smallint,
+  vlans       bit(1024),
   descr       character varying(64),
   duplex      smallint,
   rate        smallint,

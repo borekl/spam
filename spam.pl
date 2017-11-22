@@ -182,10 +182,21 @@ sub sql_load_status
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
   my $qry = 'SELECT %s FROM status WHERE host = ?';
   my @fields = (
-    'portname', 'status', 'inpkts', 'outpkts',
-    q{date_part('epoch', lastchg)}, q{date_part('epoch', lastchk)},
-    'vlan', 'descr', 'duplex', 'rate', 'flags', 'adminstatus', 'errdis',
-    q{floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg))}
+    'portname',
+    'status',                        # 0
+    'inpkts',                        # 1
+    'outpkts',                       # 2
+    q{date_part('epoch', lastchg)},  # 3
+    q{date_part('epoch', lastchk)},  # 4
+    'vlan',                          # 5
+    'descr',                         # 6
+    'duplex',                        # 7
+    'rate',                          # 8
+    'flags',                         # 9
+    'adminstatus',                   # 10
+    'errdis',                        # 11
+    q{floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg))},
+    'vlans'                          # 13
   );
   $qry = sprintf($qry, join(',', @fields));
   my $sth = $dbh->prepare($qry);
@@ -624,6 +635,8 @@ sub find_changes
          = $h->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
          = $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+      my $vlanTrunkPortTable
+         = $h->{'CISCO-VTP-MIB'}{'vlanTrunkPortVlansEnabled'}{$if};
 
       #--- update: entry is not new, check whether it has changed ---
 
@@ -641,6 +654,8 @@ sub find_changes
 	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
         [ 'vmVlan', 'n', $old->[5],
           $vmMembershipTable->{'vmVlan'}{'value'} ],
+        [ 'vlanTrunkPortVlansEnabled', 's', $old->[13],
+          $vlanTrunkPortTable->{'vlanTrunkPortTable'}{'bitstring'} // undef ],
         [ 'ifAlias', 's', $old->[6],
           $ifXTable->{'ifAlias'}{'value'} ],
         [ 'portDuplex', 'n', $old->[7],
@@ -755,6 +770,8 @@ sub sql_status_update
     my $ifXTable = $hdata->{'IF-MIB'}{'ifXTable'}{$if};
     my $vmMembershipTable
        = $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+    my $vlanTrunkPortTable
+       = $hdata->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
     my $portTable
        = $hdata->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
@@ -764,7 +781,7 @@ sub sql_status_update
 
       @fields = qw(
         host portname status inpkts outpkts lastchg lastchk
-        ifindex vlan descr duplex rate flags adminstatus errdis
+        ifindex vlan vlans descr duplex rate flags adminstatus errdis
       );
       @vals = ('?') x 15;
       @bind = (
@@ -777,6 +794,7 @@ sub sql_status_update
         $current_time,
         $if,
         $vmMembershipTable->{'vmVlan'}{'value'},
+        $vlanTrunkPortTable->{'vlanTrunkPortVlansEnabled'}{'bitstring'} // undef,
         $ifXTable->{'ifAlias'}{'value'},
         $portTable->{'portDuplex'}{'value'},
         ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
@@ -800,7 +818,7 @@ sub sql_status_update
 
         @fields = (
           'lastchk = ?', 'status = ?', 'inpkts = ?',
-          'outpkts = ?', 'ifindex = ?', 'vlan = ?', 'descr = ?',
+          'outpkts = ?', 'ifindex = ?', 'vlan = ?', 'vlans = ?', 'descr = ?',
           'duplex = ?', 'rate = ?', 'flags = ?', 'adminstatus = ?',
           'errdis = ?'
         );
@@ -811,6 +829,7 @@ sub sql_status_update
           $ifTable->{'ifOutUcastPkts'}{'value'},
           $if,
           $vmMembershipTable->{'vmVlan'}{'value'},
+          $vlanTrunkPortTable->{'vlanTrunkPortVlansEnabled'}{'bitstring'} // undef,
           $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
           $portTable->{'portDuplex'}{'value'},
           ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,

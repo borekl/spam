@@ -375,6 +375,7 @@ sub snmp_value_parse
     } else {
       $re{'value'} = lc($1);
     }
+    $re{'bitstring'} = join('', map { sprintf '%08b', hex $_ } @v);
   }
 
   #--- MIB reference
