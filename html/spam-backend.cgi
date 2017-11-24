@@ -998,11 +998,17 @@ sub sql_search
 
   my $plist = sub {
     my $row = shift;
-    # remove undefined keys
+
+    #--- remove undefined keys (why are we doing this?)
+
     remove_undefs($row);
-    # unpack port flags into a hash
+
+    #--- unpack port flags into a hash for easy access in the front-end
+
     $row->{'flags'} = port_flag_unpack($row->{'flags'});
-    # "knownports" feature
+
+    #--- "knownports" feature
+
     if(
       exists $row->{'host'} &&
       scalar(grep { $_ eq $row->{'host'} } @{$cfg->{'knownports'}}) &&
