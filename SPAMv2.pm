@@ -44,6 +44,7 @@ our @EXPORT = qw(
   hash_index_access
   query_reduce
   decode_age
+  vlans_bitstring_to_range_list
 );
 
 
@@ -830,6 +831,69 @@ sub decode_age
   }
 
   return $age_seconds;
+}
+
+
+#=============================================================================
+# Converts bitstring value (from PgSQL's bit() type) returned as the "vlans"
+# field to two lists: vlan list and vlan list with ranges coalesced. For
+# example '10110111' yields ('1-3','5-6','8')
+#=============================================================================
+
+sub vlans_bitstring_to_range_list
+{
+  #--- arguments
+
+  my $vlans = shift;
+
+  #--- other variables
+
+  my @vlan_list;
+  my @vlan_list_coalesced;
+
+  #--- get a vlan list
+
+  for(my $vlan = 0; $vlan < length($vlans); $vlan++) {
+    my $v = substr($vlans, $vlan, 1);
+    if($v eq '1') {
+      push(@vlan_list, $vlan);
+    };
+  }
+
+  #--- coalesce ranges
+
+  my ($start, $end);
+  my @result;
+
+  for my $v (@vlan_list) {
+
+    if(defined $end && $v-1 > $end) {
+      push(@vlan_list_coalesced, $start == $end ? "$start" : "$start-$end");
+      $start = $end = undef;
+    }
+
+    if(!defined $start) {
+      $end = $start = $v;
+      next;
+    }
+
+    if(!defined $end) {
+      $end = $v;
+      next;
+    }
+
+    if($v-1 == $end) {
+      $end++;
+    }
+  }
+
+  if(defined $start) {
+    push(@vlan_list_coalesced, $start == $end ? "$start" : "$start-$end");
+  }
+
+  #--- finish
+
+  return \@vlan_list, \@vlan_list_coalesced;
 }
 
 

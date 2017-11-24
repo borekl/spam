@@ -1011,6 +1011,19 @@ sub sql_search
     ) {
       $row->{'unregistered'} = 1;
     }
+
+    #--- convert "vlans" field into useful information
+
+    # "vlans" field is a bitstring of 1024 bits that corresponds to vlans
+    # 1-1024; 1s represent enabled vlans. For the front-end use, we convert
+    # this into list of enabled vlans
+
+    {
+      my ($vlans_list, $vlans_ranges)
+      = vlans_bitstring_to_range_list($row->{'vlans'} // '');
+      $row->{'vlans'} = $vlans_ranges;
+    }
+
   };
 
   #--- get hwinfo and swinfo in case the only parameter is "host"

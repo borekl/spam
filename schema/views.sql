@@ -1,4 +1,4 @@
-----------------------------------------------------------------------------
+ ----------------------------------------------------------------------------
 -- This view lists ports of a switch
 ----------------------------------------------------------------------------
 
@@ -137,7 +137,7 @@ CREATE OR REPLACE VIEW v_search_status_raw AS
     COALESCE(p.site, substring(host from 1 for 3)) AS site,
     host, portname, cp, outlet, descr,
     status, adminstatus, flags, duplex, rate, ifindex,
-    location, vlan,
+    location, vlan, vlans,
     -- patching record
     p.chg_who AS chg_who,
     to_char(p.chg_when, 'FMHH24:MI, FMMonth FMDD, YYYY') AS chg_when,
