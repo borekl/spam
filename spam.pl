@@ -146,6 +146,61 @@ sub swdata_status_iter
 
 
 #===========================================================================
+# Helper function to concatenate the bitstrings that represent enabled VLANs
+# on a trunk (gleaned from vlaTrunkPortVlansEnabled group of columns).
+# Filling in of ommited values is also performed here.
+#===========================================================================
+
+sub get_trunk_vlans_bitstring
+{
+  #--- arguments
+
+  my ($host, $if) = @_;
+
+  #--- other variables
+
+  my $e = $swdata{$host}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if} // undef;
+  my $trunk_vlans;
+
+  #--- check for existence of the required keys
+
+  if(!$e || !exists $e->{'vlanTrunkPortVlansEnabled'}{'bitstring'}) {
+    return undef;
+  }
+
+  #--- perform concatenation with filling in zeroes
+
+  # the values received from SNMP seem to sometimes omit the unnecessary
+  # zeros, so we fill them in here
+
+  for my $key (qw(
+    vlanTrunkPortVlansEnabled
+    vlanTrunkPortVlansEnabled2k
+    vlanTrunkPortVlansEnabled3k
+    vlanTrunkPortVlansEnabled4k
+  )) {
+    my $v = '';
+    my $l = 0;
+    if(exists $e->{$key}{'bitstring'}) {
+      $v = $e->{$key}{'bitstring'};
+      $l = length($v);
+    }
+    if($l > 1024) {
+      warn('Trimming excessive number of bits from $key');
+      $v = substr($v, 0, 1024);
+      $l = 1024;
+    }
+    if($l < 1024) {
+      $v .= ('0' x (1024 - $l));
+    }
+    $trunk_vlans .= $v;
+  }
+
+  return $trunk_vlans;
+}
+
+
+#===========================================================================
 # swdata{HOST}{dbStatus} getter for whole row.
 #===========================================================================
 
@@ -635,8 +690,6 @@ sub find_changes
          = $h->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
          = $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
-      my $vlanTrunkPortTable
-         = $h->{'CISCO-VTP-MIB'}{'vlanTrunkPortVlansEnabled'}{$if};
 
       #--- update: entry is not new, check whether it has changed ---
 
@@ -655,7 +708,7 @@ sub find_changes
         [ 'vmVlan', 'n', $old->[5],
           $vmMembershipTable->{'vmVlan'}{'value'} ],
         [ 'vlanTrunkPortVlansEnabled', 's', $old->[13],
-          $vlanTrunkPortTable->{'vlanTrunkPortTable'}{'bitstring'} // undef ],
+          get_trunk_vlans_bitstring($host, $if) ],
         [ 'ifAlias', 's', $old->[6],
           $ifXTable->{'ifAlias'}{'value'} ],
         [ 'portDuplex', 'n', $old->[7],
@@ -770,8 +823,6 @@ sub sql_status_update
     my $ifXTable = $hdata->{'IF-MIB'}{'ifXTable'}{$if};
     my $vmMembershipTable
        = $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
-    my $vlanTrunkPortTable
-       = $hdata->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
     my $portTable
        = $hdata->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
@@ -794,7 +845,7 @@ sub sql_status_update
         $current_time,
         $if,
         $vmMembershipTable->{'vmVlan'}{'value'},
-        $vlanTrunkPortTable->{'vlanTrunkPortVlansEnabled'}{'bitstring'} // undef,
+        get_trunk_vlans_bitstring($host, $if),
         $ifXTable->{'ifAlias'}{'value'},
         $portTable->{'portDuplex'}{'value'},
         ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
@@ -829,7 +880,7 @@ sub sql_status_update
           $ifTable->{'ifOutUcastPkts'}{'value'},
           $if,
           $vmMembershipTable->{'vmVlan'}{'value'},
-          $vlanTrunkPortTable->{'vlanTrunkPortVlansEnabled'}{'bitstring'} // undef,
+          get_trunk_vlans_bitstring($host, $if),
           $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
           $portTable->{'portDuplex'}{'value'},
           ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
