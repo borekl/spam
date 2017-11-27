@@ -289,6 +289,16 @@ sub port_flag_unpack
     $re{$k} = 1 if $flags & $flag_map{$k};
   }
 
+  #--- derived flags: trunk
+
+  if(
+    exists $re{'tr_isl'}
+    || exists $re{'tr_unk'}
+    || exists $re{'tr_any'}
+  ) {
+    $re{'trunk'} = 1;
+  }
+
   #--- finish
       
   return \%re;
