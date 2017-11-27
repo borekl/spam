@@ -1028,6 +1028,7 @@ sub sql_search
       my ($vlans_list, $vlans_ranges)
       = vlans_bitstring_to_range_list($row->{'vlans'} // '');
       $row->{'vlans'} = $vlans_ranges;
+      $row->{'vlans_fmt'} = join(',', @$vlans_ranges);
     }
 
   };
