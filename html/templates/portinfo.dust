@@ -167,6 +167,15 @@
     </div>
   {/flags}
 
+  {?flags.tr_any} {! only for trunks !}
+    {?vlans} {! only if vlans list is not empty !}
+      <div class="pi-subsec">
+        <span class="pi-subhead">TRUNK VLANS</span>
+        <br>{vlans_fmt}
+      </div>
+    {/vlans}
+  {/flags.tr_any}
+
 </div>
 
 {!--- right-hand section ---------------------------------------------------!}
