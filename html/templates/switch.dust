@@ -26,6 +26,10 @@
         <td class="swinfo">{descr}</td>
       </tr>
       <tr>
+        <th class="swinfo">Platform</th>
+        <td class="swinfo">{platform}</td>
+      </tr>
+      <tr>
         <th class="swinfo">Total ports</th>
         <td class="swinfo">{ports_total}</td>
       </tr>
