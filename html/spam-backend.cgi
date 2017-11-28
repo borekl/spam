@@ -1022,8 +1022,8 @@ sub sql_search
 
     #--- convert "vlans" field into useful information
 
-    # "vlans" field is a bitstring of 1024 bits that corresponds to vlans
-    # 1-1024; 1s represent enabled vlans. For the front-end use, we convert
+    # "vlans" field is a bitstring of 4096 bits that corresponds to vlans
+    # 1-4096; 1s represent enabled vlans. For the front-end use, we convert
     # this into list of enabled vlans
 
     {
