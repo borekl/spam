@@ -1030,8 +1030,9 @@ sub sql_search
     {
       my ($vlans_list, $vlans_ranges)
       = vlans_bitstring_to_range_list($row->{'vlans'} // '');
-      $row->{'vlans'} = $vlans_ranges;
       $row->{'vlans_fmt'} = join(",\N{ZERO WIDTH SPACE}", @$vlans_ranges);
+      $row->{'vlans_cnt'} = @$vlans_list;
+      delete $row->{'vlans'};
     }
 
   };
@@ -1100,7 +1101,7 @@ sub sql_search
 
   #--- SQL WHERE conditions
 
-  for my $k (qw(site outcp host portname mac ip username inact vlan)) {
+  for my $k (qw(site outcp host portname mac ip username inact vlan vlans)) {
     if(exists $par->{$k} && $par->{$k}) {
       if($k eq 'outcp') {
         search_outcp(\@cond, \@args, $par->{$k});
@@ -1117,6 +1118,9 @@ sub sql_search
       } elsif($k eq 'inact') {
         push(@cond, 'inact >= ?');
         push(@args, decode_age($par->{$k}));
+      } elsif($k eq 'vlans') {
+        push(@cond, '(flags & 8+16+32)::boolean', 'get_bit(vlans, ?)::boolean');
+        push(@args, $par->{$k});
       } else {
         push(@cond, sprintf('%s = ?', $k));
         push(@args, $par->{$k});
@@ -2126,7 +2130,7 @@ if($req eq 'swlist') {
 if($req eq 'search') {
   my %par;
   for my $k (
-    qw(site outcp host portname mac ip sortby mode username inact vlan)
+    qw(site outcp host portname mac ip sortby mode username inact vlan vlans)
   ) {
     ($par{$k}) = &$arg($k);
   }
