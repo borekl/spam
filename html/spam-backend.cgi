@@ -976,7 +976,8 @@ sub sql_search
   #--- normalize search parameters
   
   if(
-    $par->{'mode'} ne 'portlist'
+    !exists $par->{'mode'}
+    || $par->{'mode'} ne 'portlist'
     && $par->{'mode'} ne 'portinfo'
   ) {
     $re{'params'}{'normalized'} = $par = normalize_search($par);
@@ -1073,7 +1074,7 @@ sub sql_search
   if($par->{'view'}) {
     $view = $par->{'view'};
   }
-  elsif($par->{'mode'} eq 'portlist') {
+  elsif(exists $par->{'mode'} && $par->{'mode'} eq 'portlist') {
     $view = $modular ? 'v_port_list_mod' : 'v_port_list';
   }
   elsif($par->{'host'} || $par->{'portname'}) {
@@ -1144,7 +1145,7 @@ sub sql_search
     }
     $re{'search'}{'lines'} = scalar(@{$re{'search'}{'result'}});
 
-    if($par->{'mode'} eq 'portlist') {
+    if(exists $par->{'mode'} && $par->{'mode'} eq 'portlist') {
       $re{'search'}{'result'} = query_reduce(
         $re{'search'}{'result'}, 'portname'
       );
