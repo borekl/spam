@@ -1032,7 +1032,7 @@ sub sql_search
       = vlans_bitstring_to_range_list($row->{'vlans'} // '');
       $row->{'vlans_fmt'} = join(",\N{ZERO WIDTH SPACE}", @$vlans_ranges);
       $row->{'vlans_cnt'} = @$vlans_list;
-      delete $row->{'vlans'};
+      $row->{'vlans'};
     }
 
   };
