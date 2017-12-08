@@ -1007,8 +1007,14 @@ sub sql_search
     remove_undefs($row);
 
     #--- unpack port flags into a hash for easy access in the front-end
+    #--- if no flags are set, then make the key 'undef', because that's what
+    #--- dust.js can easily test for with {?exists/} section.
 
-    $row->{'flags'} = port_flag_unpack($row->{'flags'});
+    if($row->{'flags'}) {
+      $row->{'flags'} = port_flag_unpack($row->{'flags'});
+    } else {
+      $row->{'flags'} = undef;
+    }
 
     #--- "knownports" feature
 
