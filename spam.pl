@@ -834,7 +834,7 @@ sub sql_status_update
         host portname status inpkts outpkts lastchg lastchk
         ifindex vlan vlans descr duplex rate flags adminstatus errdis
       );
-      @vals = ('?') x 15;
+      @vals = ('?') x 16;
       @bind = (
         $host,
         $k->[1],
