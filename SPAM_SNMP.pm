@@ -91,7 +91,7 @@ sub snmp_lineread
 
   #--- prepare command
 
-  my $cmd = snmp_command($cmd, $host, $community, $mib, $entry);
+  $cmd = snmp_command($cmd, $host, $community, $mib, $entry);
   if(!$cmd) { return 'Failed to prepare SNMP command'; }
 
   #--- iterate over lines while merging multi-line values into single lines
