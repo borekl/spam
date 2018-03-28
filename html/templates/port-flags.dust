@@ -20,7 +20,11 @@
   {/stp_root}
   
   {?tr_any}
-  <div class="ptflag fl_trunk">q</div>
+    {?tr_dot1q}
+    <div class="ptflag fl_trunk">q</div>
+    {:else}
+    <div class="ptflag fl_trunk">?</div>
+    {/tr_dot1q}
   {:else}
   <div class="ptflag fl_none">-</div>
   {/tr_any}
