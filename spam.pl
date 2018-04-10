@@ -967,7 +967,7 @@ sub sql_hwinfo_update
 
   #--- remove all component for a host
 
-  if((scalar(@db) > 0) && (!exists $swdata{$host}{hw})) {
+  if((@db > 0) && (!exists $swdata{$host}{hw})) {
     # FIXME - DO WE NEED THIS?
   }
 
@@ -1059,7 +1059,7 @@ sub sql_hwinfo_update
 
   #--- send the whole batch to db
 
-  if(scalar(@update_plan) > 0) {
+  if(@update_plan > 0) {
     my $e = sql_transaction(\@update_plan);
     if($e) { return ($e, \@stats); }
   }
@@ -1384,7 +1384,7 @@ sub sql_arptable_update
           sprintf(
             q{INSERT INTO arptable ( %s ) VALUES ( %s )},
             join(',', @fields),
-            join(',', (('?') x scalar(@fields)))
+            join(',', (('?') x @fields))
           ),
           @bind
         ]);
@@ -1682,7 +1682,7 @@ sub sql_get_vtp_masters_list
   #--- preference is set in configuration file with "VLANServer" statement
 
   for my $k (keys %{$cfg->{vlanserver}}) {
-    for(my $i = 0; $i < scalar(@list); $i++) {
+    for(my $i = 0; $i < @list; $i++) {
       next if $list[$i]->[1] ne $k;
       if(lc($cfg->{vlanserver}{$k}[0]) ne lc($list[$i]->[0])) {
         splice(@list, $i--, 1);
@@ -1745,7 +1745,7 @@ sub sql_switch_info_update
         ports_errdis ports_inact ports_used vtp_domain vtp_mode boot_time
         platform
       );
-      @vals = ('?') x scalar(@fields);
+      @vals = ('?') x @fields;
       @args = (
         $host,
         $stat->{syslocation} =~ s/'/''/r,
@@ -1899,7 +1899,7 @@ sub schedule_task
   my $work_list = shift;
 
   if(!ref($work_list)) { die; }
-  for(my $i = 0; $i < scalar(@$work_list); $i++) {
+  for(my $i = 0; $i < @$work_list; $i++) {
     if(!defined $work_list->[$i][2]) {
       return $work_list->[$i];
     }
@@ -1975,7 +1975,7 @@ sub sql_autoreg
 
   my $msg = sprintf("Found %d entr%s to autoregister", scalar(@insert), scalar(@insert) == 1 ? 'y' : 'ies');
   tty_message("[$host] $msg\n");
-  if(scalar(@insert) > 0) {
+  if(@insert > 0) {
     my $e = sql_transaction(\@insert);
     if(!$e) {
       tty_message("[$host] Auto-registration successful\n");
@@ -2186,7 +2186,7 @@ sub sql_save_snmp_object
                   ('host', 'fresh', @object_index, @{$object_config->{'columns'}})
                 ),
                 join(',',
-                  ('?') x (2 + scalar(@object_index) + scalar(@{$object_config->{'columns'}}))
+                  ('?') x (2 + @object_index + @{$object_config->{'columns'}})
                 ),
               ),
               $host, 't', @idx,
@@ -2314,7 +2314,7 @@ if(!GetOptions('host=s'     => \@poll_hosts,
               )) {
   print "\n"; help(); exit(1);
 }
-if(scalar(@ARGV) != 0) { print "Invalid arguments\n\n"; help(); exit(1); }
+if(@ARGV) { print "Invalid arguments\n\n"; help(); exit(1); }
 if($help) {
   help();
   exit(0);
@@ -2457,13 +2457,13 @@ try {
 	foreach my $host (sort keys %{$cfg->{host}}) {
           if(
             (
-              scalar(@poll_hosts) &&
+              @poll_hosts &&
               grep { lc($host) eq lc($_); } @poll_hosts
             ) || (
               $poll_hosts_re &&
               $host =~ /$poll_hosts_re/i
             ) || (
-              !scalar(@poll_hosts) && !defined($poll_hosts_re)
+              !@poll_hosts && !defined($poll_hosts_re)
             )
           ) {
             push(@work_list, [ 'host', $host, undef ]);
