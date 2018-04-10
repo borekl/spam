@@ -308,14 +308,8 @@ sub poll_host
 
   #--- other variables -----------------------------------------------------
 
-  my $community = $cfg->{'community'};
   my $s = $swdata{$host} = {};
   my $platform;
-
-  #--- host-specific community override ------------------------------------
-
-  $community = $cfg->{'host'}{$host}{'community'}
-    if $cfg->{'host'}{$host}{'community'};
 
   #--- skip excluded hosts -------------------------------------------------
 
@@ -429,7 +423,7 @@ sub poll_host
 
       for my $vlan (@vlans) {
         next if $vlan > 999;
-        my $cmtvlan = $community . ($vlan ? "\@$vlan" : '');
+        my $cmtvlan = snmp_community($host) . ($vlan ? "\@$vlan" : '');
 
   #--- retrieve the SNMP object
 
@@ -1674,10 +1668,7 @@ sub sql_get_vtp_masters_list
     return 'Database query failed (spam,' . $sth->errstr() . ')';
   }
   while(my @a = $sth->fetchrow_array) {
-    $a[2] = $cfg->{'community'};  # pre-fill default community string
-    if(exists $cfg->{'host'}{$a[0]}{'community'}) {
-      $a[2] = $cfg->{'host'}{$a[0]}{'community'};
-    }
+    $a[2] = snmp_community($a[0]);
     push(@list, \@a);
   }
 
@@ -2592,7 +2583,7 @@ try {
             elsif($task->[0] eq 'arp') {
               tty_message("[arptable] Updating arp table (started)\n");
               my $r = snmp_get_arptable(
-                $cfg->{'arpserver'}, $cfg->{'community'},
+                $cfg->{'arpserver'}, snmp_community(),
                 sub {
                   tty_message("[arptable] Retrieved arp table from $_[0]\n");
                 }
