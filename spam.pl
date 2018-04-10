@@ -41,22 +41,25 @@ my @known_platforms; # list of known platform codes
 
 sub help
 {
-  print "Usage: spam.pl [OPTIONS]\n\n";
-  print "  --[no]arptable   turn polling for ARP table on or off (default off)\n";
-  print "  --[no]mactable   turn getting bridging table on or off (default on)\n";
-  print "  --[no]autoreg    turn autoregistration of outlets on or off (default off)\n";
-  print "  --quick          equivalent of --noarptable and --nomactable\n";
-  print "  --host=HOST      poll only HOST, can be used multiple times (default all hosts)\n";
-  print "  --hostre=RE      poll only hosts matching the regexp\n";
-  print "  --tasks=N        number of tasks to be run (N is 1 to 16, default 8)\n";
-  print "  --remove=HOST    remove HOST from database and exit\n";
-  print "  --maint          perform database maintenance and exit\n";
-  print "  --arpservers     list known ARP servers and exit\n";
-  print "  --worklist       display list of switches that would be processed and exit\n";
-  print "  --hosts          list known hosts and exit\n";
-  print "  --debug          turn on debug mode\n";
-  print "  --help, -?       this help\n";
-  print "\n";
+  print <<EOHD;
+Usage: spam.pl [OPTIONS]
+
+  --[no]arptable  turn polling for ARP table on or off (default off)
+  --[no]mactable  turn getting bridging table on or off (default on)
+  --[no]autoreg   turn autoregistration of outlets on or off (default off)
+  --quick         equivalent of --noarptable and --nomactable
+  --host=HOST     poll only HOST, can be used multiple times (default all)
+  --hostre=RE     poll only hosts matching the regexp
+  --tasks=N       number of tasks to be run (N is 1 to 16, default 8)
+  --remove=HOST   remove HOST from database and exit
+  --maint         perform database maintenance and exit
+  --arpservers    list known ARP servers and exit
+  --worklist      display list of switches that would be processed and exit
+  --hosts         list known hosts and exit
+  --debug         turn on debug mode
+  --help, -?      this help
+
+EOHD
 }
 
 
@@ -2277,11 +2280,12 @@ sub sql_save_snmp_object
 
 #--- title ----------------------------------------------------------------
 
-tty_message(
-  "\nSwitch Ports Activity Monitor\n"
-  . "by Borek.Lupomesky\@vodafone.com\n"
-  . "---------------------------------\n"
-);
+tty_message(<<EOHD);
+
+Switch Ports Activity Monitor
+by Borek.Lupomesky\@vodafone.com
+---------------------------------
+EOHD
 
 #--- parse command line ----------------------------------------------------
 
