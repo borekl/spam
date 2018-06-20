@@ -26,6 +26,7 @@ use CGI;
 use SPAMv2;
 use JSON::MaybeXS;
 use Data::Dumper;
+use Try::Tiny;
 
 
 #=== globals =================================================================
@@ -211,7 +212,7 @@ sub sql_select
     $re{'query'} = sql_show_query($query, @$args);
   }
 
-  eval { #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  try { #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
   
   #--- ensure database connection
   
@@ -232,14 +233,14 @@ sub sql_select
     $re{'result'} = $sth->fetchall_arrayref($aref ? () : {});
     $re{'status'} = 'ok';
   
-  }; #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  } #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
   #--- failure
   
-  if($@) {
+  catch {
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
-  }  
+  };
   
   #--- optional post-processing
   
@@ -1145,8 +1146,8 @@ sub sql_search
       
   #---------------------------------------------------------------------------
   
-  eval {
-  
+  try {
+
     $re{'search'} = sql_select(
       'spam', "SELECT * FROM $view" . $where . $orderby, \@args, $plist
     );
@@ -1161,18 +1162,20 @@ sub sql_search
       );
     }
   
-  };
+  }
 
   #---------------------------------------------------------------------------
 
-  if($@) {
+  catch {
     $re{'status'} = 'error';
-    $re{'errmsg'} = $@;
+    $re{'errmsg'} = $_;
     $re{'errfunc'} = sprintf('sql_search()');
-  } else {
-    $re{'status'} = 'ok';
-    $re{'errmsg'} = 'no error';
-  }
+  } finally {
+    if(!exists $re{'status'}) {
+      $re{'status'} = 'ok';
+      $re{'errmsg'} = 'no error';
+    }
+  };
 
   #--- compose hwinfo with search result
   
@@ -1756,9 +1759,9 @@ sub sql_add_patches
     }
   }
   
-  #--- eval loop start
+  #--- try block start
 
-  eval {
+  try {
 
   #--- begin transaction
 
@@ -1843,20 +1846,24 @@ sub sql_add_patches
     
     }
 
-  #--- eval loop end
+  #--- try block end
 
-  };
+  }
 
   #--- error processing
 
-  if($@) {
+  catch {
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
-    chomp($@);
-    if($@ eq 'ABORT') {
+    chomp($_);
+    if($_ eq 'ABORT') {
       $dbh->rollback();
     }
-  } else {
+  };
+
+  #--- commit transaction
+
+  if($re{'status'} ne 'error') {
     $r = $dbh->commit();
     if(!$r) {
       $re{'errdb'} = pg_errmsg_parse($dbh->errstr());
@@ -1964,9 +1971,9 @@ sub sql_modwire
   $re{'debug'} = $debug;
   if(!defined($m)) { $m = 0; }
 
-  #--- eval
+  #>>> try block start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-  eval {
+  try {
 
   #--- deleting the entry
 
@@ -2018,15 +2025,14 @@ sub sql_modwire
       }
     }
 
-  #--- eval end
+  #<<< try block end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-  };
-  if($@) {
+  } catch {
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
-  } else {
-    $re{'status'} = 'ok';
-  }
+  } finally {
+    if(!exists $re{'status'}) { $re{'status'} = 'ok'; }
+  };
 
   #--- finish
 
