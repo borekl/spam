@@ -434,7 +434,7 @@ sub poll_host
           sub {
             my ($var, $cnt) = @_;
             return if !$var;
-            my $msg = "[$host] Loading $mib::$var";
+            my $msg = "[$host] Loading $mib_key::$var";
             if($vlan) { $msg .= " $vlan"; }
             if($cnt) { $msg .= " ($cnt)"; }
             tty_message("$msg\n");
