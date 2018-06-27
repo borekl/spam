@@ -565,8 +565,7 @@ sub poll_host
 
   my %by_portindex;
   if(
-    exists $swdata{$host}{'CISCO-STACK-MIB'}
-    && exists $swdata{$host}{'CISCO-STACK-MIB'}{'portTable'}
+    exists $swdata{$host}{'CISCO-STACK-MIB'}{'portTable'}
   ) {
     my $t = $s->{'CISCO-STACK-MIB'}{'portTable'};
     for my $idx_mod (keys %$t) {
@@ -584,8 +583,6 @@ sub poll_host
 
   if(
     exists $swdata{$host}{'BRIDGE-MIB'}
-    && exists $swdata{$host}{'CISCO-VTP-MIB'}
-    && exists $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}
     && exists $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
   ) {
     my @vlans
