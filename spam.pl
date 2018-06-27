@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/perl -I.
 
 #===========================================================================
 # SWITCH PORTS ACTIVITY MONITOR, 3rd GENERATION
