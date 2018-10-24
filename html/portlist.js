@@ -140,7 +140,7 @@ function processPortList()
               }
             });
             
-            return deferred;
+            return deferred.promise;
           }
         });
       });
