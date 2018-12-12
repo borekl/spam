@@ -26,6 +26,7 @@ use Try::Tiny;
 
 
 use SPAM::Cmdline;
+use SPAM::Config;
 
 $| = 1;
 
@@ -2273,7 +2274,7 @@ try {
 	#--- load master configuration file --------------------------------
 
 	tty_message("[main] Loading master config (started)\n");
-	if(!ref($cfg = load_config('spam.cfg.json'))) {
+	if(!ref($cfg = SPAM::Config->instance()->config())) {
 	  die "$cfg\n";
 	}
 	tty_message("[main] Loading master config (finished)\n");

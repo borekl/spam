@@ -9,12 +9,15 @@
 
 package SPAMv2;
 require Exporter;
+use lib 'lib';
 use Carp;
 use DBI;
 use JSON::MaybeXS;
 use integer;
 use warnings;
 use strict;
+
+use SPAM::Config;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
@@ -52,7 +55,7 @@ our @EXPORT = qw(
 #=== variables =============================================================
 
 #--- configuration
-my $cfg;
+my $cfg = SPAM::Config->instance()->config();
 
 #--- Database connection parameters ---
 my %dbconn;
@@ -63,40 +66,12 @@ my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
 
 
 #===========================================================================
-# Load configuration from JSON file (with relaxed parsing rules, so comments
-# and trailing commas are allowed. Return value can be either:
-#
-# 1) hashref -> config was successfully loaded from the specified file
-#               OR config was loaded previously and cached content was used
-# 2) scalar  -> error message
-# 3) undef   -> loading of the file was attempted, but no file was specified
-#               (in other words, the caller tried to get a cached value,
-#               which did not exist).
+# FIXME: Temporary function that just calls SPAM::Config.
 #===========================================================================
 
 sub load_config
 {
-  #--- if config already loaded, just return it, note, that the config is
-  #--- returned regardless of the file that's passed in
-
-  return $cfg if ref($cfg);
-
-  #--- if the config file is undefined, return undef; this is important
-  #--- because of the above behaviour
-
-  my ($cfg_file) = @_;
-  return undef if !$cfg_file;
-
-  #--- read and parse config
-
-  my $json_input;
-  my $js = JSON->new()->relaxed(1);
-
-  local $/;
-  open(my $fh, '<', $cfg_file) || return 'Cannot open configuration file';
-  $json_input = <$fh>;
-
-  return $cfg = $js->decode($json_input);
+  return SPAM::Config->instance()->config();
 }
 
 
