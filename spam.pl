@@ -15,6 +15,7 @@
 #===========================================================================
 
 use strict;
+use lib 'lib';
 use Getopt::Long;
 use POSIX qw(strftime);
 use SPAMv2;
@@ -22,6 +23,9 @@ use SPAM_SNMP;
 use Socket;
 use Data::Dumper;
 use Try::Tiny;
+
+
+use SPAM::Cmdline;
 
 $| = 1;
 
@@ -34,33 +38,6 @@ my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
 my @known_platforms; # list of known platform codes
 
-
-#===========================================================================
-# This function displays usage help
-#===========================================================================
-
-sub help
-{
-  print <<EOHD;
-Usage: spam.pl [OPTIONS]
-
-  --[no]arptable  turn polling for ARP table on or off (default off)
-  --[no]mactable  turn getting bridging table on or off (default on)
-  --[no]autoreg   turn autoregistration of outlets on or off (default off)
-  --quick         equivalent of --noarptable and --nomactable
-  --host=HOST     poll only HOST, can be used multiple times (default all)
-  --hostre=RE     poll only hosts matching the regexp
-  --tasks=N       number of tasks to be run (N is 1 to 16, default 8)
-  --remove=HOST   remove HOST from database and exit
-  --maint         perform database maintenance and exit
-  --arpservers    list known ARP servers and exit
-  --worklist      display list of switches that would be processed and exit
-  --hosts         list known hosts and exit
-  --debug         turn on debug mode
-  --help, -?      this help
-
-EOHD
-}
 
 
 #===========================================================================
@@ -2277,51 +2254,11 @@ EOHD
 
 #--- parse command line ----------------------------------------------------
 
-
-my $get_arptable = 0;
-my $get_mactable = 1;
-my $no_lock = 0;           # inhibit creation of lock file
-my $tasks_max = 8;         # maximum number of background tasks
-my $tasks_cur = 0;         # current number of background tasks
-my $autoreg = 0;           # autoreg feature
-my $cmd_worklist = 0;      # display only a worklist
-my ($help, $maint, $list_arpservers, $list_hosts, $cmd_remove_host);
-my @poll_hosts;
-my $poll_hosts_re;
-
-if(!GetOptions('host=s'     => \@poll_hosts,
-               'hostre=s'   => \$poll_hosts_re,
-               'arptable!'  => \$get_arptable,
-               'help|?'     => \$help,
-               'mactable!'  => \$get_mactable,
-               'maint'      => \$maint,
-               'quick'      => sub { $get_arptable = $get_mactable = 0; },
-               'arpservers' => \$list_arpservers,
-               'hosts'      => \$list_hosts,
-               'tasks=i'    => \$tasks_max,
-               'autoreg'    => \$autoreg,
-               'remove=s'   => \$cmd_remove_host,
-               'worklist'   => \$cmd_worklist,
-               'debug'      => \$ENV{'SPAM_DEBUG'}
-              )) {
-  print "\n"; help(); exit(1);
-}
-if(@ARGV) { print "Invalid arguments\n\n"; help(); exit(1); }
-if($help) {
-  help();
-  exit(0);
-}
-if($tasks_max < 0 || $tasks_max > 16) {
-  print "Number of tasks invalid\n\n";
-  exit(1);
-}
-if($list_arpservers || $list_hosts) {
-  $no_lock = 1;
-}
+my $cmd = SPAM::Cmdline->instance();
 
 #--- ensure single instance via lockfile -----------------------------------
 
-if(!$no_lock) {
+if(!$cmd->no_lock()) {
   if(-f "/tmp/spam.lock") {
     print "Another instance running, exiting\n";
     exit 1;
@@ -2354,7 +2291,7 @@ try {
 
 	#--- run maintenance when user told us to do so --------------------
 
-	if($maint) {
+	if($cmd->maintenance()) {
 	  tty_message("[main] Maintaining database (started)\n");
 	  my $e = maintenance();
 	  if($e) { die "$e\n"; }
@@ -2367,7 +2304,7 @@ try {
 	# Currently only single host removal, the hastname must match
 	# precisely
 
-	if($cmd_remove_host) {
+	if(my $cmd_remove_host = $cmd->remove_host()) {
 	  tty_message("[main] Removing host $cmd_remove_host (started)\n");
 	  my $e = sql_host_remove($cmd_remove_host);
 	  if($e) {
@@ -2390,7 +2327,7 @@ try {
           tty_message("[main] Loading list of switches (started)\n");
 	  if($e) { die "Cannot get switch list ($e)\n"; }
           tty_message("[main] Loading list of switches (finished)\n");
-          if($list_hosts) {
+          if($cmd->list_hosts()) {
             my $n = 0;
             print "\nDumping configured switches:\n\n";
             for my $k (sort keys %{$cfg->{host}}) {
@@ -2404,12 +2341,12 @@ try {
 
 	#--- retrieve list of arp servers ----------------------------------
 
-	if($get_arptable || $list_arpservers) {
+	if($cmd->arptable() || $cmd->list_arpservers()) {
           tty_message("[main] Loading list of arp servers (started)\n");
 	  my $e = cfg_arpservers_list_load();
 	  if($e) { die "Cannot get arp servers list ($e)\n"; }
           tty_message("[main] loading list of arp servers (finished)\n");
-          if($list_arpservers) {
+          if($cmd->list_arpservers()) {
             my $n = 0;
             print "\nDumping configured ARP servers:\n\n";
             for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->{arpserver}}) {
@@ -2446,16 +2383,17 @@ try {
 
 	my @work_list;
 	my $wl_idx = 0;
+	my $poll_hosts_re = $cmd->hostre();
 	foreach my $host (sort keys %{$cfg->{host}}) {
           if(
             (
-              @poll_hosts &&
-              grep { lc($host) eq lc($_); } @poll_hosts
+              @{$cmd->hosts()} &&
+              grep { lc($host) eq lc($_); } @{$cmd->hosts}
             ) || (
               $poll_hosts_re &&
               $host =~ /$poll_hosts_re/i
             ) || (
-              !@poll_hosts && !defined($poll_hosts_re)
+              !@{$cmd->hosts()} && !defined($poll_hosts_re)
             )
           ) {
             push(@work_list, [ 'host', $host, undef ]);
@@ -2465,13 +2403,13 @@ try {
 
 	#--- add arptable task to the work list
 
-	if($get_arptable) {
+	if($cmd->arptable()) {
 	  push(@work_list, [ 'arp', undef, undef ]);
 	}
 
         #--- --worklist option selected, only print the worklist and finish
 
-        if($cmd_worklist) {
+        if($cmd->list_worklist()) {
           printf("\nFollowing host would be scheduled for polling\n");
           printf(  "=============================================\n");
           for my $we (@work_list) {
@@ -2482,6 +2420,8 @@ try {
         }
 
 	#--- loop through all tasks ----------------------------------------
+
+	my $tasks_cur = 0;
 
 	while(defined(my $task = schedule_task(\@work_list))) {
           my $host = $task->[1];
@@ -2495,7 +2435,7 @@ try {
             $tasks_cur++;
             $task->[2] = $pid;
             tty_message("[main] Child $host (pid $pid) started\n");
-            if($tasks_cur >= $tasks_max) {
+            if($tasks_cur >= $cmd->tasks()) {
               my $cpid;
               if(($cpid = wait()) != -1) {
                 $tasks_cur--;
@@ -2516,7 +2456,7 @@ try {
         
             if($task->[0] eq 'host') {
               tty_message("[$host] Processing started\n");
-              if(!poll_host($host, $get_mactable)) {
+              if(!poll_host($host, $cmd->mactable())) {
 
 	      #--- find changes and update status table ---
 
@@ -2553,7 +2493,7 @@ try {
 
             #--- update mactable ---
 
-                if($get_mactable) {
+                if($cmd->mactable()) {
                   tty_message("[$host] Updating mactable (started)\n");
                   $e = sql_mactable_update($host);
                   if(defined $e) { print $e, "\n"; }
@@ -2565,7 +2505,7 @@ try {
 	    # designation AND have no associated outlet in porttable are inserted
             # there
 
-                if($autoreg) {
+                if($cmd->autoreg()) {
                   tty_message("[$host] Running auto-registration (started)\n");
                   sql_autoreg($host);
                   tty_message("[$host] Running auto-registration (finished)\n");
@@ -2629,6 +2569,6 @@ try {
 
 #--- release lock file ---
 
-if(!$no_lock) {
+if(!$cmd->no_lock()) {
   unlink("/tmp/spam.lock");
 }
