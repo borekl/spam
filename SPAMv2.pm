@@ -24,14 +24,8 @@ our @EXPORT = qw(
   dbinit
   dbconn
   dbdone
-  html_begin
-  html_end
-  html_fill_up
   load_config
-  period
   site_conv
-  speed_fmt
-  str_maxlen
   tty_message
   user_access_evaluate
   sql_find_user_group
@@ -72,75 +66,6 @@ my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
 sub load_config
 {
   return SPAM::Config->instance()->config();
-}
-
-
-#===========================================================================
-# Express time in seconds in NNdNNhNNm form
-#
-# Arguments: 1. Number of seconds
-# Returns:   1. Formatted string
-#===========================================================================
-
-sub period
-{
-  my ($p) = @_;
-  my ($d, $h, $m, $r);
-    
-  $d = $p / 86400;  $p %= 86400;
-  $h = $p / 3600;   $p %= 3600;
-  $m = $p / 60;
-          
-  if($d >= 1) { $m = 0; }
-  if($d >= 30) { $h = 0; }
-          
-  $r = '';
-  $r .= "${d}d" if $d;
-  $r .= "${h}h" if $h;
-  $r .= "${m}m" if $m;
-                  
-  return $r;
-}
-                    
-
-#===========================================================================
-# Fill a string given as an argument up with spaces to a given length. HTML
-# markups are not considered to be a part of the string as its length is
-# concerned! Resulting string is returned as a function value.
-#
-# Arguments: 1. String to be filled-up
-#            2. Desired length of resulting string
-# Returns:   1. Filled-up string
-#===========================================================================
-
-sub html_fill_up
-{
-  my ($s, $n) = @_;
-  my $q;
-  
-  $q = $s;
-  $q =~ s/\<.*?\>//g;
-
-  return $s . (" " x ($n - length($q)));
-}
-
-
-#===========================================================================
-# Convert raw speed in bytes per seconds to bit more condensed format
-# using M and G suffixes.
-#
-# Arguments: 1. Unsuffixed number
-# Returns:   1. Suffixed number
-#===========================================================================
-
-sub speed_fmt
-{
-  my ($speed) = @_;
-  
-  if($speed eq "10000000") { return "10M"; }
-  if($speed eq "100000000") { return "100M"; }
-  if($speed eq "1000000000") { return "1G"; }
-  return "?";
 }
 
 
@@ -233,44 +158,6 @@ sub dbconn
 
 
 #===========================================================================
-# Begins HTML page
-#
-# Arguments: 1. File descriptor
-#            2. HTML title
-#            3. optional CSS style definition file(s) (array reference)
-#===========================================================================
-
-sub html_begin
-{
-  my ($html, $title, $css) = @_;
-
-  print $html '<!doctype html>';
-  print $html "\n\n<html>\n\n";
-  print $html "<head>\n";
-  print $html "  <title>$title</title>\n";
-  foreach(@$css) {
-    print $html qq{  <link rel=stylesheet type="text/css" href="$_">\n};
-  }
-  print $html "</HEAD>\n\n";
-  print $html "<BODY>\n\n";
-}
-
-
-#===========================================================================
-# Ends HTML page
-#
-# Arguments: 1. File descriptor
-#===========================================================================
-
-sub html_end
-{
-  my ($html) = @_;
-
-  print $html "\n</BODY>\n</HTML>\n";
-}
-
-
-#===========================================================================
 # Displays message on TTY
 #
 # Arguments: 1. message
@@ -282,22 +169,6 @@ sub tty_message
 
   if(!defined $msg) { $msg = "done\n"; }
   printf($msg, @_) if -t STDOUT;
-}
-
-
-#===========================================================================
-# This function strips strings to given size and adds ellipsis.
-#===========================================================================
-
-sub str_maxlen
-{
-  my ($s, $n) = @_;
-
-  if(length($s) > $n) {
-    $s = substr($s, 0, $n - 3);
-    $s .= '...';
-  }
-  return $s;
 }
 
 
