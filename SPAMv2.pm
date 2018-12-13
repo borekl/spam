@@ -21,9 +21,6 @@ use SPAM::Config;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
-  dbinit
-  dbconn
-  dbdone
   load_config
   site_conv
   tty_message
@@ -50,9 +47,9 @@ our @EXPORT = qw(
 
 #--- configuration
 my $cfg;
+my $cfg2;
 
 #--- Database connection parameters ---
-my %dbconn;
 my %sites_cache;
 
 #--- configuration ---
@@ -67,95 +64,8 @@ sub load_config
 {
   my ($cfg_file) = @_;
 
-  return $cfg = SPAM::Config->instance(config_file => $cfg_file)->config();
-}
-
-
-#===========================================================================
-# Closes database connection and frees binding.
-#
-# Arguments: 1. Connection id
-#===========================================================================
-
-sub dbdone
-{
-  my ($dbid) = @_;
-
-  #--- sanitize input
-    
-  if(!defined $dbid) {
-    croak 'dbdone(): Undefined id passed in as an argument';
-  }
-  
-  #--- if not connected, do nothing
-  
-  return if !$dbconn{$dbid};
-  
-  #--- disconnect from db, forget the handle
-  
-  $dbconn{$dbid}->disconnect();
-  delete $dbconn{$dbid};
-}
-
-
-#===========================================================================
-# This is kept only for compatibility with the old SPAM version
-#===========================================================================
-
-sub dbinit
-{
-  my $dbid = $_[0];
-  $cfg->{'dbconn'}{$dbid} = {
-    'dbname' => $_[1],
-    'dbuser' => $_[2],
-    'dbpass' => $_[3],
-    'dbhost' => $_[4]
-  };
-}
-
-
-#===========================================================================
-# Function returns valid DBI database handle. If the
-# connection does not exist yet it tries to create one. If such attempt
-# is unsuccessful, undef is returned.
-#
-# Arguments: 1. Connection id
-# Returns:   1. DBI handle or undef or error message
-#===========================================================================
-
-sub dbconn
-{
-  my ($dbid) = @_;
-  
-  #--- sanitize input
-  
-  if(!defined $dbid) {
-    croak "dbconn(): Undefined id passed in as an argument";
-  }
-  
-  #--- if alread connected, just return the handle
-  
-  if(exists $dbconn{$dbid}) {
-    return $dbconn{$dbid};
-  }
-
-  #--- otherwise try to connect to the database
-  
-  my @dbd_src;
-  my $dbc = $cfg->{'dbconn'}{$dbid};
-  push(@dbd_src, 'dbi:Pg:dbname=' . $dbc->{'dbname'});
-  push(@dbd_src, 'host=' . $dbc->{'dbhost'}) if $dbc->{'dbhost'};
-  my $dbh = DBI->connect(
-    join(';', @dbd_src),
-    $dbc->{'dbuser'},
-    $dbc->{'dbpass'},
-    \%dbi_params
-  );
-  if(!ref($dbh)) {
-    return DBI::errstr();
-  }
-
-  return $dbconn{$dbid} = $dbh;
+  $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
+  return $cfg = $cfg2->config();
 }
 
 
@@ -203,7 +113,7 @@ sub site_conv
 sub user_access_evaluate
 {
   my ($user, $access) = @_;
-  my $c = dbconn('ondb');
+  my $c = $cfg2->get_dbi_handle('ondb');
   my ($sth, $r, $v);
   
   #--- sanitize arguments
@@ -241,7 +151,7 @@ sub user_access_evaluate
 sub sql_find_user_group
 {
   my ($user) = @_;
-  my $c = dbconn('ondb');
+  my $c = $cfg2->get_dbi_handle('ondb');
   my ($q, $r, $sth, $group);
 
   #--- sanitize arguments
@@ -362,7 +272,7 @@ sub compare_ports
 sub load_port_table
 {
   my ($r, $e);
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my %port2cp;
   
   if(!ref($dbh)) { return 'Database connection failed (spam)'; }
@@ -392,7 +302,7 @@ sub sql_sites
 {
   my $table = lc($_[0]);
   if(exists $sites_cache{$table}) { return $sites_cache{$table}; }
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my $q = "SELECT DISTINCT site FROM $table ORDER BY site ASC";
   my @result;
   
@@ -425,7 +335,7 @@ sub sql_sites
 sub sql_site_uses_cp
 {
   my $site = lc($_[0]);
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my $query = qq{SELECT site FROM out2cp GROUP BY site HAVING site = ?};
 
   if(!ref($dbh) || !$site) { return undef; }

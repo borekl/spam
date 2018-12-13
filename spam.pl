@@ -14,6 +14,7 @@
 # Run with --help to see command line options
 #===========================================================================
 
+use v5.10;
 use strict;
 use lib 'lib';
 use Getopt::Long;
@@ -34,6 +35,7 @@ $| = 1;
 #=== global variables ======================================================
 
 my $cfg;             # complete configuration holder (new)
+my $cfg2;            # SPAM::Config instance
 my $port2cp;         # switchport->CP mapping (from porttable)
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
@@ -51,7 +53,7 @@ my @known_platforms; # list of known platform codes
 
 sub cfg_switch_list_load
 {
-  my $dbh = dbconn('ondb');
+  my $dbh = $cfg2->get_dbi_handle('ondb');
   my ($r, $s, $cmty, $ip_addr);
 
   if(!ref($dbh)) { return 'Cannot connect to database (ondb)'; }
@@ -78,7 +80,7 @@ sub cfg_switch_list_load
 
 sub cfg_arpservers_list_load
 {
-  my $dbh = dbconn('ondb');
+  my $dbh = $cfg2->get_dbi_handle('ondb');
   my ($q, $r, $s, $cmty);
 
   if(!ref($dbh)) { return 'Cannot connect to database (ondb)'; }
@@ -213,7 +215,7 @@ sub swdata_status_get
 sub sql_load_status
 {
   my $host = shift;
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
   my $qry = 'SELECT %s FROM status WHERE host = ?';
@@ -256,7 +258,7 @@ sub sql_load_status
 sub sql_load_uptime
 {
   my $host = shift;
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
   my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
@@ -915,7 +917,7 @@ sub sql_status_update
 sub sql_hwinfo_update
 {
   my $host = shift;
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my $query;
   my $ret;
   my $sth;
@@ -1057,7 +1059,7 @@ sub sql_hwinfo_update
 sub sql_transaction
 {
   my $update = shift;
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my ($r, $rv);
   my $fh;         # debugging output filehandle
 
@@ -1150,7 +1152,7 @@ sub sql_mactable_update
 {
   my $host = shift;
   my $h = $swdata{$host}{'BRIDGE-MIB'};
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my $ret;
   my @update;              # update plan
   my %mac_current;         # contents of 'mactable'
@@ -1301,7 +1303,7 @@ sub sql_mactable_update
 
 sub sql_arptable_update
 {
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my %arp_current;
   my ($mac, $ret, @update, $q);
 
@@ -1518,7 +1520,7 @@ sub port_flag_pack
     && exists $hdata->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}
   ) {
     my %dot1x_flag;
-    my $s 
+    my $s
     = $hdata->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
     $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{'enum'};
     $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{'enum'};
@@ -1632,7 +1634,7 @@ sub port_flag_pack
 
 sub sql_get_vtp_masters_list
 {
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my ($r, @list, @list2);
 
   #--- pull data from database ---
@@ -1683,7 +1685,7 @@ sub sql_switch_info_update
 {
   my $host = shift;
   my $stat = $swdata{$host}{stats};
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
   my $rv;
@@ -1798,7 +1800,7 @@ sub sql_switch_info_update
 
 sub maintenance
 {
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my ($t, $r);
 
   #--- prepare
@@ -1970,7 +1972,7 @@ sub sql_save_snmp_object
 
   #--- other variables
 
-  my $dbh = dbconn('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my $cfg = load_config();
   my %stats = ( 'insert' => 0, 'update' => 0, 'delete' => 0 );
   my $err;                 # error message
@@ -2274,7 +2276,8 @@ try {
 	#--- load master configuration file --------------------------------
 
 	tty_message("[main] Loading master config (started)\n");
-	if(!ref($cfg = SPAM::Config->instance()->config())) {
+	$cfg2 = SPAM::Config->instance();
+	if(!ref($cfg = $cfg2->config())) {
 	  die "$cfg\n";
 	}
 	tty_message("[main] Loading master config (finished)\n");
@@ -2286,7 +2289,7 @@ try {
 
 	#--- bind to native database ---------------------------------------
 
-	if(!exists $cfg->{dbconn}{spam}) {
+	if(!exists $cfg2->config()->{dbconn}{spam}) {
 	  die "Database binding 'spam' not defined\n";
         }
 
@@ -2317,7 +2320,7 @@ try {
 
 	#--- bind to ondb database -----------------------------------------
 
-	if(!exists $cfg->{dbconn}{ondb}) {
+	if(!exists $cfg2->config()->{dbconn}{ondb}) {
 	  die "Database binding 'ondb' not defined\n";
         }
 
@@ -2454,7 +2457,7 @@ try {
         #--- child ---------------------------------------------------------
 
         #--- host processing
-        
+
             if($task->[0] eq 'host') {
               tty_message("[$host] Processing started\n");
               if(!poll_host($host, $cmd->mactable())) {

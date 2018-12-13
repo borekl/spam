@@ -69,8 +69,8 @@ BEGIN
   
   #--- database init
   
-  $dbh{'spam'} = $db_spam = dbconn('spamui');
-  $dbh{'ondb'} = $db_ondb = dbconn('ondbui');
+  $dbh{'spam'} = $db_spam = $cfg2->get_dbi_handle('spamui');
+  $dbh{'ondb'} = $db_ondb = $cfg2->get_dbi_handle('ondbui');
 }
 
 
