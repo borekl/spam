@@ -49,7 +49,7 @@ our @EXPORT = qw(
 #=== variables =============================================================
 
 #--- configuration
-my $cfg = SPAM::Config->instance()->config();
+my $cfg;
 
 #--- Database connection parameters ---
 my %dbconn;
@@ -65,7 +65,9 @@ my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
 
 sub load_config
 {
-  return SPAM::Config->instance()->config();
+  my ($cfg_file) = @_;
+
+  return $cfg = SPAM::Config->instance(config_file => $cfg_file)->config();
 }
 
 

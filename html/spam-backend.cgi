@@ -1,4 +1,4 @@
-#!/usr/bin/perl -I../
+#!/usr/bin/perl
 
 #=============================================================================
 # SWITCH PORTS ACTIVITY MONITOR -- BACKEND
@@ -17,6 +17,7 @@ use warnings;
 use integer;
 use utf8;
 use charnames ':full';
+use lib '../', '../lib';
 
 
 #=== modules =================================================================
@@ -28,11 +29,14 @@ use JSON::MaybeXS;
 use Data::Dumper;
 use Try::Tiny;
 
+use SPAM::Config;
+
 
 #=== globals =================================================================
 
 my $debug = JSON->false;    # debugging flag, is set acc. to user's ondb entry
 my $cfg;                    # configuration from spam.cfg
+my $cfg2;
 my $js;
 my %dbh;
 my ($db_ondb, $db_spam);
@@ -55,7 +59,8 @@ BEGIN
   my $cfg_file = sprintf(abs_path($0));
   $cfg_file =~ s/^(\/.+\/(?:prod|dev))\/.*$/$1/;
   $cfg_file = sprintf('%s/spam.cfg.json', $cfg_file);
-  $cfg = load_config($cfg_file);
+  $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
+  $cfg = load_config();
     
   #--- misc init
 
