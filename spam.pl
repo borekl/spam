@@ -311,12 +311,6 @@ sub poll_host
   my $s = $swdata{$host} = {};
   my $platform;
 
-  #--- skip excluded hosts -------------------------------------------------
-
-  if(grep(/^$host$/, @{$cfg->{'excludehost'}})) {
-    return 'Excluded host';
-  }
-
   #--- check if the hostname can be resolved
 
   if(!inet_aton($host)) {
