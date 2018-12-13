@@ -2617,7 +2617,7 @@ try {
 } catch {
   if($_ && $_ ne "OK\n") {
     if (! -t STDOUT) { print "spam: "; }
-    print $@;
+    print $_;
   }
 };
 
