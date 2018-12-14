@@ -1091,7 +1091,7 @@ sub sql_mactable_update
 {
   my $host = shift;
   my $h = $swdata{$host}{'BRIDGE-MIB'};
-  my $dbh = $cfg->get_dbi_handle('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my $ret;
   my @update;              # update plan
   my %mac_current;         # contents of 'mactable'
@@ -2318,7 +2318,6 @@ try {
 	my $wl_idx = 0;
 	my $poll_hosts_re = $cmd->hostre();
 	foreach my $host (sort keys %{$cfg2->hosts()}) {
-	  print "-->", $host, "\n";
           if(
             (
               @{$cmd->hosts()} &&
