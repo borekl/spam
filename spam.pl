@@ -44,31 +44,6 @@ my @known_platforms; # list of known platform codes
 
 
 #===========================================================================
-# This function loads list of ARP servers, ie. routers that are used as
-# source of mac->ip address mapping, from already connected database 'ondb'
-#===========================================================================
-
-sub cfg_arpservers_list_load
-{
-  my $dbh = $cfg2->get_dbi_handle('ondb');
-  my ($q, $r, $s, $cmty);
-
-  if(!ref($dbh)) { return 'Cannot connect to database (ondb)'; }
-  my $sth = $dbh->prepare('SELECT * FROM v_arpservers');
-  $r = $sth->execute();
-  if(!$r) {
-    return sprintf('Database query failed (ondb, %s)', $sth->errstr());
-  }
-  while(($s, $cmty) = $sth->fetchrow_array()) {
-    if(!$cmty) { $cmty = undef; }
-    push(@{$cfg->{arpserver}}, [$s, $cmty])
-      unless scalar(grep { $_->[0] eq $s } @{$cfg->{arpserver}}) != 0;
-  }
-  return undef;
-}
-
-
-#===========================================================================
 # Store swdata{HOST}{dbStatus} row.
 #===========================================================================
 
@@ -2307,13 +2282,10 @@ try {
 
 	if($cmd->arptable() || $cmd->list_arpservers()) {
           tty_message("[main] Loading list of arp servers (started)\n");
-	  my $e = cfg_arpservers_list_load();
-	  if($e) { die "Cannot get arp servers list ($e)\n"; }
-          tty_message("[main] loading list of arp servers (finished)\n");
           if($cmd->list_arpservers()) {
             my $n = 0;
             print "\nDumping configured ARP servers:\n\n";
-            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->{arpserver}}) {
+            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg2->arpservers()}) {
               print $k->[0], "\n";
               $n++;
             }
@@ -2482,7 +2454,7 @@ try {
             elsif($task->[0] eq 'arp') {
               tty_message("[arptable] Updating arp table (started)\n");
               my $r = snmp_get_arptable(
-                $cfg->{'arpserver'}, snmp_community(),
+                $cfg2->arpservers(), snmp_community(),
                 sub {
                   tty_message("[arptable] Retrieved arp table from $_[0]\n");
                 }

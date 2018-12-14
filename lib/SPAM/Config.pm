@@ -58,6 +58,15 @@ has hosts => (
   builder => '_load_hosts',
 );
 
+# list of arp servers
+# this is the list of routers SPAM should talk to to retrieve ARP information
+# for mapping IPs to MACs
+
+has arpservers => (
+  is => 'lazy',
+  builder => '_load_arpservers',
+);
+
 
 
 #=============================================================================
@@ -188,6 +197,37 @@ sub _load_hosts
   }
 
   return \%hosts;
+}
+
+
+#=============================================================================
+# Load list of routers from backend database.
+#=============================================================================
+
+sub _load_arpservers
+{
+  my ($self) = @_;
+
+  my $dbh = $self->get_dbi_handle('ondb');
+
+  if(!ref $dbh) { die 'Database connection failed (ondb)'; }
+
+  # the v_arpservers view returns tuples (hostname, community)
+
+  my $sth = $dbh->prepare('SELECT * FROM v_arpservers');
+  my $r = $sth->execute();
+  if(!$r) {
+    die 'Failed to load list of arpservers from database';
+  }
+
+  my @arpservers;
+  while(my ($s, $cmty) = $sth->fetchrow_array()) {
+    push(@arpservers, [$s, $cmty])
+      unless scalar(grep { $_->[0] eq $s } @arpservers) != 0;
+  }
+
+  return \@arpservers;
+
 }
 
 
