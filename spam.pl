@@ -2359,7 +2359,7 @@ try {
 	#--- close connection to ondb database -----------------------------
 
 	tty_message("[main] Closing connection to ondb database\n");
-	dbdone('ondb');
+	$cfg2->close_dbi_handle('ondb');
 
 	#--- load port and outlet tables -----------------------------------
 
@@ -2370,12 +2370,9 @@ try {
 	undef $ret;
 	tty_message("[main] Loading port table (finished)\n");
 
-	#--- disconnect parent database handle -----------------------------
-	# I'm not sure about behaviour of DBI database handles when using
-	# fork(), so let's play safe here. The handle will be automatically
-	# reopened by SPAMv2 library.
+	#--- disconnect parent database handle before forking --------------
 
-	dbdone('spam');
+	$cfg2->close_dbi_handle('spam');
 
 	#--- create work list of hosts that are to be processed ------------
 

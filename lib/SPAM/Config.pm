@@ -127,6 +127,29 @@ sub get_dbi_handle
 }
 
 
+#=============================================================================
+# Close a DBI handle previously opened with get_dbi_handle().
+#=============================================================================
+
+sub close_dbi_handle
+{
+  my ($self, $dbid) = @_;
+
+  #--- is the handle actually open?
+
+  return if !exists $self->dbconn()->{$dbid};
+
+  #--- close the handle
+
+  $self->dbconn()->{$dbid}->disconnect();
+  delete $self->dbconn()->{$dbid};
+
+  #--- finish
+
+  return $self;
+}
+
+
 
 #=============================================================================
 
