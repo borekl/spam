@@ -2271,7 +2271,7 @@ try {
 
 	tty_message("[main] Loading master config (started)\n");
 	$cfg2 = SPAM::Config->instance();
-	if(!ref($cfg = $cfg2->config())) {
+	if(!ref($cfg = load_config())) {
 	  die "$cfg\n";
 	}
 	tty_message("[main] Loading master config (finished)\n");

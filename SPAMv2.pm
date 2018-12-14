@@ -64,7 +64,9 @@ sub load_config
 {
   my ($cfg_file) = @_;
 
-  $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
+  if(!ref($cfg2)) {
+    $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
+  }
   return $cfg = $cfg2->config();
 }
 
