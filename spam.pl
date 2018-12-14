@@ -44,36 +44,6 @@ my @known_platforms; # list of known platform codes
 
 
 #===========================================================================
-# This function loads list of switches from external database that must
-# be already bound under name 'ondb'.
-#
-# Arguments: -none-
-# Returns:   undef on sucess, error message otherwise
-#===========================================================================
-
-sub cfg_switch_list_load
-{
-  my $dbh = $cfg2->get_dbi_handle('ondb');
-  my ($r, $s, $cmty, $ip_addr);
-
-  if(!ref($dbh)) { return 'Cannot connect to database (ondb)'; }
-  my $sth = $dbh->prepare('SELECT * FROM v_switchlist');
-  $r = $sth->execute();
-  if(!$r) {
-    return sprintf('Database query failed (ondb, %s)', $sth->errstr());
-  }
-  # FIXME: We're modifying $cfg which is plain wrong. $cfg should really
-  # be immutable
-  while(($s, $cmty, $ip_addr) = $sth->fetchrow_array()) {
-    if(!$cmty) { $cmty = undef; }
-    $cfg->{host}{lc($s)}{community} = $cmty;
-    $cfg->{host}{lc($s)}{ip} = $ip_addr;
-  }
-  return undef;
-}
-
-
-#===========================================================================
 # This function loads list of ARP servers, ie. routers that are used as
 # source of mac->ip address mapping, from already connected database 'ondb'
 #===========================================================================
@@ -2321,14 +2291,10 @@ try {
 	#--- retrieve list of switches -------------------------------------
 
 	{
-	  my $e = cfg_switch_list_load;
-          tty_message("[main] Loading list of switches (started)\n");
-	  if($e) { die "Cannot get switch list ($e)\n"; }
-          tty_message("[main] Loading list of switches (finished)\n");
           if($cmd->list_hosts()) {
             my $n = 0;
             print "\nDumping configured switches:\n\n";
-            for my $k (sort keys %{$cfg->{host}}) {
+            for my $k (sort keys %{$cfg2->hosts()}) {
               print $k, "\n";
               $n++;
             }
@@ -2379,7 +2345,8 @@ try {
 	my @work_list;
 	my $wl_idx = 0;
 	my $poll_hosts_re = $cmd->hostre();
-	foreach my $host (sort keys %{$cfg->{host}}) {
+	foreach my $host (sort keys %{$cfg2->hosts()}) {
+	  print "-->", $host, "\n";
           if(
             (
               @{$cmd->hosts()} &&

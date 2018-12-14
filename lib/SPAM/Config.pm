@@ -49,6 +49,15 @@ has dbconn => (
   default => sub { {} },
 );
 
+# list of switches
+# this is the list of switches SPAM should talk to, retrieved from backend
+# database
+
+has hosts => (
+  is => 'lazy',
+  builder => '_load_hosts',
+);
+
 
 
 #=============================================================================
@@ -147,6 +156,38 @@ sub close_dbi_handle
   #--- finish
 
   return $self;
+}
+
+
+#=============================================================================
+# Load list of hosts (switches) from backend database.
+#=============================================================================
+
+sub _load_hosts
+{
+  my ($self) = @_;
+  my $dbh = $self->get_dbi_handle('ondb');
+
+  if(!ref $dbh) { die 'Database connection failed (ondb)'; }
+
+  # the v_switchlist view returns tuples (hostname, community, ip_addr)
+
+  my $sth = $dbh->prepare('SELECT * FROM v_switchlist');
+  my $r = $sth->execute();
+  if(!$r) {
+    die 'Failed to load list of switches from database';
+  }
+
+  # the way the info is stored is the same as the old $cfg->{'host'} hash
+
+  my %hosts;
+  while(my $row = $sth->fetchrow_hashref()) {
+    my $h = lc $row->{'hostname'};
+    $hosts{$h}{'community'} = $row->{'community'};
+    $hosts{$h}{'ip'} = $row->{'ip_addr'};
+  }
+
+  return \%hosts;
 }
 
 
