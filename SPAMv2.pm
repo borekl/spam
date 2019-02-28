@@ -24,7 +24,6 @@ our @EXPORT = qw(
   load_config
   site_conv
   tty_message
-  user_access_evaluate
   sql_find_user_group
   compare_ports
   load_port_table
@@ -100,43 +99,6 @@ sub site_conv
   my $site = $cfg->{'siteconv'}{$hc};
   if(!$site) { $site = $hc; }
   return $site;
-}
-
-
-#===========================================================================
-# Evaluate user's access, this function does checks for overrides.
-# 
-# Arguments: 1. user id
-#            2. access right name
-# Returns:   1. undef on success, error message otherwise
-#            2. 0|1 -> fail|pass
-#===========================================================================
-
-sub user_access_evaluate
-{
-  my ($user, $access) = @_;
-  my $c = $cfg2->get_dbi_handle('ondb');
-  my ($sth, $r, $v);
-  
-  #--- sanitize arguments
-
-  if(!$user || !$access) { return 'Required argument missing'; }
-  $user = lc $user;
-  $access = lc $access;
-  
-  #--- ensure database connection
-  
-  if(!ref($c)) { return 'Database connection failed (ondb)'; }
-  
-  #--- query
-  
-  $sth = $c->prepare(q{SELECT authorize_user(?, 'spam', ?)::int});
-  $r = $sth->execute($user, $access);
-  if(!$r) {
-    return 'Database query failed (' . $c->errstr() . ')';
-  }
-  ($v) = $sth->fetchrow_array();
-  return (undef, $v);
 }
 
 
