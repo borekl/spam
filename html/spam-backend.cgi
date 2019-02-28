@@ -2129,7 +2129,7 @@ my $auth = ONdb::Authorize->new(
 );
 
 if($#ARGV == -1) {
-  $debug = js_bool($debug) if $auth->authorize('debug');
+  $debug = js_bool(1) if $auth->authorize('debug');
   $js->pretty(1) if $debug;
 }
 
