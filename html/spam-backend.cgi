@@ -27,6 +27,7 @@ use SPAMv2;
 use JSON::MaybeXS;
 use Data::Dumper;
 use Try::Tiny;
+use ONdb::Authorize;
 
 
 #=== globals =================================================================
@@ -2114,9 +2115,16 @@ if(!ref($cfg)) {
 
 #--- debugging mode ----------------------------------------------------------
 
+my $auth = ONdb::Authorize->new(
+  dbh => dbconn('ondbui'),
+  user => $ENV{'REMOTE_USER'},
+  tab_assign => 'assign_new',
+  tab_access => 'access_new',
+  system => 'spam',
+);
+
 if($#ARGV == -1) {
-  (undef, $debug) = user_access_evaluate($ENV{'REMOTE_USER'}, 'debug');
-  $debug = js_bool($debug);
+  $debug = js_bool($debug) if $auth->authorize('debug');
   $js->pretty(1) if $debug;
 }
 
