@@ -2121,7 +2121,7 @@ if(!ref($cfg)) {
 #--- debugging mode ----------------------------------------------------------
 
 my $auth = ONdb::Authorize->new(
-  dbh => dbconn('ondbui'),
+  dbh => $dbh{'ondb'},
   user => $ENV{'REMOTE_USER'},
   tab_assign => 'assign_new',
   tab_access => 'access_new',
