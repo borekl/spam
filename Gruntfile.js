@@ -31,6 +31,12 @@ module.exports = function(grunt)
    },
    
    copy: {
+     common: {
+       files: [
+         { nonull: true, src: 'lib/SPAM/Cmdline.pm', dest: '../prod/lib/SPAM/Cmdline.pm' },
+         { nonull: true, src: 'lib/SPAM/Config.pm', dest: '../prod/lib/SPAM/Config.pm' },
+       ]
+     },
      www: {
        files: [
          { nonull: true, src: 'html/bundle.js', dest: '../prod/html/bundle.js' },
@@ -64,7 +70,7 @@ module.exports = function(grunt)
  grunt.loadNpmTasks('grunt-sed');
 
  grunt.registerTask('default', [ 'dustjs', 'browserify:dev' ]);
- grunt.registerTask('dist-www', [ 'dustjs', 'browserify:main', 'copy:www', 'sed:www' ]);
- grunt.registerTask('dist-coll', [ 'copy:coll' ]);
- grunt.registerTask('dist', [  'dustjs', 'browserify:main', 'copy:www', 'sed:www', 'copy:coll' ]);
+ grunt.registerTask('dist-www', [ 'dustjs', 'browserify:main', 'copy:common', 'copy:www', 'sed:www' ]);
+ grunt.registerTask('dist-coll', [ 'copy:common', 'copy:coll' ]);
+ grunt.registerTask('dist', [  'dustjs', 'browserify:main', 'copy:common', 'copy:www', 'sed:www', 'copy:coll' ]);
 }
