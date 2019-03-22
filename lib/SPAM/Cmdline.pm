@@ -112,7 +112,7 @@ sub BUILD
   if(!GetOptions(
     'host=s'     => sub { $self->_add_host(split(/,/, $_[1])) },
     'hostre=s'   => sub { $self->_set_hostre($_[1]) },
-    'arptable!'  => sub { $self->_set_arpatable($_[1]) },
+    'arptable!'  => sub { $self->_set_arptable($_[1]) },
     'mactable!'  => sub { $self->_set_mactable($_[1]) },
     'maint'      => sub { $self->_set_maintenance($_[1]) },
     'quick'      => sub { $self->_set_mactable(0); $self->_set_arptable(0); },
