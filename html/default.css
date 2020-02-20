@@ -645,6 +645,10 @@ span.pi-rate-10g {
   background-color : #c06;
 }
 
+span.pi-rate-100g {
+  background-color : #9600cc;
+}
+
 span.pi-rate-unk {
   background-color : red;
 }

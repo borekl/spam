@@ -29,16 +29,15 @@
   <br>
 
   {!--- link rate !}
-  {@eq key=status value=1}
-    {@select key=rate}
-      {@eq value=10}<span class="pi-block pi-default">10M</span>{/eq}
-      {@eq value=100}<span class="pi-block pi-rate-100m">100M</span>{/eq}
-      {@eq value=1000}<span class="pi-block pi-rate-1g">1G</span>{/eq}
-      {@eq value=4294}<span class="pi-block pi-rate-10g">10G</span>{/eq}
-      {@default}<span class="pi-block pi-rate-unk">?</span>{/default}
-    {/select}
-    {~s}
-  {/eq}
+  {@select key=rate}
+    {@eq value=10}<span class="pi-block pi-default">10M</span>{/eq}
+    {@eq value=100}<span class="pi-block pi-rate-100m">100M</span>{/eq}
+    {@eq value=1000}<span class="pi-block pi-rate-1g">1G</span>{/eq}
+    {@eq value=10000}<span class="pi-block pi-rate-10g">10G</span>{/eq}
+    {@eq value=100000}<span class="pi-block pi-rate-100g">100G</span>{/eq}
+    {@default}<span class="pi-block pi-rate-unk">?</span>{/default}
+  {/select}
+  {~s}
 
   {!--- duplex !}
   {@eq key=duplex value=2}<span class="pi-block pi-full">full</span>{/eq}
