@@ -15,7 +15,7 @@ CREATE TABLE status (
   vlans       bit(4096),
   descr       character varying(64),
   duplex      smallint,
-  rate        smallint,
+  rate        bigint,
   flags       smallint,
   adminstatus boolean,
   errdis      boolean,

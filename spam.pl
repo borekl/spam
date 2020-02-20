@@ -626,8 +626,14 @@ sub find_changes
           $ifXTable->{'ifAlias'}{'value'} ],
         [ 'portDuplex', 'n', $old->[7],
           $portTable->{'portDuplex'}{'value'} ],
-        [ 'ifSpeed', 'n', $old->[8],
-          ($ifTable->{'ifSpeed'}{'value'} / 1000000) ],
+        [ 'ifSpeed', 'n', $old->[8], (
+            exists $ifXTable->{'ifHighSpeed'}{'value'}
+            ?
+            $ifXTable->{'ifHighSpeed'}{'value'}
+            :
+            int($ifTable->{'ifSpeed'}{'value'} / 1000000)
+          )
+        ],
         [ 'port_flags', 'n', $old->[9],
           port_flag_pack($h, $if) ],
         [ 'ifAdminStatus', 'n', $old->[10],
@@ -715,6 +721,23 @@ sub sql_status_update
   my $reboot_flag = 0;
   my (@fields, @vals, @bind);
 
+  #--- aux function to handle ifSpeed/ifHighSpeed
+
+  # ifSpeed only works up to 40 Gbps), so we prefer ifHighSpeed whenever it
+  # is available
+
+  my $ifrate = sub {
+    my $if = shift;
+    my $ifHighSpeed = $hdata->{'IF-MIB'}{'ifXTable'}{$if}{'ifHighSpeed'}{'value'};
+    my $ifSpeed = $hdata->{'IF-MIB'}{'ifTable'}{$if}{'ifSpeed'}{'value'};
+
+    if($ifHighSpeed) {
+      return $ifHighSpeed;
+    } else {
+      return int($ifSpeed / 1000000);
+    }
+  };
+
   #--- did switch reboot in-between SPAM runs?
 
   my $bt_now  = $swdata{$host}{stats}{sysuptime};
@@ -761,7 +784,8 @@ sub sql_status_update
         get_trunk_vlans_bitstring($host, $if),
         $ifXTable->{'ifAlias'}{'value'},
         $portTable->{'portDuplex'}{'value'},
-        ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
+        #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
+        $ifrate->($if),
         port_flag_pack($hdata, $if),
         $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
@@ -796,7 +820,8 @@ sub sql_status_update
           get_trunk_vlans_bitstring($host, $if),
           $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
           $portTable->{'portDuplex'}{'value'},
-          ($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
+          #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
+          $ifrate->($if),
           port_flag_pack($hdata, $if),
           $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
