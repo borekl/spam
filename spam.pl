@@ -14,7 +14,6 @@
 # Run with --help to see command line options
 #===========================================================================
 
-use v5.10;
 use strict;
 use lib 'lib';
 use Getopt::Long;
