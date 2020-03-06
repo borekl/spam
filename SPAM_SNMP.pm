@@ -9,8 +9,12 @@
 
 package SPAM_SNMP;
 require Exporter;
+use lib 'lib';
 use SPAMv2 qw(load_config file_lineread hash_create_index);
+use SPAM::Entity;
+use SPAM::EntityTree;
 use Data::Dumper;
+use Carp;
 
 use warnings;
 use strict;
@@ -24,6 +28,7 @@ our (@ISA, @EXPORT);
   snmp_get_arptable
   snmp_get_object
   snmp_get_active_vlans
+  build_entity_tree
 );
 
 
@@ -299,6 +304,38 @@ sub snmp_entity_to_hwinfo
   #--- finish
 
   return \%hw;
+}
+
+
+#=============================================================================
+# Build hash-tree that represents the entPhysicalTable returned by host. The
+# elements of the tree are SPAM::Entity instances
+#=============================================================================
+
+sub build_entity_tree
+{
+  my $s = shift; # swdata
+
+  #--- ensure the necessary entries exist in $swdata
+
+  croak 'No ENTITY-MIB entry found in swdata'
+    if !exists $s->{'ENTITY-MIB'};
+  croak 'No ENTITY-MIB::entPhysicalTable found in swdata'
+    if !exists $s->{'ENTITY-MIB'}{'entPhysicalTable'};
+
+  #--- convert the ENTITY-MIB into an array of SPAM::Entity instances
+
+  my $ePT = $s->{'ENTITY-MIB'}{'entPhysicalTable'};
+  my @entries = map {
+    SPAM::Entity->new(
+      %{$ePT->{$_}},
+      entPhysicalIndex => $_
+    )
+  } keys %$ePT;
+
+  #--- build and return the tree
+
+  return SPAM::EntityTree->new(entities => \@entries);
 }
 
 
