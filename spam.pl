@@ -2105,7 +2105,7 @@ sub sql_save_snmp_object
                 join(' AND ', map { "$_ = ?" } ('host', @object_index))
               ),
               ( map {
-                exists $leaf->{$_} ? $leaf->{$_}{'value'} : undef
+                $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
               } @{$object_config->{'columns'}} ),
               $host, @idx,
             ]
@@ -2134,7 +2134,7 @@ sub sql_save_snmp_object
               ),
               $host, 't', @idx,
               map {
-                exists $leaf->{$_} ? $leaf->{$_}{'value'} : undef
+                $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
               } @{$object_config->{'columns'}}
             ]
           );
