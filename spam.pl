@@ -2102,7 +2102,7 @@ sub sql_save_snmp_object
                   'fresh = true',
                   map { "$_ = ?" } @{$object_config->{'columns'}}
                 )),
-                join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
+                join(' AND ', map { "$_ = ?" } ('host', @object_index))
               ),
               ( map {
                 exists $leaf->{$_} ? $leaf->{$_}{'value'} : undef
