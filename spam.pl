@@ -14,7 +14,6 @@
 # Run with --help to see command line options
 #===========================================================================
 
-use v5.10;
 use strict;
 use lib 'lib';
 use Getopt::Long;
@@ -1984,6 +1983,15 @@ sub sql_save_snmp_object
     }
 
   #--- find the configuration object
+
+  # see "mibs" section in configuration file for reference on how are MIB
+  # objects configured; the short explanation is that there's an array of MIB
+  # configs, that contain an array of MIB objects (one MIB can specify multiple
+  # objects) -- here we need to find configuration one specified object. The
+  # result of this search are two variables:
+  #
+  # $object_config (hashref) holds specific object configuration
+  # @object_index (array) holds list of index fields
 
     my $object_config;
     FINDCFG: for my $mib_cfg (@{$cfg->{'mibs'}}) {

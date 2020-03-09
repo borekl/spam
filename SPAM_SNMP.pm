@@ -230,7 +230,7 @@ sub snmp_get_arptable
 
 #==========================================================================
 # This function retrieves hwinfo (processed select information from
-# entPhysicalTable) and stores it into $swdata{hwinfo}. This function is 
+# entPhysicalTable) and stores it into $swdata{hwinfo}. This function is
 # a stopgap designed to be fully compatible with previous function that
 # worked in the old way.
 #==========================================================================
@@ -242,7 +242,7 @@ sub snmp_entity_to_hwinfo
   my %hw;
   my $cidx = 1000;     # incremental index for non-module components
 
-  #--- iterate ver entPhysicalTable 
+  #--- iterate ver entPhysicalTable
 
   for my $idx (sort { $a <=> $b } keys %{$ent->{'entPhysicalTable'}}) {
     my $pt = $ent->{'entPhysicalTable'}{$idx};
