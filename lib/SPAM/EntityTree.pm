@@ -96,7 +96,20 @@ sub BUILD
 
 sub traverse
 {
-  my ($self, $cb) = @_;
+  my ($self, @arg) = @_;
+
+  #--- process arguments
+
+  my $cb = shift @arg if @arg % 2;
+  my %arg = @arg;
+
+  my $depth = $arg{'depth'} // undef;
+  my $start = $arg{'start'} // $self->root;
+  $cb    = $arg{'callback'} if exists $arg{'callback'};
+
+  return if !$cb;
+
+  #--- perform the traversal
 
   sub {
     my ($node, $level) = @_;
@@ -106,9 +119,9 @@ sub traverse
         $a->entPhysicalIndex <=> $b->entPhysicalIndex
       } @{$node->children}
     ) {
-      __SUB__->($c, $level + 1);
+      __SUB__->($c, $level + 1) if !defined $depth || $level < $depth;
     }
-  }->($self->root, 0);
+  }->($start, 0);
 }
 
 
