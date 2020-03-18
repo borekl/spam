@@ -326,10 +326,12 @@ sub build_entity_tree
   #--- convert the ENTITY-MIB into an array of SPAM::Entity instances
 
   my $ePT = $s->{'ENTITY-MIB'}{'entPhysicalTable'};
+  my $eAMT = $s->{'ENTITY-MIB'}{'entAliasMappingTable'} // undef;
   my @entries = map {
     SPAM::Entity->new(
       %{$ePT->{$_}},
-      entPhysicalIndex => $_
+      entPhysicalIndex => $_,
+      ifIndex => $eAMT->{$_}{'0'}{'entAliasMappingIdentifier'}{'value'} // undef,
     )
   } keys %$ePT;
 

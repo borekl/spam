@@ -52,6 +52,10 @@ has entPhysicalIsFRU        => ( is => 'ro' );
 has entPhysicalMfgDate      => ( is => 'ro' );
 has entPhysicalUris         => ( is => 'ro' );
 
+# ifIndex, if it is known (through entAliasMappingTable)
+
+has ifIndex                 => ( is => 'ro' );
+
 # process arguments // if argument value is a hashref, we look if the hash
 # has 'value' or 'enum' keys; if that is the case, we make the argument value
 # that of 'enum' or 'value' (in that order of preference)
