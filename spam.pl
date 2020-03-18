@@ -531,6 +531,12 @@ sub poll_host
   $swdata{$host}{'hw-tree'} = build_entity_tree($swdata{$host});
   $swdata{$host}{'hw'} = snmp_entity_to_hwinfo($swdata{$host});
 
+  if($ENV{'SPAM_DEBUG'}) {
+    open(my $fh, '>', "debug.hwinfo.$$.log") || die;
+    print $fh Dumper($swdata{$host}{'hw'});
+    close($fh);
+  }
+
   #--- dump swstat and entity table
 
   if($ENV{'SPAM_DEBUG'}) {
@@ -540,15 +546,16 @@ sub poll_host
 
     if($swdata{$host}{'hw-tree'}) {
       open(my $fh, '>', "debug.entities.$$.log") || die;
+      print $fh "entity index         | if     | class        | pos | name\n";
+      print $fh "---------------------+--------+--------------+-----+---------------------------\n";
       $swdata{$host}{'hw-tree'}->traverse(sub {
         my ($node, $level) = @_;
-        printf $fh "%s%d | %s | %d | %s (%s)\n",
-          '  ' x $level,
-          $node->entPhysicalIndex,
+        printf $fh "%-20s | %6s | %-12s | %3d | %s\n",
+          ('  ' x $level) . $node->entPhysicalIndex,
+          $node->ifIndex // '',
           $node->entPhysicalClass,
           $node->entPhysicalParentRelPos,
-          $node->entPhysicalName,
-          $node->entPhysicalDescr;
+          $node->entPhysicalName;
       });
       close($fh);
     }
