@@ -423,6 +423,24 @@ sub snmp_value_parse
     $re{'value'} = $2;
   }
 
+  #--- OID
+
+  elsif($value =~ /
+    ^OID:
+    \s+
+    ([\w-]+)            # 1. MIB name
+    ::
+    (\w+)               # 2. column name
+    (\[ [\d\[\]]+ \])   # 3. index
+    $
+  /x) {
+    my @value = grep { length } split(/[\[\]]+/, $3);
+    $re{'type'} = 'OID';
+    $re{'mib'} = $1;
+    $re{'column'} = $2;
+    $re{'value'} = @value == 1 ? $value[0] : \@value;
+  }
+
   #--- generic type:value
 
   elsif($value =~ /^(\w+): (.*)$/) {
