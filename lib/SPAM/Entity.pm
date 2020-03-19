@@ -79,7 +79,10 @@ around BUILDARGS => sub {
   return $args;
 };
 
-# add a new child
+
+#------------------------------------------------------------------------------
+# Add a new child entity
+#------------------------------------------------------------------------------
 
 sub add_child
 {
@@ -98,5 +101,87 @@ sub add_child
 
   return @children;
 }
+
+
+#------------------------------------------------------------------------------
+# Traverse the ancestor chain
+#------------------------------------------------------------------------------
+
+sub traverse_parents
+{
+  my ($self, $cb) = @_;
+  my $parent = $self->parent;
+
+  while($parent) {
+    $cb->($parent);
+    $parent = $parent->parent;
+  }
+}
+
+
+#------------------------------------------------------------------------------
+# Return list of ancestors (from closes to furthest), optionally filtered with
+# a callback.
+#------------------------------------------------------------------------------
+
+sub ancestors
+{
+  my ($self, $cb) = @_;
+  my @ancestors;
+
+  $self->traverse_parents(sub {
+    push(@ancestors, $_[0]) if !$cb || $cb->($_[0]);
+  });
+
+  return @ancestors
+}
+
+
+#------------------------------------------------------------------------------
+# Return list of entities filtered from the chain of ancestors by
+# entPhysicalClass field.
+#------------------------------------------------------------------------------
+
+sub ancestors_by_class
+{
+  my ($self, $class) = @_;
+
+  return $self->ancestors(sub { $_[0]->entPhysicalClass eq $class});
+}
+
+
+#------------------------------------------------------------------------------
+# Return chassis number (or undef if not found)
+#------------------------------------------------------------------------------
+
+sub chassis_no
+{
+  my ($self) = @_;
+
+  my ($re) = $self->ancestors_by_class('chassis');
+  return $re->entPhysicalParentRelPos // undef;
+}
+
+
+#------------------------------------------------------------------------------
+# Return display string for current entry (intended for debugging)
+#------------------------------------------------------------------------------
+
+sub disp
+{
+  my ($self) = @_;
+
+  return sprintf
+    'idx=%d pos=%d name="%s" model="%s" sn="%s" hw="%s" fw="%s" sw="%s"',
+    $self->entPhysicalIndex,
+    $self->entPhysicalParentRelPos // 0,
+    $self->entPhysicalName // '',
+    $self->entPhysicalModelName // '',
+    $self->entPhysicalSerialNum // '',
+    $self->entPhysicalHardwareRev // '',
+    $self->entPhysicalFirmwareRev // '',
+    $self->entPhysicalSoftwareRev // '';
+}
+
 
 1;

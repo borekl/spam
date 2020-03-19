@@ -89,9 +89,13 @@ sub BUILD
 }
 
 #------------------------------------------------------------------------------
-# Tree traversal utility function. The callback gets two arguments:
-# SNMP::Entity instance ref and tree level (root being level 0, root children
-# level 1 etc.)
+# Tree traversal utility function. The arguments in the form of hash are
+# 'callback', 'depth' and 'start'. The latter two are optional. The callback
+# argument can also be supplied outside of the argument has, in that case it
+# must be the first argument.
+#
+# The callback gets two arguments:  SNMP::Entity instance ref and tree level
+# (root being level 0, root children level 1 etc.).
 #------------------------------------------------------------------------------
 
 sub traverse
@@ -105,7 +109,7 @@ sub traverse
 
   my $depth = $arg{'depth'} // undef;
   my $start = $arg{'start'} // $self->root;
-  $cb    = $arg{'callback'} if exists $arg{'callback'};
+  $cb = $arg{'callback'} if exists $arg{'callback'};
 
   return if !$cb;
 
@@ -122,6 +126,113 @@ sub traverse
       __SUB__->($c, $level + 1) if !defined $depth || $level < $depth;
     }
   }->($start, 0);
+}
+
+
+#------------------------------------------------------------------------------
+# Function to compile flat list of SPAM::Entity refs based on callback result
+# and additional query parameters. Arguments are given as a hash. Callback
+# argument can also be given as the first argument, or omitted completely. All
+# arguments that are not callback are passed verbatim to the traverse()
+# function.
+#------------------------------------------------------------------------------
+
+sub query
+{
+  my ($self, @args) = @_;
+  my @result;
+
+  #--- process arguments
+
+  my $cb = shift @args if @args % 2;
+  my %args = @args;
+  if(exists $args{'callback'}) {
+    $cb = $args{'callback'} ;
+  }
+  delete $args{'callback'} if $cb && exists $args{'callback'};
+
+  #--- perform the query
+
+  $self->traverse(sub {
+    my $entry = shift;
+    push(@result, $entry) if !$cb || $cb->($entry);
+  }, %args);
+
+  return @result;
+}
+
+
+#------------------------------------------------------------------------------
+# Return a list of chassis entities. We are assuming that chassis is either the
+# root entity or one level below (in case of stacks).
+#------------------------------------------------------------------------------
+
+sub chassis
+{
+  my ($self) = @_;
+
+  return $self->query(sub {
+    $_[0]->entPhysicalClass eq 'chassis'
+  }, depth => 1);
+}
+
+
+#------------------------------------------------------------------------------
+# Return a list of power supplies' entities.
+#------------------------------------------------------------------------------
+
+sub power_supplies
+{
+  my ($self) = @_;
+
+  return $self->query(sub {
+    $_[0]->entPhysicalClass eq 'powerSupply'
+  });
+}
+
+
+#------------------------------------------------------------------------------
+# Return a list of linecards' entities.
+#------------------------------------------------------------------------------
+
+sub linecards
+{
+  my ($self) = @_;
+
+  return $self->query(sub {
+    $_[0]->entPhysicalClass eq 'module'
+    && $_[0]->parent
+    && $_[0]->parent->parent
+    && $_[0]->parent->parent->entPhysicalClass eq 'chassis'
+  });
+}
+
+
+#------------------------------------------------------------------------------
+# Return a list of power supplies' entities.
+#------------------------------------------------------------------------------
+
+sub fans
+{
+  my ($self) = @_;
+
+  return $self->query(sub {
+    $_[0]->entPhysicalClass eq 'fan'
+  });
+}
+
+
+#------------------------------------------------------------------------------
+# Legacy function that returns the 'hwinfo' structure: a flat arrayref of
+# hashes. Eventually we want to move to use the entity tree directly. This
+# method entails multiple tree traversal and is very inefficient. FIXME
+#------------------------------------------------------------------------------
+
+sub hwinfo
+{
+  my ($self) = @_;
+  my @result;
+
 }
 
 
