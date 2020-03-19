@@ -546,17 +546,55 @@ sub poll_host
 
     if($swdata{$host}{'hw-tree'}) {
       open(my $fh, '>', "debug.entities.$$.log") || die;
-      print $fh "entity index         | if     | class        | pos | name\n";
-      print $fh "---------------------+--------+--------------+-----+---------------------------\n";
+
+      # dump the whole entity tree
+      print $fh "entity index         | if     | class        | pos | model        | name\n";
+      print $fh "---------------------+--------+--------------+-----+--------------+---------------------------\n";
       $swdata{$host}{'hw-tree'}->traverse(sub {
         my ($node, $level) = @_;
-        printf $fh "%-20s | %6s | %-12s | %3d | %s\n",
+        printf $fh "%-20s | %6s | %-12s | %3d | %12s | %s\n",
           ('  ' x $level) . $node->entPhysicalIndex,
           $node->ifIndex // '',
           $node->entPhysicalClass,
           $node->entPhysicalParentRelPos,
+          $node->entPhysicalModelName,
           $node->entPhysicalName;
       });
+
+      # display some derived knowledge
+      my @chassis = $swdata{$host}{'hw-tree'}->chassis;
+      printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
+      for(my $i = 0; $i < @chassis; $i++) {
+        printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
+      }
+
+      my @ps = $swdata{$host}{'hw-tree'}->power_supplies;
+      printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
+      for(my $i = 0; $i < @ps; $i++) {
+        printf $fh "%d. chassis=%d %s\n", $i+1,
+          $ps[$i]->chassis_no,
+          $ps[$i]->disp;
+      }
+
+      my @cards = $swdata{$host}{'hw-tree'}->linecards;
+      printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
+      for(my $i = 0; $i < @cards; $i++) {
+        printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
+          $cards[$i]->chassis_no,
+          $cards[$i]->parent->entPhysicalParentRelPos,
+          $cards[$i]->disp;
+      }
+
+      my @fans = $swdata{$host}{'hw-tree'}->fans;
+      printf $fh "\nFANS (%d found)\n", scalar(@fans);
+      for(my $i = 0; $i < @fans; $i++) {
+        printf $fh "%d. chassis=%d %s\n", $i+1,
+          $fans[$i]->chassis_no,
+          $fans[$i]->disp;
+      }
+
+
+      # finish
       close($fh);
     }
   }

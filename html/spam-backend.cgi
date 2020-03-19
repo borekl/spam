@@ -29,8 +29,9 @@ use JSON::MaybeXS;
 use Data::Dumper;
 use Try::Tiny;
 use ONdb::Authorize;
-
 use SPAM::Config;
+use SPAM::Entity;
+use SPAM::EntityTree;
 
 
 #=== globals =================================================================
