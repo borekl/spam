@@ -233,6 +233,75 @@ sub hwinfo
   my ($self) = @_;
   my @result;
 
+  my @chassis = $self->chassis;
+  my @ps = $self->power_supplies;
+  my @cards = $self->linecards;
+  my @fans = $self->fans;
+
+  for(my $i = 0; $i < @chassis; $i++) {
+    push(@result, {
+      'm' => $chassis[$i]->chassis_no,
+      idx => $chassis[$i]->entPhysicalIndex,
+      partnum => $chassis[$i]->entPhysicalModelName,
+      sn => $chassis[$i]->entPhysicalSerialNum,
+      type => 'chassis',
+      location => undef,
+    })
+  }
+
+  for(my $i = 0; $i < @ps; $i++) {
+    push(@result, {
+      'm' => $ps[$i]->chassis_no,
+      idx => $ps[$i]->entPhysicalIndex,
+      partnum => $ps[$i]->entPhysicalModelName,
+      sn => $ps[$i]->entPhysicalSerialNum,
+      type => 'ps',
+      location => undef,
+    })
+  }
+
+  for(my $i = 0; $i < @cards; $i++) {
+
+    # linecard number derivation is problematic; entPhysicalParentRelPos
+    # of the direct container entity works on most hardware, but on Cat9410R
+    # the supervisor is in slot 5, but the respective container is shown as
+    # being number 11; special casing required
+
+    my ($chassis) = $cards[$i]->ancestors_by_class('chassis');
+    croak "No chassis found for entity " . $cards[$i]->entPhysicalIndex
+    if !$chassis;
+
+    my $linecard_no = $cards[$i]->parent->entPhysicalParentRelPos;
+    if($chassis->entPhysicalModelName eq 'C9410R' && $linecard_no == 11) {
+      $linecard_no = 5;
+    }
+
+    push(@result, {
+      'm' => $cards[$i]->chassis_no,
+      'n' => $linecard_no,
+      idx => $cards[$i]->entPhysicalIndex,
+      partnum => $cards[$i]->entPhysicalModelName,
+      sn => $cards[$i]->entPhysicalSerialNum,
+      type => 'linecard',
+      location => undef,
+    })
+  }
+
+  for(my $i = 0; $i < @fans; $i++) {
+    # only list fans with model name, some devices list every fan in the system
+    # which is not very useful
+    next if !$fans[$i]->entPhysicalModelName;
+    push(@result, {
+      'm' => $fans[$i]->chassis_no,
+      idx => $fans[$i]->entPhysicalIndex,
+      partnum => $fans[$i]->entPhysicalModelName,
+      sn => $fans[$i]->entPhysicalSerialNum,
+      type => 'fan',
+      location => undef,
+    })
+  }
+
+  return \@result;
 }
 
 

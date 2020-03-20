@@ -593,6 +593,9 @@ sub poll_host
           $fans[$i]->disp;
       }
 
+      my $hwinfo = $swdata{$host}{'hw-tree'}->hwinfo;
+      printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
+      print $fh "\n", Dumper($hwinfo), "\n";
 
       # finish
       close($fh);
