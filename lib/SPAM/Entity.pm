@@ -151,15 +151,29 @@ sub ancestors_by_class
 
 
 #------------------------------------------------------------------------------
-# Return chassis number (or undef if not found)
+# Return chassis number (or croak if not found)
 #------------------------------------------------------------------------------
 
 sub chassis_no
 {
   my ($self) = @_;
+  my $chassis_no;
 
-  my ($re) = $self->ancestors_by_class('chassis');
-  return $re->entPhysicalParentRelPos // undef;
+  # this entity is a chassis itself
+  if($self->entPhysicalClass eq 'chassis') {
+    $chassis_no = $self->entPhysicalParentRelPos;
+  }
+
+  # this entity is something else but chassis
+  else {
+    my ($re) = $self->ancestors_by_class('chassis');
+    croak "No chassis found for entity " . $self->entPhysicalIndex if !$re;
+    $chassis_no = $re->entPhysicalParentRelPos;
+  }
+
+  # chassis with position -1 means single chassis, map this value to 1
+  if($chassis_no == -1) { $chassis_no = 1; }
+  return $chassis_no;
 }
 
 
