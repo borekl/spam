@@ -173,7 +173,7 @@ sub chassis_no
 
   # chassis with position -1 means single chassis, map this value to 1
   if($chassis_no == -1) { $chassis_no = 1; }
-  return $chassis_no;
+  return int($chassis_no);
 }
 
 
