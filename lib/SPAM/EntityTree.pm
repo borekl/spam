@@ -25,6 +25,15 @@ has root => (
   },
 );
 
+# hash that indexes nodes in the tree by their associated ifIndex; note, that
+# only port entries have associated ifIndex
+
+has node_by_ifIndex => (
+  is => 'ro',
+  default => sub { {} },
+);
+
+
 #------------------------------------------------------------------------------
 # Constructor code, builds the tree from supplied array of individual entries.
 # The individual must be SPAM::Entity instances.
@@ -75,8 +84,10 @@ sub BUILD
     # terminate this branch if no descendants exist
     return if !@contained;
 
-    # branch into every subtree
+    # add entry into ifIndex-to-node hash (if ifIndex is defined), add all
+    # contained entries into current node and branch into every entry
     foreach my $c (@contained) {
+      $self->node_by_ifIndex()->{$c->ifIndex} = $c if $c->ifIndex;
       $tree->add_child($c);
       __SUB__->($c);
     }
