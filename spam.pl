@@ -529,13 +529,6 @@ sub poll_host
   #--- process entity information
 
   $swdata{$host}{'hw-tree'} = build_entity_tree($swdata{$host});
-  $swdata{$host}{'hw'} = snmp_entity_to_hwinfo($swdata{$host});
-
-  if($ENV{'SPAM_DEBUG'}) {
-    open(my $fh, '>', "debug.hwinfo.$$.log") || die;
-    print $fh Dumper($swdata{$host}{'hw'});
-    close($fh);
-  }
 
   #--- dump swstat and entity table
 
@@ -930,144 +923,6 @@ sub sql_status_update
 
   $r = sql_transaction(\@update);
   return $r;
-}
-
-
-#==========================================================================
-# This function updates hwinfo table, that contains information about
-# hardware components (chassis, linecards, power supplies)
-#
-# Arguments: 1. host to be updated
-# Returns:   1. error message or undef
-#==========================================================================
-
-sub sql_hwinfo_update
-{
-  my $host = shift;
-  my $dbh = $cfg2->get_dbi_handle('spam');
-  my $query;
-  my $ret;
-  my $sth;
-  my @db;
-  my @update_plan;
-  my @stats = ( 0, 0, 0 );   # i/d/u
-
-  #--- check argument, ensure database connection
-
-  if(!$host) { return 'No host specified'; }
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-
-  #--- load current data from hwinfo
-
-  $query = qq{SELECT * FROM hwinfo WHERE host = ?};
-  $sth = $dbh->prepare($query);
-  $sth->execute($host) || return sprintf('Database query failed (spam, %s)', $sth->errstr());
-  while(my $row = $sth->fetchrow_hashref) {
-    push(@db, $row);
-  }
-
-  #--- remove all component for a host
-
-  if((@db > 0) && (!exists $swdata{$host}{hw})) {
-    # FIXME - DO WE NEED THIS?
-  }
-
-  #--- exit if host has no components
-
-  if(!exists $swdata{$host}{hw}) { return (undef, \@stats); }
-
-  #--- create update plan, part 1: identify removed modules
-
-  for my $row (@db) {
-    my ($m, $n) = ($row->{'m'}, $row->{'n'});
-    if(!exists $swdata{$host}{hw}{$m}{$n}) {
-      push(@update_plan, [
-        q{DELETE FROM hwinfo WHERE host = ? AND m = ? AND n = ?},
-        $host, $m, $n
-      ]);
-      $stats[1]++;
-
-  #--- create update plan, part 2: identify changed modules
-
-    } elsif(
-      $swdata{$host}{'hw'}{$m}{$n}{'model'} ne $row->{'partnum'} ||
-      $swdata{$host}{'hw'}{$m}{$n}{'sn'}    ne $row->{'sn'}      ||
-      $swdata{$host}{'hw'}{$m}{$n}{'type'}  ne $row->{'type'}    ||
-      $swdata{$host}{'hw'}{$m}{$n}{'hwrev'} ne $row->{'hwrev'}   ||
-      $swdata{$host}{'hw'}{$m}{$n}{'fwrev'} ne $row->{'fwrev'}   ||
-      $swdata{$host}{'hw'}{$m}{$n}{'swrev'} ne $row->{'swrev'}   ||
-      substr($swdata{$host}{'hw'}{$m}{$n}{'descr'},0,64) ne $row->{'descr'}
-    ) {
-
-      $query =  q{UPDATE hwinfo SET %s };
-      $query .= q{WHERE host = ? AND m = ? AND n = ?};
-
-      my @fields = (
-        'chg_when = current_timestamp',
-        'partnum = ?', 'sn = ?', 'type = ?',
-        'hwrev = ?', 'fwrev = ?',  'swrev = ?',
-        'descr = ?'
-      );
-
-      my @bind = (
-        $swdata{$host}{hw}{$m}{$n}{model},
-        $swdata{$host}{hw}{$m}{$n}{sn},
-        $swdata{$host}{hw}{$m}{$n}{type},
-        $swdata{$host}{hw}{$m}{$n}{hwrev},
-        $swdata{$host}{hw}{$m}{$n}{fwrev},
-        $swdata{$host}{hw}{$m}{$n}{swrev},
-        substr($swdata{$host}{hw}{$m}{$n}{descr}, 0, 64),
-        $host, $m, $n
-      );
-
-      push(@update_plan, [
-        sprintf($query, join(',', @fields)),
-        @bind
-      ]);
-
-      $stats[2]++;
-    }
-  }
-
-  #--- create update plan, part 3: identify new modules
-
-  for my $m (keys %{$swdata{$host}{hw}}) {
-    for my $n (keys %{$swdata{$host}{hw}{$m}}) {
-      if(!grep { $_->{'m'} eq $m && $_->{'n'} eq $n } @db) {
-
-        $query = q{INSERT INTO hwinfo ( %s ) VALUES ( %s )};
-
-        my @fields = qw(host m n partnum sn type hwrev fwrev swrev descr);
-        my @vals = ('?') x 10;
-        my @bind = (
-          $host, $m, $n, $swdata{$host}{hw}{$m}{$n}{model},
-          $swdata{$host}{'hw'}{$m}{$n}{'sn'},
-          $swdata{$host}{'hw'}{$m}{$n}{'type'},
-          $swdata{$host}{'hw'}{$m}{$n}{'hwrev'},
-          $swdata{$host}{'hw'}{$m}{$n}{'fwrev'},
-          $swdata{$host}{'hw'}{$m}{$n}{'swrev'},
-          substr($swdata{$host}{hw}{$m}{$n}{descr}, 0, 64)
-        );
-
-        push(@update_plan, [
-          sprintf($query, join(',', @fields), join(',', @vals)),
-          @bind
-        ]);
-        $stats[0]++;
-      }
-    }
-  }
-
-  #--- send the whole batch to db
-
-  if(@update_plan > 0) {
-    my $e = sql_transaction(\@update_plan);
-    if($e) { return ($e, \@stats); }
-  }
-
-  #--- finish successfully
-
-  return (undef, \@stats);
 }
 
 
@@ -2509,17 +2364,6 @@ try {
                 $e = sql_switch_info_update($host);
                 if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
                 tty_message("[$host] Updating swstat table (finished)\n");
-
-	    #--- update hwinfo table ---
-
-                {
-                  my $update_stats;
-                  tty_message("[$host] Updating hwinfo table (started)\n");
-                  ($e, $update_stats) = sql_hwinfo_update($host);
-                  if($e) { tty_message("[$host] Updating hwinfo table ($e)\n"); }
-                  tty_message(sprintf("[%s] Updating hwinfo table (i:%d/d:%d/u:%d)\n", $host, @$update_stats));
-                  tty_message("[$host] Updating hwinfo table (finished)\n");
-                }
 
             #--- update mactable ---
 

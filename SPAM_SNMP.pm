@@ -24,7 +24,6 @@ our (@ISA, @EXPORT);
 
 @ISA = qw(Exporter);
 @EXPORT = qw(
-  snmp_entity_to_hwinfo
   snmp_get_arptable
   snmp_get_object
   snmp_get_active_vlans
@@ -225,85 +224,6 @@ sub snmp_get_arptable
   #--- finish
 
   return \%arptable;
-}
-
-
-#==========================================================================
-# This function retrieves hwinfo (processed select information from
-# entPhysicalTable) and stores it into $swdata{hwinfo}. This function is
-# a stopgap designed to be fully compatible with previous function that
-# worked in the old way.
-#==========================================================================
-
-sub snmp_entity_to_hwinfo
-{
-  my ($h) = @_;
-  my $ent = $h->{'ENTITY-MIB'};
-  my %hw;
-  my $cidx = 1000;     # incremental index for non-module components
-
-  #--- iterate ver entPhysicalTable
-
-  for my $idx (sort { $a <=> $b } keys %{$ent->{'entPhysicalTable'}}) {
-    my $pt = $ent->{'entPhysicalTable'}{$idx};
-    my $class = $pt->{'entPhysicalClass'}{'enum'};
-    my $physname = $pt->{'entPhysicalName'}{'value'};
-    my $container = $pt->{'entPhysicalContainedIn'}{'value'};
-    my $c_physname
-       = $ent->{'entPhysicalTable'}{$container}{'entPhysicalName'}{'value'};
-
-    #--- power supply, chassis
-
-    if($class eq 'chassis' || $class eq 'powerSupply') {
-      $physname =~ /^(?:Chassis (\d) ).*$/;
-      my $chassis = $1;
-      if(!$chassis) { $chassis = 0; }
-
-      $hw{$chassis}{$cidx}{'type'} = $class;
-      if($class eq 'powerSupply') {
-        $hw{$chassis}{$cidx}{'type'} = 'ps';
-      }
-      $hw{$chassis}{$cidx}{'descr'}
-      = $pt->{'entPhysicalDescr'}{'value'};
-      $hw{$chassis}{$cidx}{'model'}
-      = $pt->{'entPhysicalModelName'}{'value'};
-      $hw{$chassis}{$cidx}{'sn'}
-      = $pt->{'entPhysicalSerialNum'}{'value'};
-      $hw{$chassis}{$cidx}{'hwrev'}
-      = $pt->{'entPhysicalHardwareRev'}{'value'};
-      $cidx++;
-    }
-
-    #--- module (linecard)
-
-    if(
-      $class eq 'module'
-      && $c_physname
-      && $c_physname =~ /^(?:Chassis (\d) |)Physical Slot (\d)+$/
-    ) {
-      my $slot = $2;
-      my $chassis = $1;
-      if(!$chassis) { $chassis = 0; }
-
-      $hw{$chassis}{$slot}{'type'} = 'linecard';
-      $hw{$chassis}{$slot}{'model'}
-      = $pt->{'entPhysicalModelName'}{'value'};
-      $hw{$chassis}{$slot}{'sn'}
-      = $pt->{'entPhysicalSerialNum'}{'value'};
-      $hw{$chassis}{$slot}{'hwrev'}
-      = $pt->{'entPhysicalHardwareRev'}{'value'};
-      $hw{$chassis}{$slot}{'fwrev'}
-      = $pt->{'entPhysicalFirmwareRev'}{'value'};
-      $hw{$chassis}{$slot}{'swrev'}
-      = $pt->{'entPhysicalSoftwareRev'}{'value'};
-      $hw{$chassis}{$slot}{'descr'}
-      = $pt->{'entPhysicalDescr'}{'value'};
-    }
-  }
-
-  #--- finish
-
-  return \%hw;
 }
 
 
