@@ -56,6 +56,10 @@ has entPhysicalUris         => ( is => 'ro' );
 
 has ifIndex                 => ( is => 'ro' );
 
+# cabling side location, if known (through modwire table)
+
+has location                => ( is => 'ro' );
+
 # process arguments // if argument value is a hashref, we look if the hash
 # has 'value' or 'enum' keys; if that is the case, we make the argument value
 # that of 'enum' or 'value' (in that order of preference)

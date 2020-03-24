@@ -549,20 +549,52 @@ sub sql_get_hwinfo
     $re,           # 1. hashref where the result is stored
     $host          # 2. switch hostname
   ) = @_;
-  
-  #--- do the query
-  
-  my $local_re = sql_select(
-    'spam', 
-    "SELECT m, n, type, partnum, sn, location
-     FROM hwinfo LEFT JOIN modwire USING ( host, m, n)
-     WHERE host = ?
-     ORDER BY m ASC, n ASC",
+
+  #--- read modwire information from database
+
+  my $modwire_re = sql_select(
+    'spam',
+    "SELECT m, n, location FROM modwire WHERE host = ?",
     $host
   );
+  my $modwire = $modwire_re->{'status'} eq 'ok' ? $modwire_re->{'result'} : [];
+
+  #--- read entity information from database
+
+  my $local_re = sql_select(
+    'spam',
+    "SELECT * FROM snmp_entPhysicalTable s
+     LEFT JOIN snmp_entAliasMappingTable USING ( host, entPhysicalIndex )
+     WHERE s.host = ?",
+     $host
+  );
   if($local_re->{'status'} eq 'ok') {
-    $re->{'hwinfo'} = $local_re;
+    my @entities;
+    foreach my $row (@{$local_re->{'result'}}) {
+      push(@entities,
+        SPAM::Entity->new(
+          entPhysicalIndex => $row->{entphysicalindex},
+          entPhysicalDescr => $row->{entphysicaldescr},
+          entPhysicalContainedIn => $row->{entphysicalcontainedin},
+          entPhysicalClass => $row->{entphysicalclass},
+          entPhysicalParentRelPos => $row->{entphysicalparentrelpos},
+          entPhysicalName => $row->{entphysicalname},
+          entPhysicalHardwareRev => $row->{entphysicalhardwarerev},
+          entPhysicalFirmwareRev => $row->{entphysicalfirmwarerev},
+          entPhysicalSoftwareRev => $row->{entphysicalsoftwarerev},
+          entPhysicalSerialNum => $row->{entphysicalserialnum},
+          entPhysicalModelName => $row->{entphysicalmodelname},
+          ifIndex => $row->{entaliasmappingidentifier},
+        )
+      );
+    }
+    my $tree = SPAM::EntityTree->new(entities => \@entities);
+
+    $re->{'hwinfo'}{'result'} = $tree->hwinfo($modwire);
   }
+
+  return $local_re;
+
 }
 
 
@@ -1196,13 +1228,13 @@ sub sql_search
 
   if(
     $re{'hwinfo'}
-    && grep { $_->{'n'} < 1000 } @{$re{'hwinfo'}{'result'}}
+    && grep { exists $_->{'n'} && $_->{'n'} < 1000 } @{$re{'hwinfo'}{'result'}}
   ) {
     search_hwinfo_interleave(\%re);
   }
-    
+
   #--- finish
-  
+
   return \%re;
 }
 

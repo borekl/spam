@@ -225,12 +225,18 @@ sub fans
 #------------------------------------------------------------------------------
 # Legacy function that returns the 'hwinfo' structure: a flat arrayref of
 # hashes. Eventually we want to move to use the entity tree directly. This
-# method entails multiple tree traversal and is very inefficient. FIXME
+# method entails multiple tree traversal and is very inefficient.
+#
+# The 'modwire' argument is a list of hashref loaded from the 'modwire' backend
+# table, which gives identification of where given linecard is cabled to (for
+# linecards that are permanently wired to patchpanels).
+#
+# FIXME
 #------------------------------------------------------------------------------
 
 sub hwinfo
 {
-  my ($self) = @_;
+  my ($self, $modwire) = @_;
   my @result;
 
   my @chassis = $self->chassis;
@@ -245,7 +251,6 @@ sub hwinfo
       partnum => $chassis[$i]->entPhysicalModelName,
       sn => $chassis[$i]->entPhysicalSerialNum,
       type => 'chassis',
-      location => undef,
     })
   }
 
@@ -256,7 +261,6 @@ sub hwinfo
       partnum => $ps[$i]->entPhysicalModelName,
       sn => $ps[$i]->entPhysicalSerialNum,
       type => 'ps',
-      location => undef,
     })
   }
 
@@ -264,26 +268,38 @@ sub hwinfo
 
     # linecard number derivation is problematic; entPhysicalParentRelPos
     # of the direct container entity works on most hardware, but on Cat9410R
-    # the supervisor is in slot 5, but the respective container is shown as
+    # the supervisor it is in slot 5, but the respective container is shown as
     # being number 11; special casing required
 
     my ($chassis) = $cards[$i]->ancestors_by_class('chassis');
     croak "No chassis found for entity " . $cards[$i]->entPhysicalIndex
     if !$chassis;
 
-    my $linecard_no = $cards[$i]->parent->entPhysicalParentRelPos;
+    my $linecard_no = int($cards[$i]->parent->entPhysicalParentRelPos);
     if($chassis->entPhysicalModelName eq 'C9410R' && $linecard_no == 11) {
       $linecard_no = 5;
     }
 
+    # find card 'location'
+    my $m = $cards[$i]->chassis_no;
+    my ($location_entry, $location);
+    if($modwire && @$modwire) {
+      ($location_entry) = grep {
+        $_->{'m'} == $m && $_->{'n'} == $linecard_no
+      } @$modwire;
+      if($location_entry) {
+        $location = $location_entry->{'location'};
+      }
+    }
+
     push(@result, {
-      'm' => $cards[$i]->chassis_no,
+      'm' => $m,
       'n' => $linecard_no,
       idx => $cards[$i]->entPhysicalIndex,
       partnum => $cards[$i]->entPhysicalModelName,
       sn => $cards[$i]->entPhysicalSerialNum,
       type => 'linecard',
-      location => undef,
+      location => $location,
     })
   }
 
@@ -297,7 +313,6 @@ sub hwinfo
       partnum => $fans[$i]->entPhysicalModelName,
       sn => $fans[$i]->entPhysicalSerialNum,
       type => 'fan',
-      location => undef,
     })
   }
 
