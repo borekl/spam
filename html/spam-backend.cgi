@@ -643,56 +643,59 @@ sub search_hwinfo_interleave
   #--- to enter the line-card info
 
     if($n_curr ne $n_last) {
-    
+
   #--- for VSS switches, reading of present line-cards
   #--- is not working with the standard MIB (FIXME);
   #--- therefore we merely push the line-card designation without
   #--- any additional information
-  
+
       if($vss) {
         $n_curr =~ /^(\d+)\/(\d+)$/;
         my ($chassis, $module) = ($1, $2);
         my ($hwentry) = grep {
-          $_->{'n'} eq $module && $_->{'m'} eq $chassis
+          exists $_->{'n'}
+          && $_->{'n'} eq $module
+          && $_->{'m'} eq $chassis
         } @{$re->{'hwinfo'}{'result'}};
         if(ref($hwentry)) { # found a hwentry
           push(@new, $hwentry);
         } else { # found no hwentry
           push(@new, { 'n' => $chassis, 'm' => $module});
         }
-      } 
-      
+      }
+
   #--- for non-VSS switch we try to find the associated line-card
   #--- info stored in 'hwinfo' key; if we find it, we push the
   #--- hwinfo entry, otherwise just the line-card designation
-        
+
       else {
         my ($hwentry) = grep {
-          $_->{'n'} eq $n_curr;
+          $_->{'type'} eq 'linecard'
+          && $_->{'n'} == $n_curr;
         } @{$re->{'hwinfo'}{'result'}};
         if(ref($hwentry)) { # found a hwentry
           push(@new, $hwentry);
         } else { # found no hwentry
-          push(@new, { 'n' => $n_curr});
+          push(@new, { 'n' => int($n_curr)});
         }
       }
 
   #--- end of current line-card boundary processing
-    
+
       $n_last = $n_curr;
 
     }
 
   #--- regular row push (merely copies the source)
-  
+
     push(@new, $row);
 
   }
-  
+
   #--- replace the old search result with the new
-  
+
   $re->{'search'}{'result'} = \@new;
-  
+
 }
 
 
