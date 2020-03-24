@@ -675,6 +675,8 @@ sub search_hwinfo_interleave
   #--- to enter the line-card info
 
     if($n_curr ne $n_last) {
+      $n_curr =~ /^(\d+)\/(\d+)$/;
+      my ($chassis, $module) = (int($1), int($2));
 
   #--- for VSS switches, reading of present line-cards
   #--- is not working with the standard MIB (FIXME);
@@ -682,8 +684,6 @@ sub search_hwinfo_interleave
   #--- any additional information
 
       if($vss) {
-        $n_curr =~ /^(\d+)\/(\d+)$/;
-        my ($chassis, $module) = ($1, $2);
         my ($hwentry) = grep {
           exists $_->{'n'}
           && $_->{'n'} eq $module
@@ -701,6 +701,7 @@ sub search_hwinfo_interleave
   #--- hwinfo entry, otherwise just the line-card designation
 
       else {
+
         my ($hwentry) = grep {
           $_->{'type'} eq 'linecard'
           && $_->{'n'} == $n_curr;
@@ -708,7 +709,7 @@ sub search_hwinfo_interleave
         if(ref($hwentry)) { # found a hwentry
           push(@new, $hwentry);
         } else { # found no hwentry
-          push(@new, { 'n' => int($n_curr)});
+          push(@new, { 'm' => $chassis, 'n' => int($n_curr)});
         }
       }
 
