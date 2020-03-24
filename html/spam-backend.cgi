@@ -53,24 +53,24 @@ my ($db_ondb, $db_spam);
 BEGIN
 {
   #--- read config
-  
-  # we're assuming the path of the script is in form 
+
+  # we're assuming the path of the script is in form
   # "/<prefix>/{prod,dev}/<suffix>/<script>" and that the 'spam.cfg' is in
   # "/<prefix>/{prod,dev}" directory.
-  
+
   my $cfg_file = sprintf(abs_path($0));
   $cfg_file =~ s/^(\/.+\/(?:prod|dev))\/.*$/$1/;
   $cfg_file = sprintf('%s/spam.cfg.json', $cfg_file);
   $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
   $cfg = load_config();
-    
+
   #--- misc init
 
   $js = new JSON::MaybeXS;
   binmode STDOUT, ":utf8";
-  
+
   #--- database init
-  
+
   $dbh{'spam'} = $db_spam = $cfg2->get_dbi_handle('spamui');
   $dbh{'ondb'} = $db_ondb = $cfg2->get_dbi_handle('ondbui');
 }
@@ -85,7 +85,7 @@ BEGIN
 sub remove_undefs
 {
   my ($h) = @_;
-  
+
   while(my ($key, $value) = each %$h) {
     delete $h->{$key} if !defined($value);
   }
@@ -140,16 +140,16 @@ sub js_bool
 sub pg_errmsg_parse
 {
   #--- arguments
-  
+
   my $errmsg = shift;    # error message from DBI errstr() method
-  
+
   #--- other variables
-  
+
   my @err_lines;         # error message split into individual lines
   my %re;                # returned hash
 
   #--- split error message into array of sing lines
-  
+
   @err_lines = split(/\n/, $errmsg);
 
   #--- ERROR and DETAIL messages
@@ -160,27 +160,27 @@ sub pg_errmsg_parse
   $re{'detail'} =~ s/^DETAIL:\s+//;
 
   #--- ERROR: duplicate key value
-  
+
   $re{'error'} =~ /^duplicate key value .* constraint "(\w+)"/ && do {
     $re{'type'} = 'dupkey';
     $re{'constraint'} = $1;
-    
+
     $re{'detail'} =~ /^Key \((.+)\)=\((.+)\) already exists\.$/;
     my ($fields, $values) = ($1, $2);
     my @fields = split(/,\s/, $fields);
     my @values = split(/,\s/, $values);
     @{$re{'conflict'}}{@fields} = @values if @fields;
   };
-  
+
   #--- ERROR: not-null constraint violation
-  
+
   $re{'error'} =~ /^null value in column "(\w+)"/ && do {
     $re{'type'} = 'nullval';
     $re{'field'} = $1;
   };
-    
+
   #--- finish
-  
+
   $re{'lines'} = \@err_lines;
   return \%re;
 }
@@ -194,7 +194,7 @@ sub pg_errmsg_parse
 sub sql_select
 {
   #--- arguments
-  
+
   my (
     $dbid,      # 1. database id
     $query,     # 2. SQL query
@@ -202,34 +202,34 @@ sub sql_select
     $func,      # 4. function called for each row (optional)
     $aref       # 5. return arrayref instead of hashref
   ) = @_;
-  
+
   if($args && !ref($args)) {
     $args = [ $args ];
   }
 
   #--- other init
-  
+
   my $dbh = $dbh{$dbid};
   my %re;
 
   #--- some debugging info
-  
+
   $re{'debug'} = $debug;
   if($debug) {
     $re{'query'} = sql_show_query($query, @$args);
   }
 
   try { #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-  
+
   #--- ensure database connection
-  
+
     if(!ref($dbh)) {
       $re{'errdb'} = { 'type' => 'Not connected' };
       die;
     }
-  
+
   #--- read data from db
-	
+
     my $sth = $dbh->prepare($query);
     my $r = $sth->execute(@$args);
     if(!$r) {
@@ -239,18 +239,18 @@ sub sql_select
     $re{'fields'} = $sth->{NAME};
     $re{'result'} = $sth->fetchall_arrayref($aref ? () : {});
     $re{'status'} = 'ok';
-  
+
   } #<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
   #--- failure
-  
+
   catch {
     $re{'status'} = 'error';
     $re{'errmsg'} = 'Database error';
   };
-  
+
   #--- optional post-processing
-  
+
   if($func) {
     for my $row (@{$re{'result'}}) {
       &$func($row);
@@ -258,7 +258,7 @@ sub sql_select
   }
 
   #--- finish
-  
+
   return \%re;
 }
 
@@ -273,7 +273,7 @@ sub port_flag_unpack
   my %re;
 
   #--- map keywords to bitmap
-  
+
   my %flag_map = (
     'cdp'          => 1,          # receiving CDP
     'stp_pfast'    => 2,          # STP fast start mode
@@ -292,15 +292,15 @@ sub port_flag_unpack
     'dot1x_unauth' => 1024,       # auto, unauthorized
     'mab_success'  => 2048        # MAB active
   );
-  
+
   #--- create flags hash
-  
+
   for my $k (keys %flag_map) {
     $re{$k} = 1 if $flags & $flag_map{$k};
   }
 
   #--- finish
-      
+
   return \%re;
 }
 
@@ -314,48 +314,48 @@ sub port_flag_unpack
 sub mangle_location
 {
   #--- arguments
-  
+
   my $row = shift;           # 1. row from swstat table (hashref)
   return undef if !ref($row) || !$row->{'location'};
-  
+
   #--- other variables
-  
+
   my @l = split(/;/, $row->{'location'});
   my ($shop, $site, $descr);
-  
+
   #--- field 0: should be 5-letter site code
-  
+
   $site = $l[0] if $l[0];
   $site =~ s/^(\S{5}).*$/$1/;
-  
+
   #--- field 3: "shop Sxx"
-  
+
   $l[3] && $l[3] =~ /^Shop [ST](\d{2}|xx)/ && do {
     $shop = 1;
     $descr = sprintf('S%s %s, %s', $1, $l[4], $l[5]);
   };
-  
+
   #--- if not shop, but in proper format
-  
+
   if($l[3]) {
     $descr = join(
-      ', ', 
+      ', ',
       grep { $_ ne 'x' } @l[3..$#l]
     );
   }
 
   #--- if not shop, copy 'location' to 'descr'
-  
+
   elsif(!exists $row->{'descr'}) {
     $descr = $row->{'location'};
   }
-  
+
   #--- finish
-  
+
   return (
     $descr,        # 1. description derived from location
     $site,         # 2. 5-letter site code
-    $shop          # 3. shop flag 
+    $shop          # 3. shop flag
   );
 }
 
@@ -371,16 +371,16 @@ sub mangle_swlist
   my $shop;
 
   #--- remove undefined values
-  
+
   remove_undefs($row);
-  
-  #--- mangle location  
+
+  #--- mangle location
 
   ($row->{'descr'}, $row->{'site'}, $shop) = mangle_location($row);
-  
+
   #--- switch groups (for distributing the switches among tabs for better
   #--- user access)
-  
+
   my $code = substr($row->{'host'}, 0, 3);
   $row->{'group'} = 'oth';
   if(
@@ -391,11 +391,11 @@ sub mangle_swlist
   }
   if($code eq 'ric') {
     $row->{'group'} = 'rcn';
-  } 
+  }
   if($shop) {
     $row->{'group'} = 'sho';
   }
-  
+
 }
 
 
@@ -407,19 +407,19 @@ sub mangle_swlist
 sub normalize_outcp
 {
   my $outcp = shift;
-  
+
   # convert to upper-case
   $outcp = uc($outcp);
-  
+
   # "N/N/N" -> "N.N.N"
   $outcp =~ s/(\d+)\/(\d+)\/(\d+)/$1.$2.$3/;
-  
+
   # "-N A"
   $outcp =~ s/^(.*\d)\s*([A-Z])$/$1 $2/;
-  
+
   # "A N-"
   $outcp =~ s/^([A-Z]+)\s*(\d.*)$/$1 $2/;
-  
+
   return $outcp;
 }
 
@@ -439,7 +439,7 @@ sub normalize_mac
   $mac = lc($mac);
 
   #--- remove anything but hex digits and * wildcards
-    
+
   $mac =~ s/[^*[:xdigit:]]//g;
 
   #--- consequent * to one
@@ -454,7 +454,7 @@ sub normalize_mac
       $mac = substr($mac, 2);
     } elsif($mac =~ /^\*/) {
       push(@mac, '*');
-      $mac = substr($mac, 1);   
+      $mac = substr($mac, 1);
     } elsif(length($mac) == 1) {
       last;
     };
@@ -468,7 +468,7 @@ sub normalize_mac
       push(@mac, '*');
     }
   }
-  
+
   #--- finish
 
   return join(':', @mac);
@@ -484,26 +484,26 @@ sub normalize_mac
 
 sub normalize_search
 {
-  #--- variables 
-  
+  #--- variables
+
   my $parm_in = shift;
   my %parm_out;
-  
+
   #--- iterate over all parameters
-  
+
   for my $k (keys %$parm_in) {
     my $val = $parm_in->{$k};
-    
+
     # leading apostrophe or equals sign suppresses the normalization;
     # lone apostrophe or equals sign are still considered normal text
     if($val =~ /^['=]./) {
       $parm_out{$k} = $val;
       next;
     }
-    
+
     # trim leading/trailing whitespace
     $val =~ s/^\s+|\s+$//g;
-    
+
     # normalize outlet name
     $val = normalize_outcp($val) if $k eq 'outcp';
 
@@ -516,21 +516,21 @@ sub normalize_search
       $val = lc($val);
       $val = ucfirst($val);
     }
-    
+
     # normalize switch name
     if($k eq 'host') {
       $val =~ s/\W//g;
       $val = lc($val);
     }
-    
+
     # normalize IPv4 address
     $val =~ s/[^0-9*\/.]//g if $k eq 'ip';
-            
+
     $parm_out{$k} = $val;
   }
-  
+
   #--- finish
-  
+
   return \%parm_out;
 }
 
@@ -612,7 +612,7 @@ sub sql_get_swinfo
     $re,           # 1. hashref where the result is stored
     $host          # 2. switch hostname
   ) = @_;
-  
+
   #--- do the query
 
   my $local_re = sql_select(
@@ -648,18 +648,18 @@ sub sql_get_swinfo
 sub search_hwinfo_interleave
 {
   #--- arguments
-  
+
   my $re = shift;
-  
+
   #--- other variables
-  
+
   my @new;    # the new search result we're creating here
   my $vss;    # the switch is Cisco VSS
-  
+
   $vss = $re->{'swinfo'}{'result'}{'vss'} // 0;
-    
+
   #--- iterate over the search output and create a new one
-  
+
   my $n_last = '';
   for my $row (@{$re->{'search'}{'result'}}) {
 
@@ -745,13 +745,13 @@ sub search_hwinfo_interleave
 sub search_portname
 {
   #--- arguments
-  
+
   my $cond = shift;      # 1. SQL WHERE condition element arrayref
   my $args = shift;      # 2. SQL WHERE placeholder value arrayref
   my $portname = shift;  # 3. field value
-  
+
   #--- portname without interface type (tail-anchored match)
-  
+
   if(
     $portname =~ /^\d+\/\d+$/ ||
     $portname =~ /^\d+\/\d+\/\d+$/
@@ -759,7 +759,7 @@ sub search_portname
     $portname = sprintf('[^\d/]%s$', $portname);
     push(@$cond, 'portname ~ ?');
   }
-  
+
   #--- portname with interface type (exact match)
 
   else {
@@ -767,7 +767,7 @@ sub search_portname
   }
 
   #--- finish
-  
+
   push(@$args, $portname);
 }
 
@@ -796,7 +796,7 @@ sub search_ip
   ) = @_;
 
   #--- CIDR format
-  
+
   if($ip =~ /^[0-9.]+\/\d{1,2}$/) {
     push(@$cond, 'ip << ?');
   }
@@ -810,15 +810,15 @@ sub search_ip
     $ip =~ s/\*/.*/g;
     push(@$cond, 'ip::text ~ ?');
   }
-  
+
   #--- default (exact match)
 
-  else {  
+  else {
     push(@$cond, 'ip = ?');
   }
 
   #--- finish
-    
+
   push(@$args, $ip);
 }
 
@@ -835,13 +835,13 @@ sub search_ip
 sub search_mac
 {
   #--- arguments
-  
+
   my $cond = shift;      # 1. SQL WHERE condition element arrayref
   my $args = shift;      # 2. SQL WHERE placeholder value arrayref
   my $mac = shift;       # 3. field value
-  
+
   #--- wildcard match
-  
+
   if($mac =~ /\*/) {
     if($mac =~ /^[^*]/) {
       $mac = '^' . $mac;
@@ -852,15 +852,15 @@ sub search_mac
     $mac =~ s/\*/.*/g;
     push(@$cond, 'mac::text ~ ?');
   }
-  
+
   #--- exact match
-  
+
   else {
     push(@$cond, 'mac = ?');
   }
 
   #--- finish
-  
+
   push(@$args, $mac);
 }
 
@@ -878,45 +878,45 @@ sub search_mac
 sub search_outcp
 {
   #--- arguments
-  
+
   my $cond = shift;      # 1. SQL WHERE condition element arrayref
   my $args = shift;      # 2. SQL WHERE placeholder value arrayref
   my $outcp = shift;     # 3. field value
-  
+
   #--- remove leading apostrophe, if it exists; it was relevant during
   #--- field normalization
-  
+
   if($outcp =~ /^'(.+)/) {
     $outcp = $1;
   }
-  
+
   #--- regexp search
-  
+
   if($outcp =~ /^\/(.+)/) {
     $outcp = $1;
     push(@$cond, '( outlet ~* ? OR cp ~* ? )');
   }
 
   #--- exact search
-  
+
   elsif($outcp =~ /^=(.+)/) {
     $outcp = $1;
     push(@$cond, '( outlet = ? OR cp = ? )');
   }
-    
+
   #--- substring search
   # is there simpler way of doing substring search in PgSQL?
-  
+
   else {
     push(
-      @$cond, 
+      @$cond,
       '( position(lower(?) in lower(outlet))::boolean OR ' .
       'position(lower(?) in lower(cp))::boolean )'
     );
   }
-  
+
   #--- finish
-  
+
   push(@$args, ($outcp) x 2);
 }
 
@@ -977,7 +977,7 @@ sub search_common_string
 
 #=============================================================================
 # Search the database, function that does the heavy lifting for the Search
-# Tool. The database queries all use views, so they are not defined here. 
+# Tool. The database queries all use views, so they are not defined here.
 #
 # Apart from parameters coming from user input, there's special key 'view'
 # that allows implicitly selecting view; this is needed when sql_search()
@@ -999,11 +999,11 @@ sub search_common_string
 sub sql_search
 {
   #--- arguments
-  
+
   my $par = shift;    # hashref containing search values
-  
+
   #--- other variables
-  
+
   my (
     %re,              # result, this is returned to the client
     @cond,            # SQL query conditions
@@ -1015,9 +1015,9 @@ sub sql_search
   #--- save search parameters
 
   $re{'params'}{'raw'} = $par;
-  
+
   #--- normalize search parameters
-  
+
   if(
     !exists $par->{'mode'}
     || $par->{'mode'} ne 'portlist'
@@ -1027,7 +1027,7 @@ sub sql_search
   }
 
   #--- parameter suppression function
-  
+
   # this will be used to suppress certain parameters that are incompatible
   # with selected database view
 
@@ -1087,22 +1087,22 @@ sub sql_search
   };
 
   #--- get hwinfo and swinfo in case the only parameter is "host"
-  
+
   # this allows us to display module headings for modular switches,
   # which in turn allows use of this function for switch portlist.
 
   if(
-    $par->{'host'} 
+    $par->{'host'}
     && !$par->{'outcp'}
     && !$par->{'portname'}
     && !$par->{'mac'}
     && !$par->{'ip'}
   ) {
-  
+
   #--- hwinfo (list of linecards)
-  
+
     sql_get_hwinfo(\%re, $par->{'host'});
-  
+
   #--- swstat (information about platform)
 
     sql_get_swinfo(\%re, $par->{'host'});
@@ -1118,7 +1118,7 @@ sub sql_search
   ) {
     $modular = 1;
   }
-  
+
   #--- decide what view to use
 
   if($par->{'view'}) {
@@ -1175,19 +1175,19 @@ sub sql_search
         push(@args, $par->{$k});
       }
     }
-  } 
+  }
   my $where = '';
   $where = ' WHERE ' . join(' AND ', @cond) if scalar(@cond);
 
   #--- ordering
-  
+
   # only for IP searches; other views have their implicit sorting orders
-  
+
   my $orderby = '';
   $orderby = ' ORDER BY ip' if $par->{'ip'};
-      
+
   #---------------------------------------------------------------------------
-  
+
   try {
 
     $re{'search'} = sql_select(
@@ -1203,7 +1203,7 @@ sub sql_search
         $re{'search'}{'result'}, 'portname'
       );
     }
-  
+
   }
 
   #---------------------------------------------------------------------------
@@ -1220,7 +1220,7 @@ sub sql_search
   };
 
   #--- compose hwinfo with search result
-  
+
   # The search result need to be interleaved with module info for modular
   # switches; but only when user is searching by switch name; non-linecard
   # hw entities have n >= 1000, so the hwinfo/search composition is only done
@@ -1249,37 +1249,37 @@ sub sql_search
 sub sql_portinfo
 {
   #--- arguments
-  
+
   my (
     $site,
     $host,
     $portname
   ) = @_;
-  
+
   #--- other variables
-  
+
   my $re;
-  my %arg = ( 
-    'site' => $site, 
-    'host' => $host, 
+  my %arg = (
+    'site' => $site,
+    'host' => $host,
     'portname' => $portname,
     'view' => 'v_portinfo',
     'mode' => 'portinfo',
   );
-  
+
   #--- get data from db
-  
+
   $re = sql_search(\%arg);
   if($re->{'status'} eq 'ok') {
-  
+
   #--- do some reprocessing
-  
+
   # point of this step is to collate multiple MAC and IP addresses and
   # put them into single row in the response
-  
+
     my (@mac, @ip);
     my $idx = 0;
-  
+
     for my $row (@{$re->{'search'}{'result'}}) {
 
       if($row->{'mac'}) {
@@ -1290,7 +1290,7 @@ sub sql_portinfo
           'idx'     => $idx
         });
       }
-      
+
       if($row->{'ip'}) {
         push(@ip, {
           'addr'    => $row->{'ip'},
@@ -1299,19 +1299,19 @@ sub sql_portinfo
           'idx'     => $idx
         });
       }
-      
+
       $idx++;
     }
-  
+
   # get rid of the result rows
-  
+
     $re->{'search'}{'result'} = $re->{'search'}{'result'}[0];
 
   # replace mac/ip keys with what we have collated
-  
+
     $re->{'search'}{'result'}{'mac'} = \@mac;
     $re->{'search'}{'result'}{'ip'} = \@ip;
-    for my $k (qw(mac_age mac_age_fmt ip_age ip_age_fmt)) { 
+    for my $k (qw(mac_age mac_age_fmt ip_age ip_age_fmt)) {
       delete $re->{'search'}{'result'}{$k};
     }
 
@@ -1348,9 +1348,9 @@ sub sql_portinfo
     }
 
   }
-  
+
   #--- finish
-  
+
   return $re;
 }
 
@@ -1364,7 +1364,7 @@ sub sql_aux_data
   my %re;
 
   #--- list of sites
-    
+
   $re{'sites'} = sql_select(
     'ondb',
     'SELECT code, description FROM site ORDER BY code',
@@ -1372,7 +1372,7 @@ sub sql_aux_data
     undef,
     1
   );
-  
+
   return \%re;
 }
 
@@ -1387,17 +1387,17 @@ sub addp_normalize
   my ($type, $value) = @_;
 
   $value =~ s/^\s+|\s+$//g;
-  
+
   # 'undef' is a special value
   if($type eq 'cp' && lc($value) eq 'undef') {
     return 'undef';
   }
-  
+
   if($type eq 'cp' || $type eq 'ou') {
     return normalize_outcp($value);
   }
 
-  return undef;  
+  return undef;
 }
 
 
@@ -1406,12 +1406,12 @@ sub addp_normalize
 # Used by Add Patches form to inquire whether given site uses outlets not.
 # Most sites don't use outlets.
 #==========================================================================
- 
+
 sub backend_useoutlet
 {
   my $site = shift;
   my %re = ( 'arg' => { 'site' => $site } );
-    
+
   $re{'result'} = sql_site_uses_cp($site);
   $re{'status'} = 'ok';
   return \%re;
@@ -1426,43 +1426,43 @@ sub backend_useoutlet
 
 sub backend_swport
 {
-  
+
   #--- arguments
-  
+
   my (
     $site,         # 1. three letter site code
     $host,         # 2. switch hostname
     $port          # 3. switch port name
   ) = @_;
-  
+
   #--- structure returned to client as JSON, 'arg' key contains
   #--- the input values for later reference
-  
-  my %re = ( 
-    'arg' => { 
-      'site'     => $site, 
-      'host'     => $host, 
-      'portname' => $port 
-    } 
+
+  my %re = (
+    'arg' => {
+      'site'     => $site,
+      'host'     => $host,
+      'portname' => $port
+    }
   );
-  
+
   #--- normalization (just removing whitespace)
 
   $host =~ s/\s//g;
   $port =~ s/\s//g;
-    
+
   #--- only PORTNAME
-  
+
   #--- (this means nothing is done since we cannot lookup the portname
   #--- without knowing the switch hostname)
-  
+
   if($port && !$host) {
     $re{'result'}{'host'} = undef;
     $re{'result'}{'portname'} = $port;
   } else {
-  
+
   #--- both HOST and PORT
-  
+
     if($port) {
       my $query = 'SELECT * FROM status WHERE substring(host for 3) = ? AND host = ? ';
       my $port_arg;
@@ -1484,9 +1484,9 @@ sub backend_swport
         $re{'result'}{'exists'}{'portname'} = JSON->false;
       }
     }
-  
+
   #--- only HOST
-  
+
     if(!exists $re{'result'}{'host'}) {
       my $r = sql_select(
         'spam',
@@ -1502,9 +1502,9 @@ sub backend_swport
         delete $re{'result'}{'exists'}{'portname'};
       }
     }
-  
+
   }
-  
+
   #--- finish
 
   $re{'status'} = 'ok';
@@ -1521,22 +1521,22 @@ sub backend_swport
 sub sql_get_cp_by_outlet
 {
   #--- arguments
-  
+
   my (
     $site,
     $outlet
   ) = @_;
-  
+
   #--- perform the query
-  
+
   my $r = sql_select(
     'spam',
     'SELECT * FROM out2cp WHERE site = ? AND outlet = ?',
     [ $site, $outlet ]
   );
-  
+
   #--- process the result
-  
+
   if($r->{'status'} eq 'ok') {
     return ($r->{'result'}[0]{'cp'}, $r);
   } else {
@@ -1555,18 +1555,18 @@ sub sql_get_cp_by_outlet
 sub sql_update_summary
 {
   #--- arguments
-  
+
   my (
     $site,
     $work_info
   ) = @_;
-  
+
   #--- other variables
-  
+
   my $dbh = $dbh{'spam'};   # database handle
   my %re;                   # return data
   my @update_summary;       # result
-  
+
   #--- loop over the work_info entries
 
   my $sth = $dbh->prepare(
@@ -1585,7 +1585,7 @@ sub sql_update_summary
     $row->{'flags'} = port_flag_unpack($row->{'flags'});
     push(@update_summary, $row);
   }
-  
+
   #--- finish
 
   $re{'status'} = 'ok';
@@ -1604,14 +1604,14 @@ sub sql_update_summary
 sub sql_add_patches
 {
   #--- arguments
-  
+
   my (
     $arg,                   # 1. form fields from client (hashref)
     $site                   # 2. site the form was submited for
   ) = @_;
-    
+
   #--- other variables
-  
+
   my $dbh = $dbh{'spam'};   # database handle
   my $r;                    # database return value
   my %re;                   # return structure (sent to client as JSON)
@@ -1620,9 +1620,9 @@ sub sql_add_patches
   # porttable/status (through v_search_status view) entries that were
   # affected by adding new patches; this is displayed to the user as
   # instant feedback about what they have actually done.
-  
+
   my @work_info;
-  
+
   #--- init
 
   $re{'debug'} = $debug;
@@ -1630,17 +1630,17 @@ sub sql_add_patches
   $re{'result'} = [];
 
   #--- are we using outlets for this site?
-  
+
   $re{'useoutlet'} = do {
     my $useoutlet = backend_useoutlet($site);
     js_bool($useoutlet->{'status'} eq 'ok' && $useoutlet->{'result'});
   };
-  
+
   #--- function to store/access form data
-  
+
   # aux function to store/retrieve the form data while keeping them in
   # a structure suitable for client-side JS
-    
+
   my $form = sub {
     my ($row, $type, $val) = @_;
     my $store = $re{'result'};
@@ -1654,16 +1654,16 @@ sub sql_add_patches
         }
         $store->[$row]{$type}{'name'} = $name;
         return $store->[$row]{$type};
-      } 
+      }
       # $val is empty-hashref, remove the 'type' node entirely
       elsif(ref($val) && !%$val) {
         delete $store->[$row]{$type};
-      } 
+      }
       # $val is scalar, return value for given type/key
       else {
         return $store->[$row]{$type}{$val};
       }
-    } 
+    }
     # $val is undef, return the whole type-hashref
     else {
       if(!$store->[$row]) {
@@ -1672,9 +1672,9 @@ sub sql_add_patches
       return $store->[$row]{$type};
     }
   };
-  
+
   #--- normalization and validation, pass 1
-  
+
   # Following is done in this section:
   #
   # 1. normalize cp/outlet values (so that values that get into the datbase
@@ -1690,11 +1690,11 @@ sub sql_add_patches
   #   value -- the normalized value
   #   valid -- boolean whether we think the vale is valid; invalid value is
   #            handled as error in the client and the user must reenter it
-  
+
   for(my $row_no = 0;; $row_no++) {
-  
+
   #--- get values, finish if no more values
-  
+
     my $v = sprintf('%02d', $row_no);
     my $form_sw = $arg->{"addp_sw$v"};
     my $form_pt = $arg->{"addp_pt$v"};
@@ -1707,7 +1707,7 @@ sub sql_add_patches
     my $s = backend_swport($site, $form_sw, $form_pt);
     if($s->{'status'} ne 'ok') { $s = undef; }
     push(@{$re{'swport'}}, $s) if $debug;
-    
+
   #--- switch
 
     if($form_sw) {
@@ -1728,9 +1728,9 @@ sub sql_add_patches
         'value' => $s->{'result'}{'portname'} // $form_pt,
         'valid' => $pt_valid
       });
-      $form->($row_no, 'pt', { 'err' => 'Invalid switch port' }) 
+      $form->($row_no, 'pt', { 'err' => 'Invalid switch port' })
         if !$pt_valid;
-      $form->($row_no, 'pt', { 'err' => 'Cannot validate switch port' }) 
+      $form->($row_no, 'pt', { 'err' => 'Cannot validate switch port' })
         if !$pt_valid && !$s->{'result'}{'exists'}{'host'};
     }
 
@@ -1778,7 +1778,7 @@ sub sql_add_patches
           value => undef,
           valid => JSON->false
         });
-        $form->($row_no, 'ou', { 
+        $form->($row_no, 'ou', {
           valid => JSON->false,
           err => 'Outlet does not exist'
         });
@@ -1789,7 +1789,7 @@ sub sql_add_patches
   }
 
   #--- abort if validation resulted in at least one invalid form fields
-  
+
   for(my $row_no = 0; $row_no < scalar(@{$re{'result'}}); $row_no++) {
     for my $type (qw(sw pt cp)) {
       if(!$form->($row_no, $type, 'valid')) {
@@ -1800,7 +1800,7 @@ sub sql_add_patches
       }
     }
   }
-  
+
   #--- try block start
 
   try {
@@ -1819,14 +1819,14 @@ sub sql_add_patches
   #--- loop over form rows
 
     for(
-      my ($i, $n) = (0, scalar(@{$re{'result'}})); 
+      my ($i, $n) = (0, scalar(@{$re{'result'}}));
       $i < $n;
       $i++
     ) {
       my (@fields, @values);
       my $pushdb = multipush(\@fields, \@values);
       my $row = $re{'result'}[$i];
-      
+
       $pushdb->('host',      $form->($i, 'sw', 'value'));
       $pushdb->('portname',  $form->($i, 'pt', 'value'));
       $pushdb->('cp',        $form->($i, 'cp', 'value'));
@@ -1834,11 +1834,11 @@ sub sql_add_patches
       $pushdb->('chg_who',   $ENV{'REMOTE_USER'}) if $ENV{'REMOTE_USER'};
       $pushdb->('chg_where', $ENV{'REMOTE_ADDR'}) if $ENV{'REMOTE_ADDR'};
 
-      push(@work_info, [ 
+      push(@work_info, [
         $form->($i, 'sw', 'value'),
-        $form->($i, 'pt', 'value') 
+        $form->($i, 'pt', 'value')
       ]);
-      
+
       my $qry = sprintf(
         'INSERT INTO porttable ( %s ) VALUES ( %s )',
         join(',', @fields),
@@ -1846,7 +1846,7 @@ sub sql_add_patches
       );
 
     #--- insert into 'porttable'
-    
+
       my $r = $dbh->do($qry, undef, @values);
       if(!$r) {
         $re{'errwhy'} = 'Failed to insert data into database';
@@ -1856,25 +1856,25 @@ sub sql_add_patches
 
         # interpret the error
         if($re{'errdb'}{'constraint'} eq 'porttable_pkey') {
-          $form->($i, 'pt', { 
-            'valid' => JSON->false, 
+          $form->($i, 'pt', {
+            'valid' => JSON->false,
             'err' => 'Port already in use'
           });
-        } 
-        
-        # abort        
+        }
+
+        # abort
         die "ABORT\n";
       }
 
     #--- update status so that the port appears fresh (ie. not inactive),
     #--- this gives the user time to actually start using the port
-    
-      $qry = "UPDATE status 
-                SET 
-                  lastchg = current_timestamp, 
-                  lastchk = current_timestamp 
+
+      $qry = "UPDATE status
+                SET
+                  lastchg = current_timestamp,
+                  lastchk = current_timestamp
                 WHERE host = ? AND portname = ?";
-      
+
       $r = $dbh->do(
         $qry, undef, $form->($i, 'sw', 'value'), $form->($i, 'pt', 'value')
       );
@@ -1885,7 +1885,7 @@ sub sql_add_patches
         $re{'formrow'} = $i;
         die "ABORT\n";
       }
-    
+
     }
 
   #--- try block end
@@ -1915,7 +1915,7 @@ sub sql_add_patches
     }
     $re{'status'} = 'ok';
   }
-  
+
   #--- search affected switch/ports pairs using v_search_status view
   #--- and return the info to backend, this is feedback for the user
   #--- saved under the 'search' key because we're reusing the template
@@ -1924,21 +1924,21 @@ sub sql_add_patches
   if(@work_info) {
     $re{'search'} = sql_update_summary($site, \@work_info);
   }
-  
+
   #--- in case of error caused by duplicate portname, perform
   #--- collect update summary, which will cause the conflicting
   #--- entry to be displayed to the user
-  
+
   if(
-    $re{'errdb'}{'type'} eq 'dupkey' 
+    $re{'errdb'}{'type'} eq 'dupkey'
     && $re{'errdb'}{'constraint'} eq 'porttable_pkey'
   ) {
     $re{'search'} = sql_update_summary(
-      $site, 
+      $site,
       [[ $re{'errdb'}{'conflict'}{'host'}, $re{'errdb'}{'conflict'}{'portname'} ]]
     );
   }
-  
+
   #--- finish
 
   return \%re;
@@ -1953,17 +1953,17 @@ sub sql_add_patches
 sub sql_del_patch
 {
   #--- variables
-  
+
   my ($host, $portname) = @_;
   my (%re, $qry, $r);
-  
+
   #--- init
-  
+
   $re{'function'} = 'sql_del_patch';
   $re{'debug'} = $debug;
-  
+
   #--- perform query
-  
+
   $qry = 'DELETE FROM porttable WHERE host = ? AND portname = ?';
   $re{'query'} = sql_show_query($qry, $host, $portname);
   $r = $db_spam->do($qry, undef, $host, $portname);
@@ -1980,16 +1980,16 @@ sub sql_del_patch
   } else {
     $re{'status'} = 'ok';
   }
-  
+
   #--- finish
-  
+
   return \%re;
 }
 
 
 
 #=============================================================================
-# Function to insert/update/delete modwire information (the modwire table, 
+# Function to insert/update/delete modwire information (the modwire table,
 # links linecards to wiring info, typically a patchpanel id).
 #=============================================================================
 
@@ -2038,8 +2038,8 @@ sub sql_modwire
   #--- update/insert
 
     else {
-      $qry = 
-        "UPDATE modwire 
+      $qry =
+        "UPDATE modwire
         SET location = ?, chg_who = ?, chg_where = ?, chg_when = now()
         WHERE host = ? AND m = ? AND n = ?";
       @fld = ($location, $ENV{REMOTE_USER}, $ENV{REMOTE_ADDR}, $host, $m, $n);
@@ -2078,7 +2078,7 @@ sub sql_modwire
 
   #--- finish
 
-  return \%re;  
+  return \%re;
 }
 
 
@@ -2195,7 +2195,7 @@ if($req eq 'search') {
   ) {
     ($par{$k}) = &$arg($k);
   }
-  remove_undefs(\%par);  
+  remove_undefs(\%par);
   print $js->encode(sql_search(\%par));
 }
 
