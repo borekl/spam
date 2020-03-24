@@ -275,6 +275,7 @@ sub hwinfo
     })
   }
 
+  my @cards_processed;
   for(my $i = 0; $i < @cards; $i++) {
 
     # linecard number derivation is problematic; entPhysicalParentRelPos
@@ -303,7 +304,7 @@ sub hwinfo
       }
     }
 
-    push(@result, {
+    push(@cards_processed, {
       'm' => $m,
       'n' => $linecard_no,
       idx => $cards[$i]->entPhysicalIndex,
@@ -313,6 +314,16 @@ sub hwinfo
       location => $location,
     })
   }
+
+  push(@result,
+    sort {
+      if($a->{'m'} == $b->{'m'}) {
+        $a->{'n'} <=> $b->{'n'}
+      } else {
+        $a->{'m'} <=> $b->{'m'}
+      }
+    } @cards_processed
+  );
 
   for(my $i = 0; $i < @fans; $i++) {
     # only list fans with model name, some devices list every fan in the system
