@@ -68,8 +68,11 @@
       {#hwinfo.result}
       <tr>
         <td class="swinfo">
-          {@ne key=m value=0}{m}/{/ne}
-          {n}
+          {?n}
+            {m}/{n}
+          {:else}
+            {m}
+          {/n}
         </td>
         <td class="swinfo">{type}</td>
         <td class="swinfo">{partnum}</td>
