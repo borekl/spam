@@ -288,7 +288,11 @@ sub hwinfo
     if !$chassis;
 
     my $linecard_no = int($cards[$i]->parent->entPhysicalParentRelPos);
-    if($chassis->entPhysicalModelName eq 'C9410R' && $linecard_no == 11) {
+    if(
+      $chassis->entPhysicalModelName
+      && $chassis->entPhysicalModelName eq 'C9410R'
+      && $linecard_no == 11
+    ) {
       $linecard_no = 5;
     }
 
