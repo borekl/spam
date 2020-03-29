@@ -13,7 +13,7 @@ CREATE TABLE status (
   ifindex     bigint                   NOT NULL,
   vlan        smallint,
   vlans       bit(4096),
-  descr       character varying(64),
+  descr       character varying(256),
   duplex      smallint,
   rate        bigint,
   flags       smallint,
