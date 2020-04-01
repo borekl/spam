@@ -14,6 +14,8 @@ use Moo;
 use Carp;
 use Scalar::Util qw(reftype);
 
+use SPAM::Config;
+
 # parent entry, undef for tree root
 
 has parent => (
@@ -162,21 +164,40 @@ sub chassis_no
 {
   my ($self) = @_;
   my $chassis_no;
+  my $chassis;
 
   # this entity is a chassis itself
   if($self->entPhysicalClass eq 'chassis') {
-    $chassis_no = $self->entPhysicalParentRelPos;
+    $chassis = $self;
   }
 
   # this entity is something else but chassis
   else {
-    my ($re) = $self->ancestors_by_class('chassis');
-    croak "No chassis found for entity " . $self->entPhysicalIndex if !$re;
-    $chassis_no = $re->entPhysicalParentRelPos;
+    ($chassis) = $self->ancestors_by_class('chassis');
+    croak "No chassis found for entity " . $self->entPhysicalIndex if !$chassis;
   }
+
+  # get chassis number
+  $chassis_no = $chassis->entPhysicalParentRelPos;
 
   # chassis with position -1 means single chassis, map this value to 1
   if($chassis_no == -1) { $chassis_no = 1; }
+
+  # chassis number mapping through entity-profiles.models.MODEL.chassis_map
+  # configuration entry
+  my $cfg = SPAM::Config->instance->config;
+  if(
+    exists $cfg->{'entity-profiles'}
+    && exists $cfg->{'entity-profiles'}{'models'}
+    && $chassis->entPhysicalModelName
+    && exists $cfg->{'entity-profiles'}{'models'}{$chassis->entPhysicalModelName}
+    && exists $cfg->{'entity-profiles'}{'models'}{$chassis->entPhysicalModelName}{'chassis_map'}
+  ) {
+    my $map = $cfg->{'entity-profiles'}{'models'}{$chassis->entPhysicalModelName}{'chassis_map'};
+    $chassis_no = $map->{$chassis_no} if exists $map->{$chassis_no};
+  }
+
+  # return as integer number
   return int($chassis_no);
 }
 
