@@ -211,13 +211,38 @@ sub power_supplies
 sub linecards
 {
   my ($self) = @_;
+  my $cfg = SPAM::Config->instance->config;
+  my @linecards;
 
-  return $self->query(sub {
-    $_[0]->entPhysicalClass eq 'module'
-    && $_[0]->parent
-    && $_[0]->parent->parent
-    && $_[0]->parent->parent->entPhysicalClass eq 'chassis'
-  });
+  # find out if "modules_by_name" discovery option is defined for this model of
+  # a switch; if that is the case, the $re variable will hold the discovery
+  # regular expression
+
+  my ($chassis) = $self->chassis;
+  my $chassis_model = $chassis->entPhysicalModelName;
+  my $re = $cfg->{'entity-profiles'}{'models'}{$chassis_model}{'modules_by_name'}
+  if(
+    $chassis_model
+    && exists $cfg->{'entity-profiles'}
+    && exists $cfg->{'entity-profiles'}{'models'}
+    && exists $cfg->{'entity-profiles'}{'models'}{$chassis_model}
+    && exists $cfg->{'entity-profiles'}{'models'}{$chassis_model}{'modules_by_name'}
+  );
+
+  if($re) {
+    @linecards = $self->query(sub {
+      $_[0]->entPhysicalName =~ /$re/;
+    });
+  } else {
+    @linecards = $self->query(sub {
+      $_[0]->entPhysicalClass eq 'module'
+      && $_[0]->parent
+      && $_[0]->parent->parent
+      && $_[0]->parent->parent->entPhysicalClass eq 'chassis'
+    });
+  }
+
+  return @linecards;
 }
 
 
