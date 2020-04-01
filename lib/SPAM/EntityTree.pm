@@ -66,10 +66,25 @@ sub BUILD
   if(!@root) {
     croak 'Entity table has no root';
   } elsif(@root > 1) {
-    croak 'Entity table has multiple roots';
-  }
 
-  $self->root($root[0]);
+  # some devices' entPhysicalTable doesn't comprise one single-rooted tree, but
+  # instead have some entries that are not part of the tree; in that case the
+  # above method doesn't find the actual entity tree root and further
+  # processing is required
+
+    my (@stack) = grep { $_->entPhysicalClass eq 'stack' } @root;
+    my (@chassis) = grep { $_->entPhysicalClass eq 'chassis' } @root;
+    if(@stack) {
+      $self->root($stack[0]);
+    } elsif(@chassis == 1) {
+      $self->root($chassis[0]);
+    } else {
+      croak 'Entity table has multiple roots';
+    }
+
+  } else {
+    $self->root($root[0]);
+  }
 
   # recursively build the tree from the array of elements
 
