@@ -591,6 +591,7 @@ sub sql_get_hwinfo
     my $tree = SPAM::EntityTree->new(entities => \@entities);
 
     $re->{'hwinfo'}{'result'} = $tree->hwinfo($modwire);
+    $re->{'hwinfo'}{'ifmapping'} = js_bool(%{$tree->node_by_ifIndex});
   }
 
   return $local_re;
@@ -647,87 +648,44 @@ sub sql_get_swinfo
 
 sub search_hwinfo_interleave
 {
-  #--- arguments
-
   my $re = shift;
+  my @new;
 
-  #--- other variables
+  #--- get list of linecards in a modular switch; for non-modular switches
+  #--- this list will come out empty
 
-  my @new;    # the new search result we're creating here
-  my $vss;    # the switch is Cisco VSS
+  my @linecards = grep {
+    $_->{'type'} eq 'linecard'
+  } @{$re->{'hwinfo'}{'result'}};
 
-  $vss = $re->{'swinfo'}{'result'}{'vss'} // 0;
+  #--- if there are no linecards found, the switch is non-modular and nothing
+  #--- needs to be done here
 
-  #--- iterate over the search output and create a new one
+  return if !@linecards;
 
-  my $n_last = '';
-  for my $row (@{$re->{'search'}{'result'}}) {
+  #--- if entAliasMappingTable is not supported by the device, we do nothing
 
-  #--- parse portname and get the linecard number; note
-  #--- that on VSS switches line-card number is in form of
-  #--- sw#/linecard#
+  return if !$re->{'hwinfo'}{'ifmapping'};
 
-    $row->{'portname'} =~ /^[a-z]+(\d+|\d+\/\d+)\/(\d+)$/i;
-    my $n_curr = $1;
+  #--- reindex the search result by ifIndex
 
-  #--- if the last line-card id is different from the current
-  #--- it means we're in the place of the list where we want
-  #--- to enter the line-card info
-
-    if($n_curr ne $n_last) {
-      $n_curr =~ /^(\d+)\/(\d+)$/;
-      my ($chassis, $module) = (int($1), int($2));
-
-  #--- for VSS switches, reading of present line-cards
-  #--- is not working with the standard MIB (FIXME);
-  #--- therefore we merely push the line-card designation without
-  #--- any additional information
-
-      if($vss) {
-        my ($hwentry) = grep {
-          exists $_->{'n'}
-          && $_->{'n'} eq $module
-          && $_->{'m'} eq $chassis
-        } @{$re->{'hwinfo'}{'result'}};
-        if(ref($hwentry)) { # found a hwentry
-          push(@new, $hwentry);
-        } else { # found no hwentry
-          push(@new, { 'n' => $chassis, 'm' => $module});
-        }
-      }
-
-  #--- for non-VSS switch we try to find the associated line-card
-  #--- info stored in 'hwinfo' key; if we find it, we push the
-  #--- hwinfo entry, otherwise just the line-card designation
-
-      else {
-
-        my ($hwentry) = grep {
-          $_->{'type'} eq 'linecard'
-          && $_->{'n'} == $n_curr;
-        } @{$re->{'hwinfo'}{'result'}};
-        if(ref($hwentry)) { # found a hwentry
-          push(@new, $hwentry);
-        } else { # found no hwentry
-          push(@new, { 'm' => $chassis, 'n' => int($n_curr)});
-        }
-      }
-
-  #--- end of current line-card boundary processing
-
-      $n_last = $n_curr;
-
-    }
-
-  #--- regular row push (merely copies the source)
-
-    push(@new, $row);
-
+  my %idx;
+  foreach my $entry (@{$re->{'search'}{'result'}}) {
+    $idx{$entry->{'ifindex'}} = $entry;
   }
 
-  #--- replace the old search result with the new
+  #--- iterate over known linecards and port associated with them
 
-  $re->{'search'}{'result'} = \@new;
+  foreach my $linecard (@linecards) {
+    push(@new, $linecard);
+    foreach my $port_ifindex (@{$linecard->{'ports'}}) {
+      push(@new, $idx{$port_ifindex});
+    }
+  }
+
+  #--- finish
+
+  return $re->{'search'}{'result'} = \@new;
 
 }
 
