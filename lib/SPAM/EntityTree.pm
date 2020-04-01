@@ -235,8 +235,10 @@ sub fans
 
 #------------------------------------------------------------------------------
 # Legacy function that returns the 'hwinfo' structure: a flat arrayref of
-# hashes. Eventually we want to move to use the entity tree directly. This
-# method entails multiple tree traversal and is very inefficient.
+# hashes, each of which correspond to one of following entities: chassis, fan,
+# power supply or linecard. Eventually we want to move to use the entity tree
+# directly. This method entails multiple tree traversal and is quite
+# inefficient.
 #
 # The 'modwire' argument is a list of hashref loaded from the 'modwire' backend
 # table, which gives identification of where given linecard is cabled to (for
@@ -255,39 +257,45 @@ sub hwinfo
   my @cards = $self->linecards;
   my @fans = $self->fans;
 
-  for(my $i = 0; $i < @chassis; $i++) {
+  #--- get list of chassis entries
+
+  foreach my $chassis (@chassis) {
     push(@result, {
-      'm' => $chassis[$i]->chassis_no,
-      idx => $chassis[$i]->entPhysicalIndex,
-      partnum => $chassis[$i]->entPhysicalModelName,
-      sn => $chassis[$i]->entPhysicalSerialNum,
+      'm' => $chassis->chassis_no,
+      idx => $chassis->entPhysicalIndex,
+      partnum => $chassis->entPhysicalModelName,
+      sn => $chassis->entPhysicalSerialNum,
       type => 'chassis',
     })
   }
 
-  for(my $i = 0; $i < @ps; $i++) {
+  #--- get list of power supplies
+
+  foreach my $ps (@ps) {
     push(@result, {
-      'm' => $ps[$i]->chassis_no,
-      idx => $ps[$i]->entPhysicalIndex,
-      partnum => $ps[$i]->entPhysicalModelName,
-      sn => $ps[$i]->entPhysicalSerialNum,
+      'm' => $ps->chassis_no,
+      idx => $ps->entPhysicalIndex,
+      partnum => $ps->entPhysicalModelName,
+      sn => $ps->entPhysicalSerialNum,
       type => 'ps',
     })
   }
 
+  #--- get list of linecards
+
   my @cards_processed;
-  for(my $i = 0; $i < @cards; $i++) {
+  foreach my $card (@cards) {
 
     # linecard number derivation is problematic; entPhysicalParentRelPos
     # of the direct container entity works on most hardware, but on Cat9410R
     # the supervisor it is in slot 5, but the respective container is shown as
     # being number 11; special casing required
 
-    my ($chassis) = $cards[$i]->ancestors_by_class('chassis');
-    croak "No chassis found for entity " . $cards[$i]->entPhysicalIndex
+    my ($chassis) = $card->ancestors_by_class('chassis');
+    croak "No chassis found for entity " . $card->entPhysicalIndex
     if !$chassis;
 
-    my $linecard_no = int($cards[$i]->parent->entPhysicalParentRelPos);
+    my $linecard_no = int($card->parent->entPhysicalParentRelPos);
     if(
       $chassis->entPhysicalModelName
       && $chassis->entPhysicalModelName eq 'C9410R'
@@ -297,27 +305,35 @@ sub hwinfo
     }
 
     # find card 'location'
-    my $m = $cards[$i]->chassis_no;
+    my $m = $card->chassis_no;
     my ($location_entry, $location);
     if($modwire && @$modwire) {
       ($location_entry) = grep {
-        $_->{'m'} == $m && $_->{'n'} == $linecard_no
+        ( $_->{'m'} == $m || ($_->{'m'} == 0 && $m == 1) )
+        && $_->{'n'} == $linecard_no
       } @$modwire;
       if($location_entry) {
         $location = $location_entry->{'location'};
       }
     }
 
+    # get list of ports in given module
+
+    my @ports = $self->query(start => $card);
+
     push(@cards_processed, {
       'm' => $m,
       'n' => $linecard_no,
-      idx => $cards[$i]->entPhysicalIndex,
-      partnum => $cards[$i]->entPhysicalModelName,
-      sn => $cards[$i]->entPhysicalSerialNum,
+      idx => $card->entPhysicalIndex,
+      partnum => $card->entPhysicalModelName,
+      sn => $card->entPhysicalSerialNum,
       type => 'linecard',
       location => $location,
+      ports => [ map { $_->ifIndex } grep { $_->ifIndex } @ports ],
     })
   }
+
+  # sort the linecards by their m/n values (ie. chassis/slot numbers)
 
   push(@result,
     sort {
@@ -329,18 +345,22 @@ sub hwinfo
     } @cards_processed
   );
 
-  for(my $i = 0; $i < @fans; $i++) {
+  #--- get list of fans
+
+  foreach my $fan (@fans) {
     # only list fans with model name, some devices list every fan in the system
     # which is not very useful
-    next if !$fans[$i]->entPhysicalModelName;
+    next if !$fan->entPhysicalModelName;
     push(@result, {
-      'm' => $fans[$i]->chassis_no,
-      idx => $fans[$i]->entPhysicalIndex,
-      partnum => $fans[$i]->entPhysicalModelName,
-      sn => $fans[$i]->entPhysicalSerialNum,
+      'm' => $fan->chassis_no,
+      idx => $fan->entPhysicalIndex,
+      partnum => $fan->entPhysicalModelName,
+      sn => $fan->entPhysicalSerialNum,
       type => 'fan',
     })
   }
+
+  # return the resulting hwinfo array
 
   return \@result;
 }
