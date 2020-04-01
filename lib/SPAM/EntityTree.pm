@@ -15,6 +15,8 @@ use Moo;
 use Carp;
 use Scalar::Util qw(blessed reftype);
 
+use SPAM::Config;
+
 # tree root
 
 has root => (
@@ -250,6 +252,8 @@ sub fans
 sub hwinfo
 {
   my ($self, $modwire) = @_;
+  my $cfg = SPAM::Config->instance->config;
+  my $ent_models = $cfg->{'entity-profiles'}{'models'} // undef;
   my @result;
 
   my @chassis = $self->chassis;
@@ -296,12 +300,25 @@ sub hwinfo
     if !$chassis;
 
     my $linecard_no = int($card->parent->entPhysicalParentRelPos);
+
+    # linecard number mapping; this uses configuration entry:
+    # entity-profiles.models.MODEL.slot_map = HASH
+    #
+    # For example, following config maps slot 11 to slot 5 for C9410R:
+    #
+    # "entity-profiles": {
+    #   "models": { "C9410R": { "slot_map": { "11": 5 } } }
+    # }
+
     if(
-      $chassis->entPhysicalModelName
-      && $chassis->entPhysicalModelName eq 'C9410R'
-      && $linecard_no == 11
+      $ent_models
+      && $chassis->entPhysicalModelName
+      && $ent_models->{$chassis->entPhysicalModelName}
+      && $ent_models->{$chassis->entPhysicalModelName}{'slot_map'}
     ) {
-      $linecard_no = 5;
+      my $map = $ent_models->{$chassis->entPhysicalModelName}{'slot_map'};
+      $linecard_no
+      = exists $map->{$linecard_no} ? $map->{$linecard_no} : $linecard_no;
     }
 
     # find card 'location'
