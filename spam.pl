@@ -574,7 +574,7 @@ sub poll_host
       for(my $i = 0; $i < @cards; $i++) {
         printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
           $cards[$i]->chassis_no,
-          $cards[$i]->parent->entPhysicalParentRelPos,
+          $cards[$i]->linecard_no,
           $cards[$i]->disp;
       }
 

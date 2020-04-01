@@ -203,6 +203,57 @@ sub chassis_no
 
 
 #------------------------------------------------------------------------------
+# Return linecard slot number. This currently only works for the card entities
+# itself, not for any descendants.
+#------------------------------------------------------------------------------
+
+sub linecard_no
+{
+  my ($self) = @_;
+  my $linecard_no;
+
+  # only modules; everything else croaks
+  if($self->entPhysicalClass ne 'module') {
+    croak sprintf(
+      "This entry (%d) is not a linecard", $self->$self->entPhysicalIndex
+    );
+  }
+
+  # if there's regex extraction configured for this platform, get it
+  my ($chassis) = $self->ancestors_by_class('chassis');
+  if(!$chassis) {
+    croak "No chassis found for entity " . $self->entPhysicalIndex if !$chassis;
+  }
+  my $swmodel = $chassis->entPhysicalModelName;
+  my $cfg = SPAM::Config->instance->config;
+  my $re;
+  if(
+    exists $cfg->{'entity-profiles'}
+    && exists $cfg->{'entity-profiles'}{'models'}
+    && $swmodel
+    && exists $cfg->{'entity-profiles'}{'models'}{$swmodel}
+    && exists $cfg->{'entity-profiles'}{'models'}{$swmodel}{'card_slot_no'}
+  ) {
+    $re = $cfg->{'entity-profiles'}{'models'}{$swmodel}{'card_slot_no'};
+  }
+
+  # if the extraction regex was retrieved, try to match it with entity name
+  # and if it matches use 'slotno' named capture group as the linecard number
+  if($re && $self->entPhysicalName =~ /$re/) {
+    $linecard_no = $+{slotno};
+  }
+
+  # if the regex did not match, or the regex was not configured at all, default
+  # to finding parent entry's relative position
+  $linecard_no = $self->parent->entPhysicalParentRelPos
+  if !defined $linecard_no;
+
+  # return as integer
+  return int($linecard_no);
+}
+
+
+#------------------------------------------------------------------------------
 # Return display string for current entry (intended for debugging)
 #------------------------------------------------------------------------------
 

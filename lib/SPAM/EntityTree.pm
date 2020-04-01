@@ -299,7 +299,7 @@ sub hwinfo
     croak "No chassis found for entity " . $card->entPhysicalIndex
     if !$chassis;
 
-    my $linecard_no = int($card->parent->entPhysicalParentRelPos);
+    my $linecard_no = $card->linecard_no;
 
     # linecard number mapping; this uses configuration entry:
     # entity-profiles.models.MODEL.slot_map = HASH
