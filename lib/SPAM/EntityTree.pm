@@ -276,6 +276,80 @@ sub fans
 
 
 #------------------------------------------------------------------------------
+# Return a list of ports, optionally starting at a node. The port list can
+# optionally be filtered with 'entity-profiles.models.MODEL.port_filter'
+# configuration option. Example of usage:
+#
+#  "N3K-C3548P-10GX": {
+#    "port_filter": {
+#      "filter_by": "entPhysicalName",
+#      "regex": "^Linecard-\\d Port-(?<portno>\\d+)$",
+#      "range": [ 1, 48 ],
+#    }
+#  }
+#
+#------------------------------------------------------------------------------
+
+sub ports
+{
+  my ($self, $start) = @_;
+  my $cfg = SPAM::Config->instance->config;
+  my $filter;
+  my @ports;
+
+  #--- default starting node is the root
+
+  $start = $self unless $start;
+
+  #--- port filtering
+
+  my ($chassis) = $start->ancestors_by_class('chassis');
+  my $swmodel = $chassis->entPhysicalModelName if $chassis;
+
+  if(
+    $swmodel
+    && exists $cfg->{'entity-profiles'}
+    && exists $cfg->{'entity-profiles'}{'models'}
+    && exists $cfg->{'entity-profiles'}{'models'}{$swmodel}
+    && exists $cfg->{'entity-profiles'}{'models'}{$swmodel}{'port_filter'}
+  ) {
+    $filter = $cfg->{'entity-profiles'}{'models'}{$swmodel}{'port_filter'};
+    if(
+      !exists $filter->{'filter_by'}
+      || !exists $filter->{'regex'}
+      || !exists $filter->{'range'}
+    ) {
+      croak 'port_filter option requires "filter_by", "regex" and "range"';
+    }
+  }
+
+  #--- get unfiltered port list
+
+  @ports = $self->query(start => $start, callback => sub {
+    $_[0]->entPhysicalClass eq 'port'
+  });
+
+  #--- perform filtering
+
+  if($filter) {
+    my $field = $filter->{'filter_by'};
+    my $re = $filter->{'regex'};
+    my @range = @{$filter->{'range'}};
+
+    @ports = grep {
+      $_->$field =~ /$re/
+      && $+{portno} >= $range[0]
+      && $+{portno} <= $range[1]
+    } @ports;
+  }
+
+  #--- finish
+
+  return @ports;
+}
+
+
+#------------------------------------------------------------------------------
 # Legacy function that returns the 'hwinfo' structure: a flat arrayref of
 # hashes, each of which correspond to one of following entities: chassis, fan,
 # power supply or linecard. Eventually we want to move to use the entity tree
@@ -376,7 +450,7 @@ sub hwinfo
 
     # get list of ports in given module
 
-    my @ports = $self->query(start => $card);
+    my @ports = $self->ports($card);
 
     push(@cards_processed, {
       'm' => $m,
