@@ -24,7 +24,6 @@ use Socket;
 use Data::Dumper;
 use Try::Tiny;
 
-
 use SPAM::Cmdline;
 use SPAM::Config;
 
