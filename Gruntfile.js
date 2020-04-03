@@ -35,6 +35,8 @@ module.exports = function(grunt)
        files: [
          { nonull: true, src: 'lib/SPAM/Cmdline.pm', dest: '../prod/lib/SPAM/Cmdline.pm' },
          { nonull: true, src: 'lib/SPAM/Config.pm', dest: '../prod/lib/SPAM/Config.pm' },
+         { nonull: true, src: 'lib/SPAM/Config.pm', dest: '../prod/lib/SPAM/Entity.pm' },
+         { nonull: true, src: 'lib/SPAM/Config.pm', dest: '../prod/lib/SPAM/EntityTree.pm' },
        ]
      },
      www: {
