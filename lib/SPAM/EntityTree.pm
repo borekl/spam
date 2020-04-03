@@ -252,6 +252,7 @@ sub linecards
     @linecards = $self->query(sub {
       $_[0]->entPhysicalClass eq 'module'
       && $_[0]->parent
+      && $_[0]->parent->entPhysicalClass eq 'container'
       && $_[0]->parent->parent
       && $_[0]->parent->parent->entPhysicalClass eq 'chassis'
     });
