@@ -1184,7 +1184,7 @@ sub sql_mactable_update
 
 sub sql_arptable_update
 {
-  my $dbh = $cfg->get_dbi_handle('spam');
+  my $dbh = $cfg2->get_dbi_handle('spam');
   my %arp_current;
   my ($mac, $ret, @update, $q);
 
