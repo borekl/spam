@@ -16,7 +16,6 @@
 
 use strict;
 use lib 'lib';
-use Getopt::Long;
 use POSIX qw(strftime);
 use SPAMv2;
 use SPAM_SNMP;
