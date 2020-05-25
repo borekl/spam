@@ -61,7 +61,7 @@
     },
     "ondbui" : {
       "dbuser" : "swcgi",
-      "dbpass" : "InvernessCorona",
+      "dbpass" : "***",
       "dbname" : "ondb",
       "dbhost" : "172.16.213.8"
     }
