@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/plackup
 
 #=============================================================================
 # SWITCH PORTS ACTIVITY MONITOR -- BACKEND
@@ -23,11 +23,13 @@ use lib '../', '../lib';
 #=== modules =================================================================
 
 use Cwd qw(abs_path);
-use CGI;
 use SPAMv2;
 use JSON::MaybeXS;
 use Data::Dumper;
 use Try::Tiny;
+use Plack::Request;
+use Plack::Response;
+
 use ONdb::Authorize;
 use SPAM::Config;
 use SPAM::Entity;
@@ -2051,160 +2053,142 @@ sub sql_modwire
 #===                              ============================================
 #=============================================================================
 
+my $app = sub {
 
-#--- process arguments -------------------------------------------------------
+  my $req = Plack::Request->new(shift);
+  my $res = Plack::Response->new(200);
+  my $q = $req->parameters;
+  my %http_header = (
+    'Content-type' => 'application/json'
+  );
 
-my %args;
-my $q = new CGI;
-my $req;           # request type
+  #--- handle config not being loaded
 
-# below code allows the arguments to be specified on command line for
-# debugging purposes as "par1=val1 par2=val2 ... "; command-line parameters
-# also trigger debug mode and pretty JSON output; note
-
-for my $arg (@ARGV) {
-  my @x = split(/=/, $arg);
-  $args{$x[0]} = $x[1] if $x[0];
-}
-if($args{'r'}) {
-  $debug = JSON->true;
-  $js->pretty(1);
-  $req = $args{'r'};
-} else {
-  $req = $q->param('r');
-}
-$req //= '';
-
-#--- define argument fetching function
-
-my $arg = sub {
-  my @r;
-  for my $k (@_) {
-    push(@r, $q->param($k) // $args{$k});
+  if(!ref($cfg)) {
+    $res->headers(\%http_header);
+    $res->body(
+      '{ "status" : "error", "errmsg" : "Could not load configuration" }'
+    );
+    $res->finalize;
+    return;
   }
-  return @r;
-};
 
-#--- preamble ----------------------------------------------------------------
+  #--- handle database connections not working
 
-print "Content-type: application/json; charset=utf-8\n\n";
+  if(my @db_unavail = grep { !ref($dbh{$_}) } keys %dbh) {
+    $res->headers(\%http_header);
+    $res->body(
+      $js->encode({
+        status => 'error',
+        errmsg => 'Database connection failed',
+        errwhy => 'Unavailable db: ' . join(', ', @db_unavail)
+      })
+    );
+    $res->finalize;
+    return;
+  }
 
-#--- verify database availability --------------------------------------------
+  #--- debugging mode
 
-if(my @db_unavail = grep { !ref($dbh{$_}) } keys %dbh) {
-  print $js->encode({
-    'userid' => $ENV{'REMOTE_USER'},
-    'status' => 'error',
-    'errmsg' => 'Database connection failed',
-    'errwhy' => 'Unavailable db: ' . join(', ', @db_unavail)
-  });
-  exit(1);
-}
+  my $auth = ONdb::Authorize->new(
+    dbh => $dbh{'ondb'},
+    user => $ENV{'REMOTE_USER'},
+    tab_assign => 'assign_new',
+    tab_access => 'access_new',
+    system => 'spam',
+  );
 
-#--- verify config is loaded in the BEGIN section ----------------------------
-
-if(!ref($cfg)) {
-  print $js->encode({
-    'status' => 'error',
-    'userid' => $ENV{'REMOTE_USER'},
-    'errmsg' => 'Failed to load configuration file',
-    'errwhy' => $cfg
-  });
-  exit(1);
-}
-
-#--- debugging mode ----------------------------------------------------------
-
-my $auth = ONdb::Authorize->new(
-  dbh => $dbh{'ondb'},
-  user => $ENV{'REMOTE_USER'},
-  tab_assign => 'assign_new',
-  tab_access => 'access_new',
-  system => 'spam',
-);
-
-if($#ARGV == -1) {
-  $debug = js_bool(1) if $auth->authorize('debug');
+  try { $debug = js_bool(1) if $auth->authorize('debug') };
   $js->pretty(1) if $debug;
-}
 
 #=============================================================================
 #=== central dispatch ========================================================
 #=============================================================================
 
-#--- switch list -------------------------------------------------------------
+  my $verb = $q->{r} // '';
 
-if($req eq 'swlist') {
-  my $re = sql_select('spam', 'SELECT * FROM v_swinfo', [], \&mangle_swlist);
-  if(
-    (grep { $_->{'stale'} } @{$re->{'result'}})
-    && $debug
-  ) {
-    $re->{'showstale'} = 1;
+  #--- switch list
+
+  if($verb eq 'swlist') {
+    my $re = sql_select('spam', 'SELECT * FROM v_swinfo', [], \&mangle_swlist);
+    if(
+      (grep { $_->{'stale'} } @{$re->{'result'}})
+      && $debug
+    ) {
+      $re->{'showstale'} = 1;
+    }
+    $res->body($js->encode($re));
   }
-  print $js->encode($re);
-}
 
-#--- search tool -------------------------------------------------------------
+  #--- search tool
 
-if($req eq 'search') {
-  my %par;
-  for my $k (
-    qw(site outcp host portname mac ip sortby mode username inact vlan vlans)
-  ) {
-    ($par{$k}) = &$arg($k);
+  elsif($verb eq 'search') {
+    my %par;
+    for my $k (
+      qw(site outcp host portname mac ip sortby mode username inact vlan vlans)
+    ) {
+      ($par{$k}) = $q->{$k};
+    }
+    remove_undefs(\%par);
+    $res->body($js->encode(sql_search(\%par)));
   }
-  remove_undefs(\%par);
-  print $js->encode(sql_search(\%par));
-}
 
-#--- port info --------------------------------------------------------------
+  #--- port info
 
-if($req eq 'portinfo') {
-  print $js->encode(
-    sql_portinfo($arg->('site'), $arg->('host'), $arg->('portname'))
-  );
-}
+  elsif($verb eq 'portinfo') {
+    $res->body($js->encode(
+      sql_portinfo($q->{site}, $q->{host}, $q->{portname})
+    ));
+  }
 
-#--- use cp inquiry ---------------------------------------------------------
+  #--- use cp inquiry
 
-if($req eq 'usecp') {
-  print $js->encode(backend_useoutlet(&$arg('site')));
-}
+  elsif($verb eq 'usecp') {
+    $res->body($js->encode(backend_useoutlet($q->{site})));
+  }
 
-#--- auxiliary data ---------------------------------------------------------
+  #--- auxiliary data
 
-if($req eq 'aux') {
-  print $js->encode(sql_aux_data());
-}
+  elsif($verb eq 'aux') {
+    $res->body($js->encode(sql_aux_data()));
+  }
 
-#--- add patches -------------------------------------------------------------
+  #--- add patches
 
-if($req eq 'addpatch') {
-  my @names = %args ? keys %args : $q->param();
-  my %form;
-  for my $k (@names) { ($form{$k}) = $arg->($k); }
-  print $js->encode(sql_add_patches(\%form, $arg->('site')));
-}
+  elsif($verb eq 'addpatch') {
+    my @names = keys %{$req->parameters};
+    my %form;
+    for my $k (@names) { ($form{$k}) = $q->{$k}; }
+    $res->body($js->encode(sql_add_patches(\%form, $q->{site})));
+  }
 
-#--- remove patch ------------------------------------------------------------
+  #--- remove patch
 
-if($req eq 'delpatch') {
-  print $js->encode(sql_del_patch($arg->('host'), $arg->('portname')));
-}
+  elsif($verb eq 'delpatch') {
+    $res->body($js->encode(sql_del_patch($q->{host}, $q->{portname})));
+  }
 
-#--- add/update/remove modwire information -----------------------------------
+  #--- add/update/remove modwire information
 
-if($req eq 'modwire') {
-  print $js->encode(
-    sql_modwire($arg->('host'), $arg->('m'), $arg->('n'), $arg->('location'))
-  );
-}
+  elsif($verb eq 'modwire') {
+    $res->body($js->encode(
+      sql_modwire($q->{host}, $q->{m}, $q->{n}, $q->{location})
+    ));
+  }
 
-#--- default -----------------------------------------------------------------
+  #--- default
 
-print $js->encode({
-  'userid' => $ENV{'REMOTE_USER'},
-  'status' => 'ok',
-  'debug'  => $debug
-}) if !$req;
+  else {
+    $res->body($js->encode({
+      'userid' => $ENV{'REMOTE_USER'},
+      'status' => 'ok',
+      'debug'  => $debug
+    }));
+  }
+
+  #--- finalize
+
+  $res->headers(\%http_header);
+  $res->finalize;
+
+};
