@@ -1037,12 +1037,13 @@ sub sql_search
     # 1-4096; 1s represent enabled vlans. For the front-end use, we convert
     # this into list of enabled vlans
 
-    {
+    if($par->{'mode'} eq 'portlist') {
+        delete $row->{'vlans'};
+    } else {
       my ($vlans_list, $vlans_ranges)
       = vlans_bitstring_to_range_list($row->{'vlans'} // '');
       $row->{'vlans_fmt'} = join(",\N{ZERO WIDTH SPACE}", @$vlans_ranges);
       $row->{'vlans_cnt'} = @$vlans_list;
-      $row->{'vlans'};
     }
 
   };
