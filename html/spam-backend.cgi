@@ -68,7 +68,7 @@ BEGIN
 
   #--- misc init
 
-  $js = new JSON::MaybeXS;
+  $js = JSON::MaybeXS->new(utf8 => 1);
   binmode STDOUT, ":utf8";
 
   #--- database init
