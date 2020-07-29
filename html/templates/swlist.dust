@@ -6,7 +6,6 @@
   <span class="lnk swgrp" data-grp="sto">Stodůlky</span>
   <span class="lnk swgrp" data-grp="str">Středokluky</span>
   <span class="lnk swgrp" data-grp="sho">Shops</span>
-  <span class="lnk swgrp" data-grp="bsc">BSC</span>
   <span class="lnk swgrp" data-grp="oth">Other</span>
   {?showstale}
   <span class="lnk swgrp warn" data-grp="stl">!</span>
