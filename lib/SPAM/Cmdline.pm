@@ -169,6 +169,8 @@ sub help
   print <<EOHD;
 Usage: spam.pl [OPTIONS]
 
+Options that modify standard processing run:
+
   --[no]arptable  turn polling for ARP table on or off (default off)
   --[no]mactable  turn getting bridging table on or off (default on)
   --[no]autoreg   turn autoregistration of outlets on or off (default off)
@@ -176,12 +178,15 @@ Usage: spam.pl [OPTIONS]
   --host=HOST     poll only HOST, can be used multiple times (default all)
   --hostre=RE     poll only hosts matching the regexp
   --tasks=N       number of tasks to be run (N is 1 to 16, default 8)
+  --debug         turn on debug mode
+
+Options that initiate special actions and prevent normal processing:
+
   --remove=HOST   remove HOST from database and exit
   --maint         perform database maintenance and exit
   --arpservers    list known ARP servers and exit
   --worklist      display list of switches that would be processed and exit
   --hosts         list known hosts and exit
-  --debug         turn on debug mode
   --help, -?      this help
 
 EOHD
