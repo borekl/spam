@@ -39,7 +39,7 @@ sub snmp_command
 {
   #--- argument and variables
 
-  my ($command, $host, $community, $mibs, $root) = @_;
+  my (%arg) = @_;
   my $cfg = load_config();
 
   #--- return if no config
@@ -48,26 +48,26 @@ sub snmp_command
 
   #--- return if non-existent command
 
-  return undef if !exists($cfg->{'snmp'}[0]{$command});
+  return undef if !exists($cfg->{'snmp'}[0]{$arg{command}});
   my $cmd = join(' ',
-    ( $cfg->{'snmp'}[0]{$command}{'exec'},
-    $cfg->{'snmp'}[0]{$command}{'options'} )
+    ( $cfg->{'snmp'}[0]{$arg{command}}{'exec'},
+    $cfg->{'snmp'}[0]{$arg{command}}{'options'} )
   );
 
   #--- regularize MIBs list to always be an arrayref
   #--- note: at least one MIB must be passed in!
 
-  if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
+  if($arg{mibs} && !ref($arg{mibs})) { $arg{mibs} = [ $arg{mibs} ]; }
 
   #--- stringify MIB list
 
-  my $miblist = join(':', @$mibs);
+  my $miblist = join(':', @{$arg{mibs}});
 
   #--- tokens replacements
 
-  $cmd =~ s/%c/$community/;
-  $cmd =~ s/%h/$host/;
-  $cmd =~ s/%r/$root/;
+  $cmd =~ s/%c/$arg{community}/;
+  $cmd =~ s/%h/$arg{host}/;
+  $cmd =~ s/%r/$arg{root}/;
   $cmd =~ s/%m/$miblist/;
 
   #--- finish
@@ -95,7 +95,13 @@ sub snmp_lineread
 
   #--- prepare command
 
-  $cmd = snmp_command($cmd, $host, $community, $mib, $entry);
+  $cmd = snmp_command(
+    command   => $cmd,
+    host      => $host,
+    community => $community,
+    mibs      => $mib,
+    root      => $entry
+  );
   if(!$cmd) { return 'Failed to prepare SNMP command'; }
 
   #--- iterate over lines while merging multi-line values into single lines
@@ -501,8 +507,13 @@ sub snmp_get_object
   #--- read loop ------------------------------------------------------------
 
     printf $fh "--> SNMP COMMAND: %s\n",
-      snmp_command($cmd, $host, $community, $mibs, $entry)
-      if $fh;
+      snmp_command(
+        command   => $cmd,
+        host      => $host,
+        community => $community,
+        mibs      => $mibs,
+        root      => $entry
+      ) if $fh;
 
     my $read_state = 'first';
 
