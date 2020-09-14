@@ -48,10 +48,10 @@ sub snmp_command
 
   #--- return if non-existent command
 
-  return undef if !exists($cfg->{'snmp'}{$command});
+  return undef if !exists($cfg->{'snmp'}[0]{$command});
   my $cmd = join(' ',
-    ( $cfg->{'snmp'}{$command}{'exec'},
-    $cfg->{'snmp'}{$command}{'options'} )
+    ( $cfg->{'snmp'}[0]{$command}{'exec'},
+    $cfg->{'snmp'}[0]{$command}{'options'} )
   );
 
   #--- regularize MIBs list to always be an arrayref
@@ -68,7 +68,7 @@ sub snmp_command
   $cmd =~ s/%c/$community/;
   $cmd =~ s/%h/$host/;
   $cmd =~ s/%r/$root/;
-  $cmd =~ s/%m/+$miblist/;
+  $cmd =~ s/%m/$miblist/;
 
   #--- finish
 
