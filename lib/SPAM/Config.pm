@@ -251,7 +251,14 @@ sub _get_snmp_config
 
     # if the entry has no 'hostre' field, it always matches
     return $entry if !$entry->{hostre};
+
+    foreach my $re (@{$entry->{hostre}}) {
+      return $entry if $host =~ /$re/i;
+    }
   }
+
+  # no matching section was found
+  die "Failed to find matching SNMP configuration for $host";
 }
 
 
