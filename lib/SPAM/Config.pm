@@ -231,6 +231,82 @@ sub _load_arpservers
 }
 
 
+#=============================================================================
+# Return SNMP configuration block based on supplied hostname
+#=============================================================================
+
+sub _get_snmp_config
+{
+  my ($self, $host) = @_;
+  my $cfg = $self->config;
+
+  # no valid snmp section in configuration
+  return undef if
+    !$cfg->{snmp}          # snmp section does not exist at all
+    || !ref $cfg->{snmp}   # snmp section is scalar
+    || !@{$cfg->{snmp}};   # snmp section is empty
+
+  # iterate over the snmp config entries
+  foreach my $entry (@{$cfg->{snmp}}) {
+
+    # if the entry has no 'hostre' field, it always matches
+    return $entry if !$entry->{hostre};
+  }
+}
+
+
+#=============================================================================
+# Return snmp command and option strings for given (host, mib, oid, vlan)
+#=============================================================================
+
+sub get_snmp_command
+{
+  my ($self, %arg) = @_;
+  my $cfg = $self->config;
+
+  my $host = $arg{host} // '';
+  my $cmd  = $arg{command} // 'snmpwalk';
+  my $mibs = $arg{mibs} // undef;
+  my $oid  = $arg{oid} // '';
+  my $vlan = $arg{vlan} // '';
+
+  # get configuration
+  my $snmp = $self->_get_snmp_config($host);
+  die "No valid SNMP configuration for host $host" if !$snmp;
+
+  # abort on misconfiguration
+  die "No SNMP executable specified for host $host"
+    if !$snmp->{$cmd}{exec};
+  die "No SNMP option string specified for host $host"
+    if !$snmp->{$cmd}{options};
+
+  # get community string for v2 requests
+  my $cmty = $cfg->{community} // '';
+
+  if(
+    $cfg->{host}
+    && $cfg->{host}{$host}
+    && $cfg->{host}{$host}{community}
+  ) {
+    $cmty = $cfg->{host}{$host}{community};
+  }
+
+  # process mib lists
+  if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
+  my $miblist = join(':', @$mibs);
+
+  # perform placeholder replacement
+  my $options = $snmp->{$cmd}{options};
+  $options =~ s/%c/$cmty/g;
+  $options =~ s/%h/$host/g;
+  $options =~ s/%r/$oid/g;
+  $options =~ s/%m/$miblist/g;
+  $options =~ s/%x/\@$vlan/g;
+
+  # finish
+  return $snmp->{$cmd}{exec} . ' ' . $options;
+}
+
 
 #=============================================================================
 

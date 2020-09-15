@@ -13,8 +13,10 @@ use lib 'lib';
 use SPAMv2 qw(load_config file_lineread hash_create_index);
 use SPAM::Entity;
 use SPAM::EntityTree;
+use SPAM::Config;
 use Data::Dumper;
 use Carp;
+use Try::Tiny;
 
 use warnings;
 use strict;
@@ -32,77 +34,15 @@ our (@ISA, @EXPORT);
 
 
 #==========================================================================
-# Assemble SNMP command from supplied arguments.
-#==========================================================================
-
-sub snmp_command
-{
-  #--- argument and variables
-
-  my (%arg) = @_;
-  my $cfg = load_config();
-
-  #--- return if no config
-
-  return undef if !ref($cfg);
-
-  #--- return if non-existent command
-
-  return undef if !exists($cfg->{'snmp'}[0]{$arg{command}});
-  my $cmd = join(' ',
-    ( $cfg->{'snmp'}[0]{$arg{command}}{'exec'},
-    $cfg->{'snmp'}[0]{$arg{command}}{'options'} )
-  );
-
-  #--- regularize MIBs list to always be an arrayref
-  #--- note: at least one MIB must be passed in!
-
-  if($arg{mibs} && !ref($arg{mibs})) { $arg{mibs} = [ $arg{mibs} ]; }
-
-  #--- stringify MIB list
-
-  my $miblist = join(':', @{$arg{mibs}});
-
-  #--- tokens replacements
-
-  $cmd =~ s/%c/$arg{community}/;
-  $cmd =~ s/%h/$arg{host}/;
-  $cmd =~ s/%r/$arg{root}/;
-  $cmd =~ s/%m/$miblist/;
-
-  #--- finish
-
-  return $cmd;
-}
-
-
-#==========================================================================
-# Read SNMP command's output line by line.
+# Read SNMP command's output line by line. The primary purpose of this code
+# is to merge multi-line values into single lines for further parsing.
 #==========================================================================
 
 sub snmp_lineread
 {
   #--- arguments
 
-  my (
-    $cmd,
-    $host,
-    $community,
-    $mib,
-    $entry,
-    $callback
-  ) = @_;
-
-  #--- prepare command
-
-  $cmd = snmp_command(
-    command   => $cmd,
-    host      => $host,
-    community => $community,
-    mibs      => $mib,
-    root      => $entry
-  );
-  if(!$cmd) { return 'Failed to prepare SNMP command'; }
+  my ($cmd, $callback) = @_;
 
   #--- iterate over lines while merging multi-line values into single lines
 
@@ -111,7 +51,7 @@ sub snmp_lineread
   my $r = file_lineread($cmd, '-|', sub {
     my $l = shift;
 
-    if($l =~ /^${mib}::/) {
+    if($l =~ /^\S+::/) {
       $callback->($acc) if $acc;
       $acc = $l;
     } else {
@@ -506,18 +446,19 @@ sub snmp_get_object
 
   #--- read loop ------------------------------------------------------------
 
-    printf $fh "--> SNMP COMMAND: %s\n",
-      snmp_command(
-        command   => $cmd,
-        host      => $host,
-        community => $community,
-        mibs      => $mibs,
-        root      => $entry
-      ) if $fh;
+    my $cmd = SPAM::Config->instance->get_snmp_command(
+      command   => $cmd,
+      host      => $host,
+      community => $community,
+      mibs      => $mibs,
+      oid       => $entry
+    );
+
+    printf $fh "--> SNMP COMMAND: %s\n", $cmd if $fh;
 
     my $read_state = 'first';
 
-    my $r = snmp_lineread($cmd, $host, $community, $mibs, $entry, sub {
+    my $r = snmp_lineread($cmd, sub {
       my $l = shift;
       my $tm2;
 
