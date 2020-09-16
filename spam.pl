@@ -36,7 +36,6 @@ my $cfg2;            # SPAM::Config instance
 my $port2cp;         # switchport->CP mapping (from porttable)
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
-my @known_platforms; # list of known platform codes
 
 
 
