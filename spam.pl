@@ -1800,7 +1800,7 @@ sub sql_autoreg
 
   #--- get site-code from hostname
 
-  my $site = site_conv($host);
+  my $site = $cfg2->site_conv($host);
 
   #--- iterate over all ports
 

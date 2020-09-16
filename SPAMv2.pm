@@ -22,7 +22,6 @@ use SPAM::Config;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
   load_config
-  site_conv
   tty_message
   sql_find_user_group
   compare_ports
@@ -81,23 +80,6 @@ sub tty_message
 
   if(!defined $msg) { $msg = "done\n"; }
   printf($msg, @_) if -t STDOUT;
-}
-
-
-#===========================================================================
-# Convert hostname (e.g. 'vdcS02c') to site code (e.g. 'vin')
-#===========================================================================
-
-sub site_conv
-{
-  my $host = shift;
-  my $hc;
-  
-  $host =~ /^(...)/;
-  $hc = lc($1);
-  my $site = $cfg->{'siteconv'}{$hc};
-  if(!$site) { $site = $hc; }
-  return $site;
 }
 
 
