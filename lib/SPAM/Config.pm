@@ -316,5 +316,21 @@ sub get_snmp_command
 
 
 #=============================================================================
+# Return configured SNMP v2 community string for a host.
+#=============================================================================
+
+sub snmp_community
+{
+  my ($self, $host) = @_;
+  my $cfg = $self->config;
+
+  return $cfg->{'host'}{$host}{'community'}
+    if $host && $cfg->{'host'}{$host}{'community'};
+
+  return $cfg->{'community'};
+}
+
+
+#=============================================================================
 
 1;

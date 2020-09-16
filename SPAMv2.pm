@@ -38,7 +38,6 @@ our @EXPORT = qw(
   query_reduce
   decode_age
   vlans_bitstring_to_range_list
-  snmp_community
 );
 
 
@@ -617,22 +616,6 @@ sub vlans_bitstring_to_range_list
   #--- finish
 
   return \@vlan_list, \@vlan_list_coalesced;
-}
-
-
-#=============================================================================
-# Get SNMP community for a host (or default community if either host not
-# specified or specific host community is not defined).
-#=============================================================================
-
-sub snmp_community
-{
-  my ($host) = @_;
-
-  return $cfg->{'host'}{$host}{'community'}
-    if $host && $cfg->{'host'}{$host}{'community'};
-
-  return $cfg->{'community'};
 }
 
 

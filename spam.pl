@@ -339,7 +339,7 @@ sub poll_host
 
       for my $vlan (@vlans) {
         next if $vlan > 999;
-        my $cmtvlan = snmp_community($host) . ($vlan ? "\@$vlan" : '');
+        my $cmtvlan = $cfg2->snmp_community($host) . ($vlan ? "\@$vlan" : '');
 
   #--- retrieve the SNMP object
 
@@ -1525,7 +1525,7 @@ sub sql_get_vtp_masters_list
     return 'Database query failed (spam,' . $sth->errstr() . ')';
   }
   while(my @a = $sth->fetchrow_array) {
-    $a[2] = snmp_community($a[0]);
+    $a[2] = $cfg2->snmp_community($a[0]);
     push(@list, \@a);
   }
 
@@ -2392,7 +2392,7 @@ try {
             elsif($task->[0] eq 'arp') {
               tty_message("[arptable] Updating arp table (started)\n");
               my $r = snmp_get_arptable(
-                $cfg2->arpservers(), snmp_community(),
+                $cfg2->arpservers(), $cfg2->snmp_community,
                 sub {
                   tty_message("[arptable] Retrieved arp table from $_[0]\n");
                 }
