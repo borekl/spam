@@ -85,8 +85,8 @@ sub tty_message
 
 #===========================================================================
 # This finds a group associated with current user; this info is retrieved
-# from database "ondb", table "users", field "grpid". 
-# 
+# from database "ondb", table "users", field "grpid".
+#
 # Arguments: 1. user id
 #
 # Returns:   1. undef on success, error message otherwise
@@ -134,27 +134,27 @@ sub sql_find_user_group
 #==========================================================================
 
 sub parse_port
-{ 
+{
   my $port = shift;
   my @result;
-    
+
   my @p = split(/\//, $port);
   if($p[0] =~ /^([a-z]+)(\d+)$/i) {
     @result = ($1, $2);
   } else {
     return undef;
   }
-                    
+
   for(my $i = 1; $i < scalar(@p) ; $i++) {
     $result[$i+1] = $p[$i];
   }
-                           
+
   return \@result;
 }
 
 
 #==========================================================================
-# Compare two switch port names for sorting purposes. 
+# Compare two switch port names for sorting purposes.
 #
 # Arguments: 1. Port 1
 #            2. Port 2
@@ -168,12 +168,12 @@ sub compare_ports
   my $port1 = shift;
   my $port2 = shift;
   my $mode = shift;
-   
+
   #--- process input
   my $p1 = parse_port($port1);
   my $p2 = parse_port($port2);
   if(!ref($p1) || !ref($p2)) { return undef; }
-  
+
   #--- perform separate type/num comparisons
   my $comp_type = ($p1->[0] cmp $p2->[0]);
   my $comp_num = 0;
@@ -200,7 +200,7 @@ sub compare_ports
   if(!$mode) { return $comp_num; }
   return $comp_type;
 }
-                       
+
 
 #===========================================================================
 # Loads ports to consolidation point map
@@ -219,13 +219,13 @@ sub load_port_table
   my ($r, $e);
   my $dbh = $cfg2->get_dbi_handle('spam');
   my %port2cp;
-  
+
   if(!ref($dbh)) { return 'Database connection failed (spam)'; }
   my $sth = $dbh->prepare('SELECT host, portname, cp, chg_who FROM porttable');
   $r = $sth->execute();
   if(!$r) {
     return 'Database query failed (spam, ' . $sth->errstr() . ')';
-  } 
+  }
   while(my $ra = $sth->fetchrow_arrayref()) {
     my $site = substr($ra->[0], 0, 3);
     $port2cp{$ra->[0]}{$ra->[1]} = $site . '!' . $ra->[2];
@@ -250,7 +250,7 @@ sub sql_sites
   my $dbh = $cfg2->get_dbi_handle('spam');
   my $q = "SELECT DISTINCT site FROM $table ORDER BY site ASC";
   my @result;
-  
+
   if(!ref($dbh)) { return 'Cannot connect to database'; }
   my $sth = $dbh->prepare($q);
   my $r = $sth->execute();
@@ -260,7 +260,7 @@ sub sql_sites
   while(my $x = $sth->fetchrow_arrayref()) {
     push(@result, $x->[0]);
   }
-  
+
   ### UGLY HACK ### FIXME ###
   push(@result, 'brr');
   push(@result, 'sto');
@@ -300,11 +300,11 @@ sub sql_site_uses_cp
 sub multipush
 {
   my @arrays;
-  
+
   for my $ary (@_) {
     push(@arrays, $ary);
   }
-  
+
   return sub {
     for(my $i = 0; $i < scalar(@_); $i++) {
       push(@{$arrays[$i]}, $_[$i]);
@@ -321,7 +321,7 @@ sub multipush
 sub file_lineread
 {
   my ($file, $open_mode, $fn) = @_;
-  
+
   open(my $fh, $open_mode, $file) || return 'Failed to open file';
   while(my $l = <$fh>) {
     chomp($l);
