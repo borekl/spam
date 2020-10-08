@@ -674,16 +674,33 @@ sub search_hwinfo_interleave
   my %idx;
   foreach my $entry (@{$re->{'search'}{'result'}}) {
     $idx{$entry->{'ifindex'}} = $entry;
+    $entry->{associated} = JSON->false;
   }
 
-  #--- iterate over known linecards and port associated with them
+  #--- iterate over known linecards and ports associated with them
+
+  # NOTE: We have seen a case where switch management port on a switch has
+  # different ifindex in IF-MIB and ENTITY-MIB; if this happens, the port is
+  # silently omitted in the following iteration
 
   foreach my $linecard (@linecards) {
     push(@new, $linecard);
     foreach my $port_ifindex (@{$linecard->{'ports'}}) {
+      next if !exists $idx{$port_ifindex};
       push(@new, $idx{$port_ifindex});
+      $idx{$port_ifindex}{associated} = JSON->true;
     }
   }
+
+  #--- prepend ports that were not associated with any known linecards
+
+  my @remainder;
+  foreach my $entry (@{$re->{'search'}{'result'}}) {
+    if(exists $entry->{associated} && !$entry->{associated}) {
+      push(@remainder, $entry);
+    }
+  }
+  unshift(@new, @remainder) if @remainder;
 
   #--- finish
 
