@@ -86,17 +86,26 @@
   #--- SNMP settings ---------------------------------------------------------
   #---------------------------------------------------------------------------
 
-  "snmp" : {
+  "snmp" : [
 
-  #--- snmpwalk definition
-  #--- %c community, %h host, %r starting point, %m mibs
-
-    "snmpwalk" : {
-      "exec" : "/usr/bin/snmpbulkwalk",
-      "options" : "-Lf /dev/null -Pd -OX -m %m -c %c %h %r",
+    {
+      "hostre" : [ "^stos75$" ],
+      "snmpwalk" : {
+        "exec" : "/usr/bin/snmpbulkwalk",
+        "options" : "-Lf /dev/null -Pd -OX -m +%m -v 3 -l AuthPriv -a SHA -x DES -u MyUserName -A 'AuthPass1' -X 'PrivPass2' %h %r",
+      },
     },
 
-  },
+    # default v2 config (this must be the last entry)
+
+    {
+      "snmpwalk" : {
+        "exec" : "/usr/bin/snmpbulkwalk",
+        "options" : "-Lf /dev/null -Pd -OX -m +%m -c %c %h %r",
+      },
+    },
+
+  ],
 
   #---------------------------------------------------------------------------
   #--- MIB types definition --------------------------------------------------
