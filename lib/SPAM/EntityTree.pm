@@ -226,7 +226,7 @@ sub power_supplies
 sub linecards
 {
   my ($self) = @_;
-  my $cfg = SPAM::Config->instance->config;
+  my $cfg = SPAM::Config->instance->entity_profile;
   my @linecards;
 
   # find out if "modules_by_name" discovery option is defined for this model of
@@ -235,14 +235,16 @@ sub linecards
 
   my ($chassis) = $self->chassis;
   my $chassis_model = $chassis->entPhysicalModelName;
-  my $re = $cfg->{'entity-profiles'}{'models'}{$chassis_model}{'modules_by_name'}
+  my $re;
   if(
     $chassis_model
-    && exists $cfg->{'entity-profiles'}
-    && exists $cfg->{'entity-profiles'}{'models'}
-    && exists $cfg->{'entity-profiles'}{'models'}{$chassis_model}
-    && exists $cfg->{'entity-profiles'}{'models'}{$chassis_model}{'modules_by_name'}
-  );
+    && $cfg
+    && exists $cfg->{'models'}
+    && exists $cfg->{'models'}{$chassis_model}
+    && exists $cfg->{'models'}{$chassis_model}{'modules_by_name'}
+  ) {
+    $re = $cfg->{'models'}{$chassis_model}{'modules_by_name'};
+  }
 
   if($re) {
     @linecards = $self->query(sub {
@@ -294,7 +296,7 @@ sub fans
 sub ports
 {
   my ($self, $start) = @_;
-  my $cfg = SPAM::Config->instance->config;
+  my $cfg = SPAM::Config->instance->entity_profile;
   my $filter;
   my @ports;
 
@@ -309,12 +311,12 @@ sub ports
 
   if(
     $swmodel
-    && exists $cfg->{'entity-profiles'}
-    && exists $cfg->{'entity-profiles'}{'models'}
-    && exists $cfg->{'entity-profiles'}{'models'}{$swmodel}
-    && exists $cfg->{'entity-profiles'}{'models'}{$swmodel}{'port_filter'}
+    && $cfg
+    && exists $cfg->{'models'}
+    && exists $cfg->{'models'}{$swmodel}
+    && exists $cfg->{'models'}{$swmodel}{'port_filter'}
   ) {
-    $filter = $cfg->{'entity-profiles'}{'models'}{$swmodel}{'port_filter'};
+    $filter = $cfg->{'models'}{$swmodel}{'port_filter'};
     if(
       !exists $filter->{'filter_by'}
       || !exists $filter->{'regex'}
@@ -367,8 +369,8 @@ sub ports
 sub hwinfo
 {
   my ($self, $modwire) = @_;
-  my $cfg = SPAM::Config->instance->config;
-  my $ent_models = $cfg->{'entity-profiles'}{'models'} // undef;
+  my $cfg = SPAM::Config->instance->entity_profile;
+  my $ent_models = $cfg->{'models'} // undef;
   my @result;
 
   my @chassis = $self->chassis;

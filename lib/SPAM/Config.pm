@@ -349,5 +349,23 @@ sub site_conv
 
 
 #=============================================================================
+# Function to get entity profiles for given entity tree node. The
+# configuration lies under the "entity-profiles" key.
+#=============================================================================
+
+sub entity_profile
+{
+  my ($self, %args) = @_;
+  my $cfg = $self->config;
+
+  # no entity-profiles configuration exists at all
+  return undef if !exists $cfg->{'entity-profiles'};
+
+  # return the config
+  return $cfg->{'entity-profiles'};
+}
+
+
+#=============================================================================
 
 1;
