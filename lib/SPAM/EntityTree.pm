@@ -226,7 +226,6 @@ sub power_supplies
 sub linecards
 {
   my ($self) = @_;
-  my $cfg = SPAM::Config->instance->entity_profile;
   my @linecards;
 
   # find out if "modules_by_name" discovery option is defined for this model of
@@ -235,16 +234,10 @@ sub linecards
 
   my ($chassis) = $self->chassis;
   my $chassis_model = $chassis->entPhysicalModelName;
+  my $cfg = SPAM::Config->instance->entity_profile(model => $chassis_model);
   my $re;
-  if(
-    $chassis_model
-    && $cfg
-    && exists $cfg->{'models'}
-    && exists $cfg->{'models'}{$chassis_model}
-    && exists $cfg->{'models'}{$chassis_model}{'modules_by_name'}
-  ) {
-    $re = $cfg->{'models'}{$chassis_model}{'modules_by_name'};
-  }
+
+  $re = $cfg->{'modules_by_name'} if $cfg && exists $cfg->{'modules_by_name'};
 
   if($re) {
     @linecards = $self->query(sub {
@@ -296,7 +289,6 @@ sub fans
 sub ports
 {
   my ($self, $start) = @_;
-  my $cfg = SPAM::Config->instance->entity_profile;
   my $filter;
   my @ports;
 
@@ -308,15 +300,10 @@ sub ports
 
   my ($chassis) = $start->ancestors_by_class('chassis');
   my $swmodel = $chassis->entPhysicalModelName if $chassis;
+  my $cfg = SPAM::Config->instance->entity_profile(model => $swmodel);
 
-  if(
-    $swmodel
-    && $cfg
-    && exists $cfg->{'models'}
-    && exists $cfg->{'models'}{$swmodel}
-    && exists $cfg->{'models'}{$swmodel}{'port_filter'}
-  ) {
-    $filter = $cfg->{'models'}{$swmodel}{'port_filter'};
+  if($cfg && exists $cfg->{'port_filter'}) {
+    $filter = $cfg->{'port_filter'};
     if(
       !exists $filter->{'filter_by'}
       || !exists $filter->{'regex'}

@@ -361,6 +361,18 @@ sub entity_profile
   # no entity-profiles configuration exists at all
   return undef if !exists $cfg->{'entity-profiles'};
 
+  # models section
+  if($args{model}) {
+    if(
+      exists $cfg->{'entity-profiles'}{'models'}
+      && exists $cfg->{'entity-profiles'}{'models'}{$args{model}}
+    ) {
+      return $cfg->{'entity-profiles'}{'models'}{$args{model}};
+    } else {
+      return undef;
+    }
+  }
+
   # return the config
   return $cfg->{'entity-profiles'};
 }
