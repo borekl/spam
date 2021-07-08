@@ -269,7 +269,7 @@ sub poll_host
 
     for my $object (@{$mib_entry->{'objects'}}) {
       my $object_flags = $object->{'flags'} // undef;
-      if(!ref($object_flags)) { $object_flags = [ $object_flags ]; }
+      $object_flags = [ $object_flags ] if !ref $object_flags;
 
   #--- match platform string
 
