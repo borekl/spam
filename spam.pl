@@ -267,14 +267,13 @@ sub poll_host
     my @vlans = ( undef );
 
     $mib->iter_objects(sub {
-      my $object = shift;
-      my $object_flags = $object->{'flags'} // undef;
+      my $obj = shift;
 
   #--- match platform string
 
       if(!$is_first_mib) {
-        my $include_re = $object->{'include'} // undef;
-        my $exclude_re = $object->{'exclude'} // undef;
+        my $include_re = $obj->include;
+        my $exclude_re = $obj->exclude;
         next if $include_re && $platform !~ /$include_re/;
         next if $exclude_re && $platform =~ /$exclude_re/;
       }
@@ -286,53 +285,43 @@ sub poll_host
   # note that the retrieved values will be stored under the first MIB name
   # in the array @$mib
 
-      if($object->{'addmib'}) {
-        my $additional_mibs = $object->{'addmib'};
-        if(!ref($additional_mibs)) {
-          $additional_mibs = [ $additional_mibs ];
-        }
-        push(@mib_list, @$additional_mibs);
-      }
+      push(@mib_list, @{$obj->addmib});
 
   #--- process additional flags
 
-      if($object_flags) {
+      # 'arptable' is only relevant for reading arptables from _routers_;
+      # here we just skip it
 
-        # 'vlans' flag; this causes to VLAN number to be added to the
-        # community string (as community@vlan) and the tree retrieval is
-        # iterated over all known VLANs; this means that vtpVlanName must be
-        # already retrieved; this is required for reading MAC addresses from
-        # switch via BRIDGE-MIB
+      next if $obj->has_flag('arptable');
 
-        if(grep($_ eq 'vlans', @$object_flags)) {
-          @vlans = snmp_get_active_vlans($s);
-          if(!@vlans) { @vlans = ( undef ); }
+      # 'vlans' flag; this causes to VLAN number to be added to the
+      # community string (as community@vlan) and the tree retrieval is
+      # iterated over all known VLANs; this means that vtpVlanName must be
+      # already retrieved; this is required for reading MAC addresses from
+      # switch via BRIDGE-MIB
+
+      if($obj->has_flag('vlans')) {
+        @vlans = snmp_get_active_vlans($s);
+        if(!@vlans) { @vlans = ( undef ); }
+      }
+
+      # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
+      # value of 1; these two are mutually exclusive
+
+      if($obj->has_flag('vlan1')) {
+        @vlans = ( 1 );
+      }
+
+      # 'mactable' MIBs should only be read when --mactable switch is active
+
+      if($obj->has_flag('mactable')) {
+        if(!$get_mactable) {
+          tty_message(
+            "[%s] Skipping %s, mactable loading not active\n",
+            $host, $mib->name
+          );
+          next;
         }
-
-        # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
-        # value of 1; these two are mutually exclusive
-
-        if(grep($_ eq 'vlan1', @$object_flags)) {
-          @vlans = ( 1 );
-        }
-
-        # 'mactable' MIBs should only be read when --mactable switch is active
-
-        if(grep($_ eq 'mactable', @$object_flags)) {
-          if(!$get_mactable) {
-            tty_message(
-              "[%s] Skipping %s, mactable loading not active\n",
-              $host, $mib->name
-            );
-            next;
-          }
-        }
-
-        # 'arptable' is only relevant for reading arptables from _routers_;
-        # here we just skip it
-
-        next if grep($_ eq 'arptable', @$object_flags);
-
       }
 
   #--- iterate over vlans
@@ -345,8 +334,8 @@ sub poll_host
 
         my $r = snmp_get_object(
           'snmpwalk', $host, $cmtvlan, $mib->name,
-          $object->{'table'} // $object->{'scalar'},
-          $object->{'columns'} // undef,
+          $obj->name,
+          $obj->columns,
           sub {
             my ($var, $cnt) = @_;
             return if !$var;
@@ -376,11 +365,10 @@ sub poll_host
   #--- process result
 
         else {
-          my $object_name = $object->{'table'} // $object->{'scalar'};
           if($vlan) {
-            $swdata{$host}{$mib_key}{$vlan}{$object_name} = $r;
+            $swdata{$host}{$mib_key}{$vlan}{$obj->name} = $r;
           } else {
-            $swdata{$host}{$mib_key}{$object_name} = $r;
+            $swdata{$host}{$mib_key}{$obj->name} = $r;
           }
         }
       }
@@ -391,17 +379,17 @@ sub poll_host
   # scalars
 
       if(
-        grep($_ eq 'save', @$object_flags)
-        && $swdata{$host}{$mib_key}{$object->{'table'}}
+        $obj->has_flag('save')
+        && $swdata{$host}{$mib_key}{$obj->name}
       ) {
-        tty_message("[$host] Saving %s (started)\n", $object->{'table'});
-        my $r = sql_save_snmp_object($host, $object->{'table'});
+        tty_message("[$host] Saving %s (started)\n", $obj->name);
+        my $r = sql_save_snmp_object($host, $obj->name);
         if(!ref $r) {
-          tty_message("[$host] Saving %s (failed)\n", $object->{'table'});
+          tty_message("[$host] Saving %s (failed)\n", $obj->name);
         } else {
           tty_message(
             "[$host] Saving %s (finished, i=%d,u=%d,d=%d)\n",
-            $object->{'table'},
+            $obj->name,
             @{$r}{qw(insert update delete)}
           );
         }
