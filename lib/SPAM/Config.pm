@@ -34,10 +34,7 @@ has config_file => (
 
 # parsed configuration
 
-has config => (
-  is => 'lazy',
-  builder => '_load_config',
-);
+has config => ( is => 'lazy' );
 
 # database connection handles
 # This is used to cache DBI connection handles in a way that makes them
@@ -53,27 +50,22 @@ has dbconn => (
 # this is the list of switches SPAM should talk to, retrieved from backend
 # database
 
-has hosts => (
-  is => 'lazy',
-  builder => '_load_hosts',
-);
+has hosts => ( is => 'lazy' );
 
 # list of arp servers
 # this is the list of routers SPAM should talk to to retrieve ARP information
 # for mapping IPs to MACs
 
-has arpservers => (
-  is => 'lazy',
-  builder => '_load_arpservers',
-);
+has arpservers => ( is => 'lazy' );
 
 # list of MIBs (SPAM::MIB instances)
 
-has mibs => (
-  is => 'lazy',
-  builder => '_load_mibs',
-);
+has mibs => ( is => 'lazy' );
 
+# known ports, on following switches unpatched ports will be considered
+# different port state separate from up/oper down/admin down.
+
+has knownports => ( is => 'lazy' );
 
 #=============================================================================
 #=== METHODS =================================================================
@@ -83,7 +75,7 @@ has mibs => (
 # Load and parse configuration
 #=============================================================================
 
-sub _load_config
+sub _build_config
 {
   my ($self) = @_;
   my $file = $self->config_file();
@@ -178,7 +170,7 @@ sub close_dbi_handle
 # Load list of hosts (switches) from backend database.
 #=============================================================================
 
-sub _load_hosts
+sub _build_hosts
 {
   my ($self) = @_;
   my $dbh = $self->get_dbi_handle('ondb');
@@ -210,7 +202,7 @@ sub _load_hosts
 # Load list of routers from backend database.
 #=============================================================================
 
-sub _load_arpservers
+sub _build_arpservers
 {
   my ($self) = @_;
 
@@ -388,7 +380,7 @@ sub entity_profile
 # Convert MIB configuration into SPAM::MIB instances
 #=============================================================================
 
-sub _load_mibs
+sub _build_mibs
 {
   my $self = shift;
   my $cfg = $self->config->{'mibs'};
