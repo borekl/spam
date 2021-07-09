@@ -1274,7 +1274,7 @@ sub switch_info
   my ($host) = @_;
   my $h = $swdata{$host};
   my $stat = $h->{'stats'};
-  my $knownports = grep(/^$host$/, @{$cfg->{'knownports'}});
+  my $knownports = grep(/^$host$/, @{$cfg2->knownports});
   my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
 
   #--- initialize ---
@@ -1677,14 +1677,14 @@ sub maintenance
 
   $dbh->do(
     q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg->{'arptableage'}
+    undef, $t, $cfg2->arptableage
   ) or return 'Cannot delete from database (spam)';
 
   #--- mactable purging
 
   $dbh->do(
     q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg->{'mactableage'}
+    undef, $t, $cfg2->mactableage
   ) or return 'Cannot delete from database (spam)';
 
   #--- status table purging
@@ -2158,8 +2158,8 @@ try {
 
 	#--- initialize SPAM_SNMP library
 
-	$SPAM_SNMP::snmpget = $cfg->{snmpget};
-	$SPAM_SNMP::snmpwalk = $cfg->{snmpwalk};
+	$SPAM_SNMP::snmpget = $cfg2->snmpget;
+	$SPAM_SNMP::snmpwalk = $cfg2->snmpwalk;
 
 	#--- bind to native database ---------------------------------------
 

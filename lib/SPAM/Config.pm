@@ -67,6 +67,11 @@ has mibs => ( is => 'lazy' );
 
 has knownports => ( is => 'lazy' );
 
+# retention period for MAC and ARP entries
+
+has mactableage => ( is => 'lazy' );
+has arptableage => ( is => 'lazy' );
+
 #=============================================================================
 #=== METHODS =================================================================
 #=============================================================================
@@ -413,6 +418,61 @@ sub iter_mibs
   }
 }
 
+
+#=============================================================================
+
+sub _build_knownports
+{
+  my $self = shift;
+  my @knownports;
+
+  if(exists $self->config->{knownports}) {
+    @knownports = @{$self->config->{knownports}};
+  }
+
+  return \@knownports;
+}
+
+
+#=============================================================================
+
+sub _build_mactableage
+{
+  my $self = shift;
+  my $val = 1209600;
+
+  if(exists $self->config->{mactableage}) {
+    $val = @{$self->config->{mactableage}};
+  }
+
+  return $val;
+}
+
+sub _build_arptableage
+{
+  my $self = shift;
+  my $val = 1209600;
+
+  if(exists $self->config->{arptableage}) {
+    $val = @{$self->config->{arptableage}};
+  }
+
+  return $val;
+}
+
+#=============================================================================
+
+sub snmpget
+{
+  my $self = shift;
+  return $self->config->{snmpget}
+}
+
+sub snmpwalk
+{
+  my $self = shift;
+  return $self->config->{snmpwalk}
+}
 
 #=============================================================================
 
