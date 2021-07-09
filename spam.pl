@@ -260,16 +260,15 @@ sub poll_host
   # The first MIB must contain reading sysObjectID, sysLocation and
   # sysUpTime. If these cannot be loaded; the whole function fails.
 
-  my $is_first_mib = 1;
-
-  for my $mib_entry (@{$cfg->{'mibs'}}) {
-    my $mib = $mib_entry->{'mib'};
-    my $mib_key = $mib;
+  $cfg2->iter_mibs(sub {
+    my ($mib, $is_first_mib) = @_;
+    my $mib_key = $mib->name;
+    my @mib_list = ( $mib_key );
     my @vlans = ( undef );
 
-    for my $object (@{$mib_entry->{'objects'}}) {
+    $mib->iter_objects(sub {
+      my $object = shift;
       my $object_flags = $object->{'flags'} // undef;
-      $object_flags = [ $object_flags ] if !ref $object_flags;
 
   #--- match platform string
 
@@ -292,8 +291,7 @@ sub poll_host
         if(!ref($additional_mibs)) {
           $additional_mibs = [ $additional_mibs ];
         }
-        $mib = [ $mib ];
-        push(@$mib, @$additional_mibs);
+        push(@mib_list, @$additional_mibs);
       }
 
   #--- process additional flags
@@ -322,7 +320,10 @@ sub poll_host
 
         if(grep($_ eq 'mactable', @$object_flags)) {
           if(!$get_mactable) {
-            tty_message("[$host] Skipping $mib, mactable loading not active\n");
+            tty_message(
+              "[%s] Skipping %s, mactable loading not active\n",
+              $host, $mib->name
+            );
             next;
           }
         }
@@ -343,7 +344,7 @@ sub poll_host
   #--- retrieve the SNMP object
 
         my $r = snmp_get_object(
-          'snmpwalk', $host, $cmtvlan, $mib,
+          'snmpwalk', $host, $cmtvlan, $mib->name,
           $object->{'table'} // $object->{'scalar'},
           $object->{'columns'} // undef,
           sub {
@@ -358,16 +359,16 @@ sub poll_host
 
   #--- handle error
 
-        if(!ref($r)) {
+        if(!ref $r) {
           if($vlan) {
             tty_message(
               "[%s] Processing %s/%d (failed, %s)\n",
-              $host, $mib, $vlan, $r
+              $host, $mib->name, $vlan, $r
             );
           } else {
             tty_message(
               "[%s] Processing %s (failed, %s)\n",
-              $host, $mib, $r
+              $host, $mib->name, $r
             );
           }
         }
@@ -405,8 +406,7 @@ sub poll_host
           );
         }
       }
-
-    }
+    });
 
   #--- first MIB entry is special as it gives us information about the host
 
@@ -429,11 +429,9 @@ sub poll_host
         "[$host] System info: platform=%s boottime=%s\n",
         $platform, strftime('%Y-%m-%d', localtime($uptime))
       );
-
-      $is_first_mib = 0;
     }
 
-  }
+  });
 
   #--- prune non-ethernet interfaces and create portName -> ifIndex hash
 

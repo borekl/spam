@@ -18,7 +18,7 @@ use Carp;
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
 use DBI;
-
+use SPAM::MIB;
 
 
 #=============================================================================
@@ -67,6 +67,12 @@ has arpservers => (
   builder => '_load_arpservers',
 );
 
+# list of MIBs (SPAM::MIB instances)
+
+has mibs => (
+  is => 'lazy',
+  builder => '_load_mibs',
+);
 
 
 #=============================================================================
@@ -375,6 +381,44 @@ sub entity_profile
 
   # return the config
   return $cfg->{'entity-profiles'};
+}
+
+
+#=============================================================================
+# Convert MIB configuration into SPAM::MIB instances
+#=============================================================================
+
+sub _load_mibs
+{
+  my $self = shift;
+  my $cfg = $self->config->{'mibs'};
+  my @result;
+
+  foreach my $mib (@$cfg) {
+    push(@result, SPAM::MIB->new(
+      name => $mib->{'mib'},
+      config => $mib
+    ));
+  }
+
+  return \@result;
+}
+
+
+#=============================================================================
+# MIBs iterator
+#=============================================================================
+
+sub iter_mibs
+{
+  my ($self, $cb) = @_;
+  my @mibs = @{$self->mibs};
+
+  my $is_first_mib = 1;
+  foreach my $mib (@mibs) {
+    $cb->($mib, $is_first_mib);
+    $is_first_mib = 0;
+  }
 }
 
 
