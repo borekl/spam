@@ -214,11 +214,8 @@ sub sql_load_uptime
 
 
 #===========================================================================
-# This routine encapsulates loading of all data for a single configured host
-#
-# Arguments: 1. host
-#            2. "get mac table" flag
-# Returns:   1. undef on success; any other value means failure
+# This routine encapsulates loading of all data for a single configured
+# host; throws exception when it encounters an error.
 #===========================================================================
 
 sub poll_host
@@ -236,7 +233,7 @@ sub poll_host
 
   if(!inet_aton($host)) {
     tty_message("[$host] Hostname cannot be resolved\n");
-    return 'DNS resolution failed';
+    die "DNS resolution failed\n";
   }
 
   #--- load last status from backend db ------------------------------------
@@ -245,12 +242,12 @@ sub poll_host
   my $r = sql_load_status($host);
   if(defined $r) {
     tty_message("[$host] Load status (status failed, $r)\n");
-    return 'Failed to load table STATUS';
+    die "Failed to load table STATUS\n";
   }
   $r = sql_load_uptime($host);
   if(!ref($r)) {
     tty_message("[$host] Load status (uptime failed, $r)\n");
-    return 'Failed to load uptime';
+    die  "Failed to load uptime\n";
   }
   $swdata{$host}{stats}{sysuptime2} = $$r;
   tty_message("[$host] Load status (finished)\n");
@@ -407,7 +404,7 @@ sub poll_host
       $platform =~ s/^.*:://;
       if(!$platform) {
         tty_message("[$host] Getting host system info failed\n");
-        return "Cannot load platform identification";
+        die "Cannot load platform identification\n";
       }
       $swdata{$host}{'stats'}{'platform'} = $platform;
       my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
@@ -462,6 +459,7 @@ sub poll_host
       $cnt_prune
     );
   } else {
+    tty_message("[$host] ifTable/ifXTable not found\n");
     die "ifTable/ifXTable don't exist on $host";
   }
 
@@ -2329,7 +2327,8 @@ try {
 
             if($task->[0] eq 'host') {
               tty_message("[$host] Processing started\n");
-              if(!poll_host($host, $cmd->mactable())) {
+
+              try { if(!poll_host($host, $cmd->mactable())) {
 
 	      #--- find changes and update status table ---
 
@@ -2373,7 +2372,7 @@ try {
                   tty_message("[$host] Running auto-registration (finished)\n");
                 }
 
-	      }
+	            }};
 
             } # host processing block ends here
 
