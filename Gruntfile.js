@@ -37,6 +37,8 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/Config.pm', dest: '../prod/lib/SPAM/Config.pm' },
          { nonull: true, src: 'lib/SPAM/Entity.pm', dest: '../prod/lib/SPAM/Entity.pm' },
          { nonull: true, src: 'lib/SPAM/EntityTree.pm', dest: '../prod/lib/SPAM/EntityTree.pm' },
+         { nonull: true, src: 'lib/SPAM/MIB.pm', dest: '../prod/lib/SPAM/MIB.pm' },
+         { nonull: true, src: 'lib/SPAM/MIBobject.pm', dest: '../prod/lib/SPAM/MIBobject.pm' },
        ]
      },
      www: {
