@@ -403,7 +403,7 @@ sub _build_mibs
 
 
 #=============================================================================
-# MIBs iterator
+# MIBs iterator, true value from the callback terminates the iteration
 #=============================================================================
 
 sub iter_mibs
@@ -413,7 +413,7 @@ sub iter_mibs
 
   my $is_first_mib = 1;
   foreach my $mib (@mibs) {
-    $cb->($mib, $is_first_mib);
+    last if $cb->($mib, $is_first_mib);
     $is_first_mib = 0;
   }
 }

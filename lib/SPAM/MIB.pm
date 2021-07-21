@@ -46,7 +46,7 @@ sub iter_objects
   my ($self, $cb) = @_;
 
   foreach my $object (@{$self->objects}) {
-    $cb->($object);
+    last if $cb->($object);
   }
 }
 

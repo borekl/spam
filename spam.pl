@@ -394,6 +394,9 @@ sub poll_host
           );
         }
       }
+
+      # false to continue iterating
+      return undef;
     });
 
   #--- first MIB entry is special as it gives us information about the host
@@ -419,6 +422,8 @@ sub poll_host
       );
     }
 
+    # false to continue iterating
+    return undef;
   });
 
   #--- prune non-ethernet interfaces and create portName -> ifIndex hash
