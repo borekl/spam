@@ -419,8 +419,12 @@ sub snmp_get_object
   if($ENV{'SPAM_DEBUG'}) {
     open($fh, '>>', "debug.snmp_object.$$.log");
     if($fh) {
-      # FIXME:$mibs may be arrayref, this should be handled here
-      printf $fh "--> SNMP OBJECT %s::%s\n", $mibs, $object;
+      printf $fh
+        "--> SNMP_GET_OBJECT ARGS: 1:%s 2:%s 3:%s 4:%s 5:%s 6:%s\n",
+        $cmd,  $host, $community,
+        ref $mibs ? join(',', @$mibs) : $mibs,
+        $object,
+        @$columns ? join(',', @$columns) : 'NO_COLUMNS';
     }
   }
 
@@ -434,9 +438,7 @@ sub snmp_get_object
   #--- get set of MIB tree entry points
 
   my @tree_entries = ($object);
-  if($columns && ref($columns)) {
-    @tree_entries = @$columns;
-  }
+  @tree_entries = @$columns if @$columns;
   printf $fh "--> ENTRY POINTS: %s\n", join(',', @tree_entries) if $fh;
 
   #--- entry points loop ----------------------------------------------------

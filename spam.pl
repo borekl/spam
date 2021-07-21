@@ -330,7 +330,7 @@ sub poll_host
   #--- retrieve the SNMP object
 
         my $r = snmp_get_object(
-          'snmpwalk', $host, $cmtvlan, $mib->name,
+          'snmpwalk', $host, $cmtvlan, \@mib_list,
           $obj->name,
           $obj->columns,
           sub {
