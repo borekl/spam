@@ -10,9 +10,6 @@
 package SPAMv2;
 require Exporter;
 use lib 'lib';
-use Carp;
-use DBI;
-use JSON::MaybeXS;
 use integer;
 use warnings;
 use strict;
