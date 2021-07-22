@@ -1520,13 +1520,13 @@ sub sql_get_vtp_masters_list
   #--- for VTP domains with preferred masters, eliminate all other masters;
   #--- preference is set in configuration file with "VLANServer" statement
 
-  for my $k (keys %{$cfg->{vlanserver}}) {
+  for my $k (keys %{$cfg2->vlanservers}) {
     for(my $i = 0; $i < @list; $i++) {
       next if $list[$i]->[1] ne $k;
-      if(lc($cfg->{vlanserver}{$k}[0]) ne lc($list[$i]->[0])) {
+      if(lc($cfg2->vlanservers->{$k}[0]) ne lc($list[$i]->[0])) {
         splice(@list, $i--, 1);
       } else {
-        $list[$i]->[2] = $cfg->{vlanserver}{$k}[1];   # community string
+        $list[$i]->[2] = $cfg2->vlanservers->{$k}[1];   # community string
       }
     }
   }

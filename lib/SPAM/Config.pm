@@ -72,6 +72,14 @@ has knownports => ( is => 'lazy' );
 has mactableage => ( is => 'lazy' );
 has arptableage => ( is => 'lazy' );
 
+# vlan servers list; each element is an array of (host, SNMPv2_community,
+# VTP domain)
+
+has vlanservers => (
+  is => 'lazy',
+  default => sub { [] },
+);
+
 #=============================================================================
 #=== METHODS =================================================================
 #=============================================================================
@@ -481,6 +489,15 @@ sub _build_arptableage
   return $val;
 }
 
+#=============================================================================
+
+sub _build_vlanservers
+{
+  my $self = shift;
+  my $val;
+
+  if(exists $self->config->{vlanservers}) {
+    $val = $self->config->{vlanservers};
   }
 
   return $val;
