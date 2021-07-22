@@ -463,7 +463,7 @@ sub _build_mactableage
   my $val = 1209600;
 
   if(exists $self->config->{mactableage}) {
-    $val = @{$self->config->{mactableage}};
+    $val = $self->config->{mactableage};
   }
 
   return $val;
@@ -475,7 +475,12 @@ sub _build_arptableage
   my $val = 1209600;
 
   if(exists $self->config->{arptableage}) {
-    $val = @{$self->config->{arptableage}};
+    $val = $self->config->{arptableage};
+  }
+
+  return $val;
+}
+
   }
 
   return $val;
