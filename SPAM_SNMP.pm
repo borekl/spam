@@ -10,7 +10,7 @@
 package SPAM_SNMP;
 require Exporter;
 use lib 'lib';
-use SPAMv2 qw(load_config file_lineread hash_create_index);
+use SPAMv2 qw(file_lineread hash_create_index);
 use SPAM::Entity;
 use SPAM::EntityTree;
 use SPAM::Config;
@@ -92,7 +92,7 @@ sub snmp_get_arptable
 
   my %tree;
   my %arptable;
-  my $cfg = load_config();
+  my $cfg = SPAM::Config->instance->config;
 
   #--- MIB and object to use for arptable processing; note, that only the
   #--- first MIB object with flag 'arptable' will be used
@@ -402,7 +402,7 @@ sub snmp_get_object
 
   #--- other variables
 
-  my $cfg = load_config();
+  my $cfg = SPAM::Config->instance->config;
   my $delay = 1;
   my %re;
   my $fh;
