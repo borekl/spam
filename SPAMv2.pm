@@ -21,7 +21,6 @@ use SPAM::Config;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
-  load_config
   tty_message
   sql_find_user_group
   compare_ports
@@ -43,29 +42,13 @@ our @EXPORT = qw(
 #=== variables =============================================================
 
 #--- configuration
-my $cfg;
-my $cfg2;
+my $cfg = SPAM::Config->instance;
 
 #--- Database connection parameters ---
 my %sites_cache;
 
 #--- configuration ---
 my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
-
-
-#===========================================================================
-# FIXME: Temporary function that just calls SPAM::Config.
-#===========================================================================
-
-sub load_config
-{
-  my ($cfg_file) = @_;
-
-  if(!ref($cfg2)) {
-    $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
-  }
-  return $cfg = $cfg2->config();
-}
 
 
 #===========================================================================
@@ -96,7 +79,7 @@ sub tty_message
 sub sql_find_user_group
 {
   my ($user) = @_;
-  my $c = $cfg2->get_dbi_handle('ondb');
+  my $c = $cfg->get_dbi_handle('ondb');
   my ($q, $r, $sth, $group);
 
   #--- sanitize arguments
@@ -217,7 +200,7 @@ sub compare_ports
 sub load_port_table
 {
   my ($r, $e);
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my %port2cp;
 
   if(!ref($dbh)) { return 'Database connection failed (spam)'; }
@@ -247,7 +230,7 @@ sub sql_sites
 {
   my $table = lc($_[0]);
   if(exists $sites_cache{$table}) { return $sites_cache{$table}; }
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my $q = "SELECT DISTINCT site FROM $table ORDER BY site ASC";
   my @result;
 
@@ -280,7 +263,7 @@ sub sql_sites
 sub sql_site_uses_cp
 {
   my $site = lc($_[0]);
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my $query = qq{SELECT site FROM out2cp GROUP BY site HAVING site = ?};
 
   if(!ref($dbh) || !$site) { return undef; }
