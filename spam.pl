@@ -1841,7 +1841,6 @@ sub sql_save_snmp_object
   #--- other variables
 
   my $dbh = $cfg2->get_dbi_handle('spam');
-  my $cfg = load_config();
   my %stats = ( 'insert' => 0, 'update' => 0, 'delete' => 0 );
   my $err;                 # error message
   my $debug_fh;            # debug file handle
