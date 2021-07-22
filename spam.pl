@@ -380,7 +380,7 @@ sub poll_host
         && $swdata{$host}{$mib_key}{$obj->name}
       ) {
         tty_message("[$host] Saving %s (started)\n", $obj->name);
-        my $r = sql_save_snmp_object($host, $obj->name);
+        my $r = sql_save_snmp_object($host, $obj);
         if(!ref $r) {
           tty_message("[$host] Saving %s (failed)\n", $obj->name);
         } else {
@@ -1835,7 +1835,7 @@ sub sql_save_snmp_object
 
   my (
     $host,         # 1. (strg) switch name
-    $snmp_object   # 2. (strg) SNMP table to be saved
+    $snmp_object   # 2. (strg) SNMP object to be saved
   ) = @_;
 
   #--- other variables
@@ -1853,7 +1853,7 @@ sub sql_save_snmp_object
     open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
     if($debug_fh) {
       printf $debug_fh
-        "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object;
+        "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object->name;
       printf $debug_fh
         "--> REFERENCE TIME: %s\n", scalar(localtime($ref_time));
     }
@@ -1871,35 +1871,10 @@ sub sql_save_snmp_object
       die 'Cannot connect to database (spam)';
     }
 
-  #--- find the configuration object
+  #--- find the MIB object we're saving
 
-  # see "mibs" section in configuration file for reference on how are MIB
-  # objects configured; the short explanation is that there's an array of MIB
-  # configs, that contain an array of MIB objects (one MIB can specify multiple
-  # objects) -- here we need to find configuration one specified object. The
-  # result of this search are two variables:
-  #
-  # $object_config (hashref) holds specific object configuration
-  # @object_index (array) holds list of index fields
-
-    my $object_config;
-    FINDCFG: for my $mib_cfg (@{$cfg->{'mibs'}}) {
-      for my $obj_cfg (@{$mib_cfg->{'objects'}}) {
-        if(
-          exists $obj_cfg->{'table'}
-          && $obj_cfg->{'table'} eq $snmp_object
-        ) {
-          $object_config = $obj_cfg;
-          last FINDCFG;
-        }
-      }
-    }
-    my @object_index;
-    if(ref($object_config->{'index'})) {
-      @object_index = @{$object_config->{'index'}};
-    } else {
-      @object_index = ( $object_config->{'index'} );
-    }
+    my $obj = $cfg2->find_object($snmp_object->name);
+    my @object_index = @{$snmp_object->index};
     printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
       if $debug_fh;
 
@@ -1916,7 +1891,7 @@ sub sql_save_snmp_object
     FINDOBJ: for my $mib (keys %{$swdata{$host}}) {
       next if $mib !~ /-MIB$/;
       for my $obj (keys %{$swdata{$host}{$mib}}) {
-        if($obj eq $snmp_object) {
+        if($obj eq $snmp_object->name) {
           $object = $swdata{$host}{$mib}{$obj};
           last FINDOBJ;
         }
@@ -1930,7 +1905,7 @@ sub sql_save_snmp_object
 
     my %old;
     my $old_row_count = 0;
-    my $table = "snmp_$snmp_object";
+    my $table = 'snmp_' . $snmp_object->name;
 
     my @fields = (
       '*',
@@ -1973,7 +1948,7 @@ sub sql_save_snmp_object
       [
         sprintf(
           'UPDATE snmp_%s SET fresh = false WHERE host = ?',
-          $object_config->{'table'}
+          $snmp_object->name
         ),
         $host
       ]
@@ -2001,17 +1976,17 @@ sub sql_save_snmp_object
             [
               sprintf(
                 'UPDATE snmp_%s SET %s WHERE %s',
-                $object_config->{'table'},
+                $snmp_object->name,
                 join(',', (
                   'chg_when = current_timestamp',
                   'fresh = true',
-                  map { "$_ = ?" } @{$object_config->{'columns'}}
+                  map { "$_ = ?" } @{$snmp_object->columns}
                 )),
                 join(' AND ', map { "$_ = ?" } ('host', @object_index))
               ),
               ( map {
                 $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
-              } @{$object_config->{'columns'}} ),
+              } @{$snmp_object->columns} ),
               $host, @idx,
             ]
           );
@@ -2029,18 +2004,18 @@ sub sql_save_snmp_object
             [
               sprintf(
                 'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
-                $object_config->{'table'},
+                $snmp_object->name,
                 join(',',
-                  ('host', 'fresh', @object_index, @{$object_config->{'columns'}})
+                  ('host', 'fresh', @object_index, @{$snmp_object->columns})
                 ),
                 join(',',
-                  ('?') x (2 + @object_index + @{$object_config->{'columns'}})
+                  ('?') x (2 + @object_index + @{$snmp_object->columns})
                 ),
               ),
               $host, 't', @idx,
               map {
                 $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
-              } @{$object_config->{'columns'}}
+              } @{$snmp_object->columns}
             ]
           );
         }
@@ -2049,7 +2024,7 @@ sub sql_save_snmp_object
 
   #--- DELETE
 
-    my $dbmaxage = $object_config->{'dbmaxage'} // undef;
+    my $dbmaxage = $snmp_object->dbmaxage // undef;
     if(defined $dbmaxage) {
       hash_iterator(
         \%old,
@@ -2064,8 +2039,8 @@ sub sql_save_snmp_object
               [
                 sprintf(
                   'DELETE FROM snmp_%s WHERE %s',
-                  $object_config->{'table'},
-                  join(' AND ', map { "$_ = ?" } ('host', @{$object_config->{'index'}}))
+                  $snmp_object->name,
+                  join(' AND ', map { "$_ = ?" } ('host', @{$snmp_object->index}))
                 ),
                 $host, @idx
               ]

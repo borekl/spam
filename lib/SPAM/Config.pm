@@ -418,6 +418,27 @@ sub iter_mibs
   }
 }
 
+#=============================================================================
+# Find MIBobject with requested 'table' attribute value.
+#=============================================================================
+
+sub find_object
+{
+  my ($self, $snmp_object) = @_;
+  my $result;
+
+  $self->iter_mibs(sub {
+    my $mib = shift;
+    $mib->iter_objects(sub {
+      my $object = shift;
+      $result = $object if $object->name eq $snmp_object;
+      return $result;
+    });
+    return $result;
+  });
+
+  return $result;
+}
 
 #=============================================================================
 
