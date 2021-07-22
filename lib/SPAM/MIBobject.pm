@@ -40,10 +40,15 @@ has config => (
 
 # additional info
 
-has index => ( is => 'ro' );
 has include => ( is => 'ro' );
 has exclude => ( is => 'ro' );
 has dbmaxage => ( is => 'ro' );
+
+has index => (
+  is => 'ro',
+  default => sub { [] },
+  coerce => sub { ref $_[0] ? $_[0] : [ $_[0] ] }
+);
 
 has columns => (
   is => 'ro',
