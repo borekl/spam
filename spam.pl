@@ -201,15 +201,15 @@ sub sql_load_uptime
   my $host = shift;
   my $dbh = $cfg->get_dbi_handle('spam');
 
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
+  if(!ref($dbh)) { die 'Cannot connect to database (spam)'; }
   my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
   my $sth = $dbh->prepare($qry);
   my $r = $sth->execute($host);
   if(!$r) {
-    return 'Database query failed (spam, ' . $sth->errstr() . ')';
+    die 'Database query failed (spam, ' . $sth->errstr() . ')';
   }
   my ($v) = $sth->fetchrow_array();
-  return \$v;
+  return $v;
 }
 
 
@@ -245,12 +245,7 @@ sub poll_host
     tty_message("[$host] Load status (status failed, $r)\n");
     die "Failed to load table STATUS\n";
   }
-  $r = sql_load_uptime($host);
-  if(!ref($r)) {
-    tty_message("[$host] Load status (uptime failed, $r)\n");
-    die  "Failed to load uptime\n";
-  }
-  $swdata{$host}{stats}{sysuptime2} = $$r;
+  $h2->boottime_prev(sql_load_uptime($host));
   tty_message("[$host] Load status (finished)\n");
 
   #--- load supported MIB trees --------------------------------------------
@@ -410,8 +405,8 @@ sub poll_host
       $swdata{$host}{'stats'}{'platform'} = $platform;
       my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
       $uptime = time() - int($uptime / 100);
-      $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
-      $h2->location($sys->{'sysLocation'}{0}{'value'});
+      $h2->boottime($uptime);
+      $h2->location($sys->{sysLocation}{0}{value});
 
       tty_message(
         "[$host] System info: platform=%s boottime=%s\n",
@@ -759,8 +754,8 @@ sub sql_status_update
   my ($host, $update_plan) = @_;
   my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
   my $hdata = $swdata{$host};
+  my $h2 = $swdata2{$host};
   my ($r, $q, $fields, @update);
-  my $reboot_flag = 0;
   my (@fields, @vals, @bind);
 
   #--- aux function to handle ifSpeed/ifHighSpeed
@@ -779,16 +774,6 @@ sub sql_status_update
       return int($ifSpeed / 1000000);
     }
   };
-
-  #--- did switch reboot in-between SPAM runs?
-
-  my $bt_now  = $swdata{$host}{stats}{sysuptime};
-  my $bt_last = $swdata{$host}{stats}{sysuptime2};
-  if($bt_now && $bt_last) {
-    if(abs($bt_now - $bt_last) > 30) {   # 30 is fudge factor to account for imprecise clocks
-      $reboot_flag = 1;
-    }
-  }
 
   #--- create entire SQL transaction into @update array ---
 
@@ -870,7 +855,7 @@ sub sql_status_update
           'false'
         );
 
-        if(!$reboot_flag) {
+        if(!$h2->is_rebooted) {
           push(@fields, 'lastchg = ?');
           push(@bind, $current_time);
         }
@@ -1598,7 +1583,7 @@ sub sql_switch_info_update
         $stat->{p_used},
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
+        strftime('%Y-%m-%d %H:%M:%S', localtime($h2->boottime)),
         $stat->{platform}
       );
 
@@ -1625,7 +1610,7 @@ sub sql_switch_info_update
         $stat->{p_errdis},
         $stat->{p_inact},
         $stat->{p_used},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($stat->{sysuptime})),
+        strftime('%Y-%m-%d %H:%M:%S', localtime($h2->boottime)),
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         $stat->{platform},
