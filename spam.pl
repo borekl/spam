@@ -40,36 +40,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# Store swdata{HOST}{dbStatus} row.
-#===========================================================================
-
-sub swdata_status_row_add
-{
-  my $host = shift;
-  my $key = shift;
-  $_[0] =~ y/10/12/;  # ifOperStatus
-  $_[10] =~ y/10/12/; # ifAdminStatus
-  $swdata{$host}{'dbStatus'}{$key} = [ @_ ];
-}
-
-
-#===========================================================================
-# swdata{HOST}{dbStatus} iterator.
-#===========================================================================
-
-sub swdata_status_iter
-{
-  my $host = shift;
-  my $cback = shift;
-
-  for my $k (keys %{$swdata{$host}{'dbStatus'}}) {
-    my $r = $cback->($k, @{$swdata{$host}{'dbStatus'}{$k}});
-    last if $r;
-  }
-}
-
-
-#===========================================================================
 # Helper function to concatenate the bitstrings that represent enabled VLANs
 # on a trunk (gleaned from vlaTrunkPortVlansEnabled group of columns).
 # Filling in of ommited values is also performed here.
@@ -125,27 +95,6 @@ sub get_trunk_vlans_bitstring
 
 
 #===========================================================================
-# swdata{HOST}{dbStatus} getter for whole row.
-#===========================================================================
-
-sub swdata_status_get
-{
-  my ($host, $key, $col) = @_;
-
-  if(exists $swdata{$host}{'dbStatus'}{$key}) {
-    my $row = $swdata{$host}{'dbStatus'}{$key};
-    if(defined $col) {
-      return $row->[$col];
-    } else {
-      return $row;
-    }
-  } else {
-    return undef;
-  }
-}
-
-
-#===========================================================================
 # This routine will load content of the status table from the backend
 # database into a $swdata structure (only rows relevant to specified host).
 #
@@ -156,6 +105,7 @@ sub swdata_status_get
 sub sql_load_status
 {
   my $host = shift;
+  my $h2 = $swdata2{$host};
   my $dbh = $cfg->get_dbi_handle('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
@@ -185,7 +135,7 @@ sub sql_load_status
   }
 
   while(my $ra = $sth->fetchrow_arrayref()) {
-    swdata_status_row_add($host, @$ra);
+    $h2->add_port(@$ra);
   }
 
   return undef;
@@ -599,6 +549,7 @@ sub find_changes
 {
   my ($host) = @_;
   my $h = $swdata{$host};
+  my $h2 = $swdata2{$host};
   my $idx = $h->{'idx'}{'portToIfIndex'};
   my @idx_keys = (keys %$idx);
   my @update_plan;
@@ -616,7 +567,7 @@ sub find_changes
 
   #--- delete: ports that no longer exist (not found via SNMP) ---
 
-  swdata_status_iter($host, sub {
+  $h2->iterate_ports(sub {
     my $k = shift;
     if(!grep { $_ eq $k } @idx_keys) {
       push(@update_plan, [ 'd', $k ]);       # 'd' as 'delete'
@@ -632,7 +583,7 @@ sub find_changes
     # interface's [portModuleIndex, portIndex]
     my $pi = $h->{'idx'}{'ifIndexToPortIndex'}{$if};
 
-    if(swdata_status_get($host, $k)) {
+    if($h2->get_port($k)) {
 
       my $ifTable = $h->{'IF-MIB'}{'ifTable'}{$if};
       my $ifXTable = $h->{'IF-MIB'}{'ifXTable'}{$if};
@@ -643,7 +594,7 @@ sub find_changes
 
       #--- update: entry is not new, check whether it has changed ---
 
-      my $old = swdata_status_get($host, $k);
+      my $old = $h2->get_port($k);
       my $errdis = 0; # currently unavailable
 
       #--- collect the data to compare
@@ -1261,6 +1212,7 @@ sub switch_info
 {
   my ($host) = @_;
   my $h = $swdata{$host};
+  my $h2 = $swdata2{$host};
   my $stat = $h->{'stats'};
   my $knownports = grep(/^$host$/, @{$cfg->knownports});
   my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
@@ -1304,7 +1256,7 @@ sub switch_info
     # ports that were used within period defined by "inactivethreshold2"
     # configuration parameter
     if($knownports) {
-      if(swdata_status_get($host, $portname, 12) < 2592000) {
+      if($h2->get_port($portname, 12) < 2592000) {
         $stat->{p_used}++;
       }
     }
@@ -1767,6 +1719,7 @@ sub clear_task_by_pid
 sub sql_autoreg
 {
   my $host = shift;
+  my $h2 = $swdata2{$host};
   my @insert;
 
   #--- check argument
@@ -1779,7 +1732,7 @@ sub sql_autoreg
 
   #--- iterate over all ports
 
-  swdata_status_iter($host, sub {
+  $h2->iterate_ports(sub {
     my $port = shift;
     my $descr = @_[6];
     my ($cp_descr, $cp_db);
