@@ -402,7 +402,7 @@ sub poll_host
         tty_message("[$host] Getting host system info failed\n");
         die "Cannot load platform identification\n";
       }
-      $swdata{$host}{'stats'}{'platform'} = $platform;
+      $h2->platform($platform);
       my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
       $uptime = time() - int($uptime / 100);
       $h2->boottime($uptime);
@@ -1584,7 +1584,7 @@ sub sql_switch_info_update
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         strftime('%Y-%m-%d %H:%M:%S', localtime($h2->boottime)),
-        $stat->{platform}
+        $h2->platform
       );
 
       $q = sprintf($q, join(',', @fields), join(',', @vals));
@@ -1613,7 +1613,7 @@ sub sql_switch_info_update
         strftime('%Y-%m-%d %H:%M:%S', localtime($h2->boottime)),
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
-        $stat->{platform},
+        $h2->platform,
         $host
       );
 

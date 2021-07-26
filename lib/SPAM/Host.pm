@@ -21,6 +21,9 @@ has boottime => ( is => 'rw' );
 # last boottime (loaded from database)
 has boottime_prev => ( is => 'rw' );
 
+# platform (loaded SNMP sysObjectID)
+has platform => ( is => 'rw' );
+
 #==============================================================================
 
 # return true if the switch seems to have been rebooted since we last checked
