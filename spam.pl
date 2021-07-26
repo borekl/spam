@@ -105,7 +105,6 @@ sub get_trunk_vlans_bitstring
 sub sql_load_status
 {
   my $host = shift;
-  my $h2 = $swdata2{$host};
   my $dbh = $cfg->get_dbi_handle('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
@@ -129,13 +128,13 @@ sub sql_load_status
   );
   $qry = sprintf($qry, join(',', @fields));
   my $sth = $dbh->prepare($qry);
-  my $r = $sth->execute($host);
+  my $r = $sth->execute($host->name);
   if(!$r) {
     return 'Database query failed (spam, ' . $sth->errstr() . ')';
   }
 
   while(my $ra = $sth->fetchrow_arrayref()) {
-    $h2->add_port(@$ra);
+    $host->add_port(@$ra);
   }
 
   return undef;
@@ -151,13 +150,11 @@ sub sql_load_uptime
   my $host = shift;
   my $dbh = $cfg->get_dbi_handle('spam');
 
-  if(!ref($dbh)) { die 'Cannot connect to database (spam)'; }
+  die 'Cannot connect to database (spam)' unless ref $dbh;
   my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
   my $sth = $dbh->prepare($qry);
-  my $r = $sth->execute($host);
-  if(!$r) {
-    die 'Database query failed (spam, ' . $sth->errstr() . ')';
-  }
+  my $r = $sth->execute($host->name);
+  die 'Database query failed (spam, ' . $sth->errstr() . ')' unless $r;
   my ($v) = $sth->fetchrow_array();
   return $v;
 }
@@ -190,12 +187,12 @@ sub poll_host
   #--- load last status from backend db ------------------------------------
 
   tty_message("[$host] Load status (started)\n");
-  my $r = sql_load_status($host);
+  my $r = sql_load_status($h2);
   if(defined $r) {
     tty_message("[$host] Load status (status failed, $r)\n");
     die "Failed to load table STATUS\n";
   }
-  $h2->boottime_prev(sql_load_uptime($host));
+  $h2->boottime_prev(sql_load_uptime($h2));
   tty_message("[$host] Load status (finished)\n");
 
   #--- load supported MIB trees --------------------------------------------
