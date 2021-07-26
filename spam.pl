@@ -25,6 +25,7 @@ use Try::Tiny;
 
 use SPAM::Cmdline;
 use SPAM::Config;
+use SPAM::Host;
 
 $| = 1;
 
@@ -33,7 +34,8 @@ $| = 1;
 
 my $cfg;             # SPAM::Config instance
 my $port2cp;         # switchport->CP mapping (from porttable)
-my %swdata;          # holder for all data retrieved from hosts
+my %swdata;          # holder for all data retrieved from hosts (legacy)
+my %swdata2;         # holder for host instances, replaces %swdata
 my $arptable;        # arptable data (hash reference)
 
 
@@ -224,6 +226,7 @@ sub poll_host
 
   #--- other variables -----------------------------------------------------
 
+  my $h2 = $swdata2{$host} = SPAM::Host->new(name => $host);
   my $s = $swdata{$host} = {};
   my $platform;
 
@@ -408,8 +411,7 @@ sub poll_host
       my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
       $uptime = time() - int($uptime / 100);
       $swdata{$host}{'stats'}{'sysuptime'} = $uptime;
-      $swdata{$host}{'stats'}{'syslocation'}
-      = $sys->{'sysLocation'}{0}{'value'};
+      $h2->location($sys->{'sysLocation'}{0}{'value'});
 
       tty_message(
         "[$host] System info: platform=%s boottime=%s\n",
@@ -1551,6 +1553,7 @@ sub sql_switch_info_update
 {
   my $host = shift;
   my $stat = $swdata{$host}{stats};
+  my $h2 = $swdata2{$host};
   my $dbh = $cfg->get_dbi_handle('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
@@ -1585,7 +1588,7 @@ sub sql_switch_info_update
       @vals = ('?') x @fields;
       @args = (
         $host,
-        $stat->{syslocation} =~ s/'/''/r,
+        $h2->location =~ s/'/''/r,
         $stat->{p_total},
         $stat->{p_act},
         $stat->{p_patch},
@@ -1614,7 +1617,7 @@ sub sql_switch_info_update
         'vtp_mode', 'platform'
       );
       @args = (
-        $stat->{syslocation} =~ s/'/''/r,
+        $h2->location =~ s/'/''/r,
         $stat->{p_total},
         $stat->{p_act},
         $stat->{p_patch},
