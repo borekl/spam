@@ -2341,7 +2341,11 @@ try {
                   tty_message("[$host] Running auto-registration (finished)\n");
                 }
 
-	            }};
+	            }}
+
+              catch {
+                tty_message("[$host] Host poll failed ($_)\n");
+              };
 
             } # host processing block ends here
 
