@@ -3,7 +3,7 @@
 #===========================================================================
 # Switch Ports Activity Monitor -- support library, DBI version
 # """""""""""""""""""""""""""""
-# 2000-2010 Borek Lupomesky <Borek.Lupomesky@oskarmobil.cz>
+# 2000-2021 Borek Lupomesky <Borek.Lupomesky@oskarmobil.cz>
 #===========================================================================
 
 

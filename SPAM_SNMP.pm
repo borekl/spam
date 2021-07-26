@@ -3,7 +3,7 @@
 #===========================================================================
 # Switch Ports Activity Monitor -- SNMP support library
 # """""""""""""""""""""""""""""
-# 2000 Borek Lupomesky <Borek.Lupomesky@oskarmobil.cz>
+# 2000-2021 Borek Lupomesky <Borek.Lupomesky@oskarmobil.cz>
 #===========================================================================
 
 
