@@ -31,12 +31,10 @@ $| = 1;
 
 #=== global variables ======================================================
 
-my $cfg;             # complete configuration holder (new)
-my $cfg2;            # SPAM::Config instance
+my $cfg;             # SPAM::Config instance
 my $port2cp;         # switchport->CP mapping (from porttable)
 my %swdata;          # holder for all data retrieved from hosts
 my $arptable;        # arptable data (hash reference)
-
 
 
 #===========================================================================
@@ -156,7 +154,7 @@ sub swdata_status_get
 sub sql_load_status
 {
   my $host = shift;
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
   my $qry = 'SELECT %s FROM status WHERE host = ?';
@@ -199,7 +197,7 @@ sub sql_load_status
 sub sql_load_uptime
 {
   my $host = shift;
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
   my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
@@ -257,7 +255,7 @@ sub poll_host
   # The first MIB must contain reading sysObjectID, sysLocation and
   # sysUpTime. If these cannot be loaded; the whole function fails.
 
-  $cfg2->iter_mibs(sub {
+  $cfg->iter_mibs(sub {
     my ($mib, $is_first_mib) = @_;
     my $mib_key = $mib->name;
     my @mib_list = ( $mib_key );
@@ -325,7 +323,7 @@ sub poll_host
 
       for my $vlan (@vlans) {
         next if $vlan > 999;
-        my $cmtvlan = $cfg2->snmp_community($host) . ($vlan ? "\@$vlan" : '');
+        my $cmtvlan = $cfg->snmp_community($host) . ($vlan ? "\@$vlan" : '');
 
   #--- retrieve the SNMP object
 
@@ -927,7 +925,7 @@ sub sql_status_update
 sub sql_transaction
 {
   my $update = shift;
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my ($r, $rv);
   my $fh;         # debugging output filehandle
 
@@ -1020,7 +1018,7 @@ sub sql_mactable_update
 {
   my $host = shift;
   my $h = $swdata{$host}{'BRIDGE-MIB'};
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my $ret;
   my @update;              # update plan
   my %mac_current;         # contents of 'mactable'
@@ -1171,7 +1169,7 @@ sub sql_mactable_update
 
 sub sql_arptable_update
 {
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my %arp_current;
   my ($mac, $ret, @update, $q);
 
@@ -1277,7 +1275,7 @@ sub switch_info
   my ($host) = @_;
   my $h = $swdata{$host};
   my $stat = $h->{'stats'};
-  my $knownports = grep(/^$host$/, @{$cfg2->knownports});
+  my $knownports = grep(/^$host$/, @{$cfg->knownports});
   my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
 
   #--- initialize ---
@@ -1502,7 +1500,7 @@ sub port_flag_pack
 
 sub sql_get_vtp_masters_list
 {
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my ($r, @list, @list2);
 
   #--- pull data from database ---
@@ -1513,20 +1511,20 @@ sub sql_get_vtp_masters_list
     return 'Database query failed (spam,' . $sth->errstr() . ')';
   }
   while(my @a = $sth->fetchrow_array) {
-    $a[2] = $cfg2->snmp_community($a[0]);
+    $a[2] = $cfg->snmp_community($a[0]);
     push(@list, \@a);
   }
 
   #--- for VTP domains with preferred masters, eliminate all other masters;
   #--- preference is set in configuration file with "VLANServer" statement
 
-  for my $k (keys %{$cfg2->vlanservers}) {
+  for my $k (keys %{$cfg->vlanservers}) {
     for(my $i = 0; $i < @list; $i++) {
       next if $list[$i]->[1] ne $k;
-      if(lc($cfg2->vlanservers->{$k}[0]) ne lc($list[$i]->[0])) {
+      if(lc($cfg->vlanservers->{$k}[0]) ne lc($list[$i]->[0])) {
         splice(@list, $i--, 1);
       } else {
-        $list[$i]->[2] = $cfg2->vlanservers->{$k}[1];   # community string
+        $list[$i]->[2] = $cfg->vlanservers->{$k}[1];   # community string
       }
     }
   }
@@ -1553,7 +1551,7 @@ sub sql_switch_info_update
 {
   my $host = shift;
   my $stat = $swdata{$host}{stats};
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
   my $rv;
@@ -1668,7 +1666,7 @@ sub sql_switch_info_update
 
 sub maintenance
 {
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my ($t, $r);
 
   #--- prepare
@@ -1680,14 +1678,14 @@ sub maintenance
 
   $dbh->do(
     q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg2->arptableage
+    undef, $t, $cfg->arptableage
   ) or return 'Cannot delete from database (spam)';
 
   #--- mactable purging
 
   $dbh->do(
     q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg2->mactableage
+    undef, $t, $cfg->mactableage
   ) or return 'Cannot delete from database (spam)';
 
   #--- status table purging
@@ -1789,7 +1787,7 @@ sub sql_autoreg
 
   #--- get site-code from hostname
 
-  my $site = $cfg2->site_conv($host);
+  my $site = $cfg->site_conv($host);
 
   #--- iterate over all ports
 
@@ -1840,7 +1838,7 @@ sub sql_save_snmp_object
 
   #--- other variables
 
-  my $dbh = $cfg2->get_dbi_handle('spam');
+  my $dbh = $cfg->get_dbi_handle('spam');
   my %stats = ( 'insert' => 0, 'update' => 0, 'delete' => 0 );
   my $err;                 # error message
   my $debug_fh;            # debug file handle
@@ -1872,7 +1870,7 @@ sub sql_save_snmp_object
 
   #--- find the MIB object we're saving
 
-    my $obj = $cfg2->find_object($snmp_object->name);
+    my $obj = $cfg->find_object($snmp_object->name);
     my @object_index = @{$snmp_object->index};
     printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
       if $debug_fh;
@@ -2127,17 +2125,17 @@ try {
 	#--- load master configuration file --------------------------------
 
 	tty_message("[main] Loading master config (started)\n");
-	$cfg2 = SPAM::Config->instance();
+	$cfg = SPAM::Config->instance();
 	tty_message("[main] Loading master config (finished)\n");
 
 	#--- initialize SPAM_SNMP library
 
-	$SPAM_SNMP::snmpget = $cfg2->snmpget;
-	$SPAM_SNMP::snmpwalk = $cfg2->snmpwalk;
+	$SPAM_SNMP::snmpget = $cfg->snmpget;
+	$SPAM_SNMP::snmpwalk = $cfg->snmpwalk;
 
 	#--- bind to native database ---------------------------------------
 
-	if(!exists $cfg2->config()->{dbconn}{spam}) {
+	if(!exists $cfg->config()->{dbconn}{spam}) {
 	  die "Database binding 'spam' not defined\n";
         }
 
@@ -2168,7 +2166,7 @@ try {
 
 	#--- bind to ondb database -----------------------------------------
 
-	if(!exists $cfg2->config()->{dbconn}{ondb}) {
+	if(!exists $cfg->config()->{dbconn}{ondb}) {
 	  die "Database binding 'ondb' not defined\n";
         }
 
@@ -2178,7 +2176,7 @@ try {
           if($cmd->list_hosts()) {
             my $n = 0;
             print "\nDumping configured switches:\n\n";
-            for my $k (sort keys %{$cfg2->hosts()}) {
+            for my $k (sort keys %{$cfg->hosts()}) {
               print $k, "\n";
               $n++;
             }
@@ -2194,7 +2192,7 @@ try {
           if($cmd->list_arpservers()) {
             my $n = 0;
             print "\nDumping configured ARP servers:\n\n";
-            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg2->arpservers()}) {
+            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->arpservers()}) {
               print $k->[0], "\n";
               $n++;
             }
@@ -2206,7 +2204,7 @@ try {
 	#--- close connection to ondb database -----------------------------
 
 	tty_message("[main] Closing connection to ondb database\n");
-	$cfg2->close_dbi_handle('ondb');
+	$cfg->close_dbi_handle('ondb');
 
 	#--- load port and outlet tables -----------------------------------
 
@@ -2219,14 +2217,14 @@ try {
 
 	#--- disconnect parent database handle before forking --------------
 
-	$cfg2->close_dbi_handle('spam');
+	$cfg->close_dbi_handle('spam');
 
 	#--- create work list of hosts that are to be processed ------------
 
 	my @work_list;
 	my $wl_idx = 0;
 	my $poll_hosts_re = $cmd->hostre();
-	foreach my $host (sort keys %{$cfg2->hosts()}) {
+	foreach my $host (sort keys %{$cfg->hosts()}) {
           if(
             (
               @{$cmd->hosts()} &&
@@ -2352,7 +2350,7 @@ try {
             elsif($task->[0] eq 'arp') {
               tty_message("[arptable] Updating arp table (started)\n");
               my $r = snmp_get_arptable(
-                $cfg2->arpservers(), $cfg2->snmp_community,
+                $cfg->arpservers(), $cfg->snmp_community,
                 sub {
                   tty_message("[arptable] Retrieved arp table from $_[0]\n");
                 }
