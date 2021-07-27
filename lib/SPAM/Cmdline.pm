@@ -54,6 +54,9 @@ has hostre => (
   is => 'rwp',
 );
 
+# only get hostinfo, display it and quit
+has hostinfo => ( is => 'rwp', default => 0 );
+
 # number of concurrent tasks to be run
 
 has tasks => (
@@ -114,6 +117,7 @@ sub BUILD
     'mactable!'  => sub { $self->_set_mactable($_[1]) },
     'maint'      => sub { $self->_set_maintenance($_[1]) },
     'quick'      => sub { $self->_set_mactable(0); $self->_set_arptable(0); },
+    'hostinfo',  => sub { $self->_set_hostinfo(1) },
     'arpservers' => sub {
       $self->_set_list_arpservers($_[1]);
       $self->_set_no_lock(1);
@@ -173,6 +177,7 @@ Options that modify standard processing run:
   --[no]mactable  turn getting bridging table on or off (default on)
   --[no]autoreg   turn autoregistration of outlets on or off (default off)
   --quick         equivalent of --noarptable and --nomactable
+  --hostinfo      only read basic info, show it and quit
   --host=HOST     poll only HOST, can be used multiple times (default all)
   --hostre=RE     poll only hosts matching the regexp
   --tasks=N       number of tasks to be run (N is 1 to 16, default 8)
