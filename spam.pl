@@ -34,7 +34,6 @@ $| = 1;
 
 my $cfg;             # SPAM::Config instance
 my $port2cp;         # switchport->CP mapping (from porttable)
-my %swdata;          # holder for all data retrieved from hosts (legacy)
 my %swdata2;         # holder for host instances, replaces %swdata
 my $arptable;        # arptable data (hash reference)
 
@@ -53,7 +52,7 @@ sub get_trunk_vlans_bitstring
 
   #--- other variables
 
-  my $e = $swdata{$host}{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if} // undef;
+  my $e = $host->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if} // undef;
   my $trunk_vlans;
 
   #--- check for existence of the required keys
@@ -169,31 +168,27 @@ sub poll_host
 {
   #--- arguments -----------------------------------------------------------
 
-  my ($host, $get_mactable) = @_;
+  my ($hostname, $get_mactable, $hostinfo) = @_;
 
   #--- other variables -----------------------------------------------------
 
-  my $h2 = $swdata2{$host} = SPAM::Host->new(name => $host);
-  my $s = $swdata{$host} = {};
+  my $host = $swdata2{$hostname} = SPAM::Host->new(name => $hostname);
   my $platform;
 
   #--- check if the hostname can be resolved
 
-  if(!inet_aton($host)) {
-    tty_message("[$host] Hostname cannot be resolved\n");
-    die "DNS resolution failed\n";
-  }
+  die "DNS resolution failed\n" unless inet_aton($host->name);
 
   #--- load last status from backend db ------------------------------------
 
-  tty_message("[$host] Load status (started)\n");
-  my $r = sql_load_status($h2);
+  tty_message("[%s] Load status (started)\n", $host->name);
+  my $r = sql_load_status($host);
   if(defined $r) {
-    tty_message("[$host] Load status (status failed, $r)\n");
+    tty_message("[%s] Load status (status failed, $r)\n", $host->name);
     die "Failed to load table STATUS\n";
   }
-  $h2->boottime_prev(sql_load_uptime($h2));
-  tty_message("[$host] Load status (finished)\n");
+  $host->boottime_prev(sql_load_uptime($host));
+  tty_message("[%s] Load status (finished)\n", $host->name);
 
   #--- load supported MIB trees --------------------------------------------
 
@@ -241,7 +236,7 @@ sub poll_host
       # switch via BRIDGE-MIB
 
       if($obj->has_flag('vlans')) {
-        @vlans = snmp_get_active_vlans($s);
+        @vlans = snmp_get_active_vlans($host);
         if(!@vlans) { @vlans = ( undef ); }
       }
 
@@ -258,7 +253,7 @@ sub poll_host
         if(!$get_mactable) {
           tty_message(
             "[%s] Skipping %s, mactable loading not active\n",
-            $host, $mib->name
+            $host->name, $mib->name
           );
           next;
         }
@@ -273,13 +268,13 @@ sub poll_host
   #--- retrieve the SNMP object
 
         my $r = snmp_get_object(
-          'snmpwalk', $host, $cmtvlan, \@mib_list,
+          'snmpwalk', $host->name, $cmtvlan, \@mib_list,
           $obj->name,
           $obj->columns,
           sub {
             my ($var, $cnt) = @_;
             return if !$var;
-            my $msg = "[$host] Loading $mib_key::$var";
+            my $msg = sprintf("[%s] Loading %s::%s", $host->name, $mib_key, $var);
             if($vlan) { $msg .= " $vlan"; }
             if($cnt) { $msg .= " ($cnt)"; }
             tty_message("$msg\n");
@@ -292,12 +287,12 @@ sub poll_host
           if($vlan) {
             tty_message(
               "[%s] Processing %s/%d (failed, %s)\n",
-              $host, $mib->name, $vlan, $r
+              $host->name, $mib->name, $vlan, $r
             );
           } else {
             tty_message(
               "[%s] Processing %s (failed, %s)\n",
-              $host, $mib->name, $r
+              $host->name, $mib->name, $r
             );
           }
         }
@@ -305,11 +300,7 @@ sub poll_host
   #--- process result
 
         else {
-          if($vlan) {
-            $swdata{$host}{$mib_key}{$vlan}{$obj->name} = $r;
-          } else {
-            $swdata{$host}{$mib_key}{$obj->name} = $r;
-          }
+          $host->add_snmp_object($mib, $vlan, $obj, $r);
         }
       }
 
@@ -320,16 +311,16 @@ sub poll_host
 
       if(
         $obj->has_flag('save')
-        && $swdata{$host}{$mib_key}{$obj->name}
+        && $host->snmp->{$mib_key}{$obj->name}
       ) {
-        tty_message("[$host] Saving %s (started)\n", $obj->name);
+        tty_message("[%s] Saving %s (started)\n", $host->name, $obj->name);
         my $r = sql_save_snmp_object($host, $obj);
         if(!ref $r) {
-          tty_message("[$host] Saving %s (failed)\n", $obj->name);
+          tty_message("[%s] Saving %s (failed)\n", $host->name, $obj->name);
         } else {
           tty_message(
-            "[$host] Saving %s (finished, i=%d,u=%d,d=%d)\n",
-            $obj->name,
+            "[%s] Saving %s (finished, i=%d,u=%d,d=%d)\n",
+            $host->name, $obj->name,
             @{$r}{qw(insert update delete)}
           );
         }
@@ -342,22 +333,23 @@ sub poll_host
   #--- first MIB entry is special as it gives us information about the host
 
     if($is_first_mib) {
-      my $sys = $swdata{$host}{'SNMPv2-MIB'};
-      $platform = $sys->{'sysObjectID'}{0}{'value'};
-      $platform =~ s/^.*:://;
-      if(!$platform) {
-        tty_message("[$host] Getting host system info failed\n");
-        die "Cannot load platform identification\n";
+      if($hostinfo) {
+        tty_message(
+          "[%s] Platform: %s\n", $host->name, $host->platform // '?'
+        );
+        tty_message(
+          "[%s] Booted on: %s\n",
+          $host->name, strftime('%Y-%m-%d', localtime($host->boottime))
+        ) if $host->boottime;
+        tty_message(
+          "[%s] Location: %s\n", $host->name, $host->location // '?'
+        );
+        return 1;
       }
-      $h2->platform($platform);
-      my $uptime = $sys->{'sysUpTimeInstance'}{undef}{'value'};
-      $uptime = time() - int($uptime / 100);
-      $h2->boottime($uptime);
-      $h2->location($sys->{sysLocation}{0}{value});
-
       tty_message(
-        "[$host] System info: platform=%s boottime=%s\n",
-        $platform, strftime('%Y-%m-%d', localtime($uptime))
+        "[%s] System info: platform=%s boottime=%s\n",
+        $host->name,
+        $host->platform, strftime('%Y-%m-%d', localtime($host->boottime))
       );
     }
 
@@ -365,43 +357,45 @@ sub poll_host
     return undef;
   });
 
+  return if $hostinfo;
+
   #--- prune non-ethernet interfaces and create portName -> ifIndex hash
 
   my $cnt_prune = 0;
   my (%by_ifindex, %by_ifname);
   if(
-    exists $swdata{$host}{'IF-MIB'}{'ifTable'} &&
-    exists $swdata{$host}{'IF-MIB'}{'ifXTable'}
+    exists $host->snmp->{'IF-MIB'}{'ifTable'} &&
+    exists $host->snmp->{'IF-MIB'}{'ifXTable'}
   ) {
-    tty_message("[$host] Pruning non-ethernet interfaces (started)\n");
-    for my $if (keys %{ $swdata{$host}{'IF-MIB'}{'ifTable'} }) {
+    tty_message("[%s] Pruning non-ethernet interfaces (started)\n", $host->name);
+    for my $if (keys %{ $host->snmp->{'IF-MIB'}{'ifTable'} }) {
       if(
         # interfaces of type other than 'ethernetCsmacd'
-        $swdata{$host}{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
+        $host->snmp->{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
           ne 'ethernetCsmacd'
         # special case; some interfaces are ethernetCsmacd and yet they are
         # not real interfaces (good job, Cisco) and cause trouble
-        || $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
+        || $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
           =~ /^vl/i
       ) {
         # matching interfaces are deleted
-        delete $swdata{$host}{'IF-MIB'}{'ifTable'}{$if};
-        delete $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if};
+        delete $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
+        delete $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
         $cnt_prune++;
       } else {
         #non-matching interfaces are indexed
         $by_ifindex{$if}
-        = $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
+        = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
       }
     }
     %by_ifname = reverse %by_ifindex;
-    $swdata{$host}{'idx'}{'portToIfIndex'} = \%by_ifname;
+    $host->port_to_ifindex(\%by_ifname);
     tty_message(
-      "[$host] Pruning non-ethernet interfaces (finished, %d pruned)\n",
-      $cnt_prune
+      "[%s] Pruning non-ethernet interfaces (finished, %d pruned)\n",
+      $host->name, $cnt_prune
     );
   } else {
-    tty_message("[$host] ifTable/ifXTable not found\n");
+    tty_message("[%s] ifTable/ifXTable not found\n", $host->name);
     die "ifTable/ifXTable don't exist on $host";
   }
 
@@ -411,16 +405,16 @@ sub poll_host
 
   my %by_portindex;
   if(
-    exists $swdata{$host}{'CISCO-STACK-MIB'}{'portTable'}
+    exists $host->snmp->{'CISCO-STACK-MIB'}{'portTable'}
   ) {
-    my $t = $s->{'CISCO-STACK-MIB'}{'portTable'};
+    my $t = $host->snmp->{'CISCO-STACK-MIB'}{'portTable'};
     for my $idx_mod (keys %$t) {
       for my $idx_port (keys %{$t->{$idx_mod}}) {
         $by_portindex{$t->{$idx_mod}{$idx_port}{'portIfIndex'}{'value'}}
         = [ $idx_mod, $idx_port ];
       }
     }
-    $swdata{$host}{'idx'}{'ifIndexToPortIndex'} = \%by_portindex;
+    $host->ifindex_to_portindex(\%by_portindex);
   }
 
   #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
@@ -428,50 +422,42 @@ sub poll_host
   my %by_dot1d;
 
   if(
-    exists $swdata{$host}{'BRIDGE-MIB'}
-    && exists $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
+    exists $host->snmp->{'BRIDGE-MIB'}
+    && exists $host->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
   ) {
     my @vlans
     = keys %{
-      $swdata{$host}{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
+      $host->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
     };
     for my $vlan (@vlans) {
       if(
-        exists $swdata{$host}{'BRIDGE-MIB'}{$vlan}
-        && exists $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+        exists $host->snmp->{'BRIDGE-MIB'}{$vlan}
+        && exists $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
       ) {
         my @dot1idxs
         = keys %{
-          $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+          $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
         };
         for my $dot1d (@dot1idxs) {
           $by_dot1d{
-            $swdata{$host}{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
+            $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
           } = $dot1d;
         }
       }
     }
-    $swdata{$host}{'idx'}{'ifIndexToDot1d'} = \%by_dot1d;
+    $host->ifindex_to_dot1d(\%by_dot1d);
   }
-
-  #--- process entity information
-
-  $swdata{$host}{'hw-tree'} = build_entity_tree($swdata{$host});
 
   #--- dump swstat and entity table
 
   if($ENV{'SPAM_DEBUG'}) {
-    open(my $fh, '>', "debug.swdata.$$.log") || die;
-    print $fh  Dumper(\%swdata);
-    close($fh);
-
-    if($swdata{$host}{'hw-tree'}) {
+    if($host->entity_tree) {
       open(my $fh, '>', "debug.entities.$$.log") || die;
 
       # dump the whole entity tree
       print $fh "entity index         | if     | class        | pos | model        | name\n";
       print $fh "---------------------+--------+--------------+-----+--------------+---------------------------\n";
-      $swdata{$host}{'hw-tree'}->traverse(sub {
+      $host->entity_tree->traverse(sub {
         my ($node, $level) = @_;
         printf $fh "%-20s | %6s | %-12s | %3d | %12s | %s\n",
           ('  ' x $level) . $node->entPhysicalIndex,
@@ -483,13 +469,13 @@ sub poll_host
       });
 
       # display some derived knowledge
-      my @chassis = $swdata{$host}{'hw-tree'}->chassis;
+      my @chassis = $host->entity_tree->chassis;
       printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
       for(my $i = 0; $i < @chassis; $i++) {
         printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
       }
 
-      my @ps = $swdata{$host}{'hw-tree'}->power_supplies;
+      my @ps = $host->entity_tree->power_supplies;
       printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
       for(my $i = 0; $i < @ps; $i++) {
         printf $fh "%d. chassis=%d %s\n", $i+1,
@@ -497,7 +483,7 @@ sub poll_host
           $ps[$i]->disp;
       }
 
-      my @cards = $swdata{$host}{'hw-tree'}->linecards;
+      my @cards = $host->entity_tree->linecards;
       printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
       for(my $i = 0; $i < @cards; $i++) {
         printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
@@ -506,7 +492,7 @@ sub poll_host
           $cards[$i]->disp;
       }
 
-      my @fans = $swdata{$host}{'hw-tree'}->fans;
+      my @fans = $host->entity_tree->fans;
       printf $fh "\nFANS (%d found)\n", scalar(@fans);
       for(my $i = 0; $i < @fans; $i++) {
         printf $fh "%d. chassis=%d %s\n", $i+1,
@@ -514,7 +500,7 @@ sub poll_host
           $fans[$i]->disp;
       }
 
-      my $hwinfo = $swdata{$host}{'hw-tree'}->hwinfo;
+      my $hwinfo = $host->entity_tree->hwinfo;
       printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
       print $fh "\n", Dumper($hwinfo), "\n";
 
@@ -545,9 +531,7 @@ sub poll_host
 sub find_changes
 {
   my ($host) = @_;
-  my $h = $swdata{$host};
-  my $h2 = $swdata2{$host};
-  my $idx = $h->{'idx'}{'portToIfIndex'};
+  my $idx = $host->port_to_ifindex;
   my @idx_keys = (keys %$idx);
   my @update_plan;
   my @stats = (0) x 4;  # i/d/U/u
@@ -558,13 +542,13 @@ sub find_changes
   if($ENV{'SPAM_DEBUG'}) {
     open($debug_fh, '>', "debug.find_changes.$$.log");
     if($debug_fh) {
-      printf $debug_fh "--> find_changes(%s)\n", $host
+      printf $debug_fh "--> find_changes(%s)\n", $host->name
     }
   }
 
   #--- delete: ports that no longer exist (not found via SNMP) ---
 
-  $h2->iterate_ports(sub {
+  $host->iterate_ports(sub {
     my $k = shift;
     if(!grep { $_ eq $k } @idx_keys) {
       push(@update_plan, [ 'd', $k ]);       # 'd' as 'delete'
@@ -578,20 +562,20 @@ sub find_changes
     # interface's ifIndex
     my $if = $idx->{$k};
     # interface's [portModuleIndex, portIndex]
-    my $pi = $h->{'idx'}{'ifIndexToPortIndex'}{$if};
+    my $pi = $host->ifindex_to_portindex->{$if};
 
-    if($h2->get_port($k)) {
+    if($host->get_port($k)) {
 
-      my $ifTable = $h->{'IF-MIB'}{'ifTable'}{$if};
-      my $ifXTable = $h->{'IF-MIB'}{'ifXTable'}{$if};
+      my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
+      my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
       my $portTable
-         = $h->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
+         = $host->snmp->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
-         = $h->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+         = $host->snmp->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
 
       #--- update: entry is not new, check whether it has changed ---
 
-      my $old = $h2->get_port($k);
+      my $old = $host->get_port($k);
       my $errdis = 0; # currently unavailable
 
       #--- collect the data to compare
@@ -599,10 +583,10 @@ sub find_changes
       my @data = (
         [ 'ifOperStatus', 'n', $old->[0],
           $ifTable->{'ifOperStatus'}{'value'} ],
-	[ 'ifInUcastPkts', 'n', $old->[1],
-	  $ifTable->{'ifInUcastPkts'}{'value'} ],
-	[ 'ifOutUcastPkts', 'n', $old->[2],
-	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
+      	[ 'ifInUcastPkts', 'n', $old->[1],
+      	  $ifTable->{'ifInUcastPkts'}{'value'} ],
+      	[ 'ifOutUcastPkts', 'n', $old->[2],
+      	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
         [ 'vmVlan', 'n', $old->[5],
           $vmMembershipTable->{'vmVlan'}{'value'} ],
         [ 'vlanTrunkPortVlansEnabled', 's', $old->[13],
@@ -620,7 +604,7 @@ sub find_changes
           )
         ],
         [ 'port_flags', 'n', $old->[9],
-          port_flag_pack($h, $if) ],
+          port_flag_pack($host, $if) ],
         [ 'ifAdminStatus', 'n', $old->[10],
           $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
@@ -648,10 +632,10 @@ sub find_changes
       #--- push full or partial update
 
       if($cmp_acc) {
-	# 'U' as 'full update', ie. update all fields in STATUS table
+        # 'U' as 'full update', ie. update all fields in STATUS table
         print $debug_fh "result: FULL UPDATE\n" if $debug_fh;
         push (@update_plan, [ 'U', $k ]);
-        $swdata{$host}{updated}{$if} = 1;
+        #$swdata{$host}{updated}{$if} = 1;
         $stats[2]++;
       } else {
         # 'u' as 'partial update', ie. update only lastchk field
@@ -700,9 +684,7 @@ sub find_changes
 sub sql_status_update
 {
   my ($host, $update_plan) = @_;
-  my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
-  my $hdata = $swdata{$host};
-  my $h2 = $swdata2{$host};
+  my $idx = $host->port_to_ifindex;
   my ($r, $q, $fields, @update);
   my (@fields, @vals, @bind);
 
@@ -713,8 +695,8 @@ sub sql_status_update
 
   my $ifrate = sub {
     my $if = shift;
-    my $ifHighSpeed = $hdata->{'IF-MIB'}{'ifXTable'}{$if}{'ifHighSpeed'}{'value'};
-    my $ifSpeed = $hdata->{'IF-MIB'}{'ifTable'}{$if}{'ifSpeed'}{'value'};
+    my $ifHighSpeed = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifHighSpeed'}{'value'};
+    my $ifSpeed = $host->snmp->{'IF-MIB'}{'ifTable'}{$if}{'ifSpeed'}{'value'};
 
     if($ifHighSpeed) {
       return $ifHighSpeed;
@@ -728,14 +710,14 @@ sub sql_status_update
   for my $k (@$update_plan) {
 
     my $if = $idx->{$k->[1]};
-    my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$if};
+    my $pi = $host->ifindex_to_portindex->{'ifIndexToPortIndex'}{$if};
     my $current_time = strftime("%c", localtime());
-    my $ifTable = $hdata->{'IF-MIB'}{'ifTable'}{$if};
-    my $ifXTable = $hdata->{'IF-MIB'}{'ifXTable'}{$if};
+    my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
+    my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
     my $vmMembershipTable
-       = $hdata->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+       = $host->snmp->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
     my $portTable
-       = $hdata->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
+       = $host->snmp->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
     #--- INSERT
 
@@ -747,7 +729,7 @@ sub sql_status_update
       );
       @vals = ('?') x 16;
       @bind = (
-        $host,
+        $host->name,
         $k->[1],
         $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
         $ifTable->{'ifInUcastPkts'}{'value'},
@@ -761,7 +743,7 @@ sub sql_status_update
         $portTable->{'portDuplex'}{'value'},
         #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
         $ifrate->($if),
-        port_flag_pack($hdata, $if),
+        port_flag_pack($host, $if),
         $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
@@ -797,13 +779,13 @@ sub sql_status_update
           $portTable->{'portDuplex'}{'value'},
           #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
           $ifrate->($if),
-          port_flag_pack($hdata, $if),
+          port_flag_pack($host, $if),
           $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'
         );
 
-        if(!$h2->is_rebooted) {
+        if(!$host->is_rebooted) {
           push(@fields, 'lastchg = ?');
           push(@bind, $current_time);
         }
@@ -821,14 +803,14 @@ sub sql_status_update
       }
 
       $q .= q{ WHERE host = ? AND portname = ?};
-      push(@bind, $host, $k->[1]);
+      push(@bind, $host->name, $k->[1]);
 
     } elsif($k->[0] eq 'd') {
 
       #--- DELETE
 
       $q = q{DELETE FROM status WHERE host = ? AND portname = ?};
-      @bind = ($host, $k->[1]);
+      @bind = ($host->name, $k->[1]);
 
     } else {
 
@@ -945,14 +927,14 @@ sub sql_transaction
 #===========================================================================
 # This function updates mactable in backend db.
 #
-# Arguments: 1. host
+# Arguments: 1. host instance
 # Returns:   1. error message or undef
 #===========================================================================
 
 sub sql_mactable_update
 {
   my $host = shift;
-  my $h = $swdata{$host}{'BRIDGE-MIB'};
+  my $h = $host->snmp->{'BRIDGE-MIB'};
   my $dbh = $cfg->get_dbi_handle('spam');
   my $ret;
   my @update;              # update plan
@@ -974,7 +956,7 @@ sub sql_mactable_update
   if($ENV{'SPAM_DEBUG'}) {
     open($debug_fh, '>', "debug.mactable_update.$$.log");
     if($debug_fh) {
-      printf $debug_fh "==> sql_mactable_update(%s)\n", $host;
+      printf $debug_fh "==> sql_mactable_update(%s)\n", $host->name;
     }
   }
 
@@ -1002,7 +984,7 @@ sub sql_mactable_update
     @update,
     [
       q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'},
-      $host
+      $host->name
     ]
   );
 
@@ -1041,11 +1023,11 @@ sub sql_mactable_update
 
       #--- skip MACs on ports we are not tracking (such as port channels etc)
 
-      next if !exists $swdata{$host}{'IF-MIB'}{'ifTable'}{$if};
+      next if !exists $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
 
       #--- skip MACs on ports that are receiving CDP
 
-      next if exists $swdata{$host}{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
+      next if exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
 
       #--- normalize MAC, get formatted timestamp
 
@@ -1058,8 +1040,8 @@ sub sql_mactable_update
           'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
         );
         @bind = (
-          $host,
-          $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
+          $host->name,
+          $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
           $aux, $mac
         );
         $q = sprintf(
@@ -1073,8 +1055,8 @@ sub sql_mactable_update
           'mac', 'host', 'portname', 'lastchk', 'active'
         );
         @bind = (
-          $mac, $host,
-          $swdata{$host}{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
+          $mac, $host->name,
+          $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
           $aux, 't'
         );
         $q = sprintf(
@@ -1208,30 +1190,21 @@ sub sql_host_remove
 sub switch_info
 {
   my ($host) = @_;
-  my $h = $swdata{$host};
-  my $h2 = $swdata2{$host};
-  my $stat = $h->{'stats'};
-  my $knownports = grep(/^$host$/, @{$cfg->knownports});
-  my $idx = $swdata{$host}{'idx'}{'portToIfIndex'};
+  my $stat = $host->port_stats;
+  my $knownports = grep { $_ eq $host->name } @{$cfg->knownports};
+  my $idx = $host->port_to_ifindex;
 
-  #--- initialize ---
+  # if 'knowports' is active, initialize the stat field; the rest is
+  # initialized automatically
+  $stat->{'p_used'} = 0 if $knownports;
 
-  $stat->{'p_total'}  = 0;
-  $stat->{'p_act'}    = 0;
-  $stat->{'p_patch'}  = 0;
-  $stat->{'p_illact'} = 0;
-  $stat->{'p_inact'}  = 0;
-  $stat->{'p_errdis'} = 0;
-  $stat->{'p_used'}   = 0 if $knownports;
-
-  #--- count ---
-
-  foreach my $if (keys %{$h->{'IF-MIB'}{'ifTable'}}) {
-    my $ifTable = $h->{'IF-MIB'}{'ifTable'};
-    my $ifXTable = $h->{'IF-MIB'}{'ifXTable'};
+  # do the counts
+  foreach my $if (keys %{$host->snmp->{'IF-MIB'}{'ifTable'}}) {
+    my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'};
+    my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'};
     my $portname = $ifXTable->{$if}{'ifName'}{'value'};
     $stat->{p_total}++;
-    $stat->{p_patch}++ if exists $port2cp->{$host}{$portname};
+    $stat->{p_patch}++ if exists $port2cp->{$host->name}{$portname};
     $stat->{p_act}++
       if $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up';
     # p_errdis used to count errordisable ports, but required SNMP variable
@@ -1240,11 +1213,11 @@ sub switch_info
     if(
       $knownports
       && $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up'
-      && !exists $port2cp->{$host}{$portname}
+      && !exists $port2cp->{$host->name}{$portname}
       && !(
-        exists $h->{'CISCO-CDP-MIB'}
-        && exists $h->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
-        && exists $h->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
+        exists $host->snmp->{'CISCO-CDP-MIB'}
+        && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+        && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
       )
     ) {
       $stat->{p_illact}++;
@@ -1253,7 +1226,7 @@ sub switch_info
     # ports that were used within period defined by "inactivethreshold2"
     # configuration parameter
     if($knownports) {
-      if($h2->get_port($portname, 12) < 2592000) {
+      if($host->get_port($portname, 12) < 2592000) {
         $stat->{p_used}++;
       }
     }
@@ -1288,7 +1261,7 @@ sub port_flag_pack
   #--- arguments
 
   my (
-    $hdata,     # 1. (hashref) swdata{host} subtree
+    $host,      # 1. host instance
     $port       # 2. port ifindex
   ) = @_;
 
@@ -1299,11 +1272,11 @@ sub port_flag_pack
   #--- trunking mode
 
   if(
-    exists $hdata->{'CISCO-VTP-MIB'}
-    && exists $hdata->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}
+    exists $host->snmp->{'CISCO-VTP-MIB'}
+    && exists $host->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}
   ) {
     my $trunk_flag;
-    my $s = $hdata->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$port};
+    my $s = $host->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$port};
     if($s->{'vlanTrunkPortDynamicStatus'}{'enum'} eq 'trunking') {
       $trunk_flag = $s->{'vlanTrunkPortEncapsulationOperType'}{'enum'};
     }
@@ -1318,12 +1291,12 @@ sub port_flag_pack
   #--- 802.1x Auth (from dot1xAuthConfigTable)
 
   if(
-    exists $hdata->{'IEEE8021-PAE-MIB'}
-    && exists $hdata->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}
+    exists $host->snmp->{'IEEE8021-PAE-MIB'}
+    && exists $host->snmp->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}
   ) {
     my %dot1x_flag;
     my $s
-    = $hdata->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
+    = $host->snmp->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
     $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{'enum'};
     $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{'enum'};
     if($dot1x_flag{'pc'} eq 'forceUnauthorized') { $result |= 128; }
@@ -1336,10 +1309,10 @@ sub port_flag_pack
   #--- MAC bypass active
 
   if(
-    exists $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}
-    && exists $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
+    exists $host->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}
+    && exists $host->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
   ) {
-    my $s = $hdata->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$port};
+    my $s = $host->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$port};
     for my $sessid (keys %$s) {
       if(
         exists $s->{$sessid}{'macAuthBypass'}
@@ -1353,25 +1326,25 @@ sub port_flag_pack
   #--- CDP
 
   if(
-    exists $hdata->{'CISCO-CDP-MIB'}
-    && exists $hdata->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
-    && exists $hdata->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}
+    exists $host->snmp->{'CISCO-CDP-MIB'}
+    && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+    && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}
   ) {
     $result |= 1;
   }
 
   #--- power over ethernet
 
-  if(exists $hdata->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}) {
-    my $pi = $hdata->{'idx'}{'ifIndexToPortIndex'}{$port};
+  if(exists $host->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}) {
+    my $pi = $host->ifindex_to_portindex->{$port};
     if(
       exists
-        $hdata->{'POWER-ETHERNET-MIB'}
+        $host->snmp->{'POWER-ETHERNET-MIB'}
                 {'pethPsePortTable'}
                 {$pi->[0]}{$pi->[1]}
                 {'pethPsePortDetectionStatus'}
     ) {
-      my $s = $hdata->{'POWER-ETHERNET-MIB'}
+      my $s = $host->snmp->{'POWER-ETHERNET-MIB'}
                       {'pethPsePortTable'}
                       {$pi->[0]}{$pi->[1]}
                       {'pethPsePortDetectionStatus'};
@@ -1385,17 +1358,17 @@ sub port_flag_pack
   #--- STP root port
 
   if(
-    exists $hdata->{'BRIDGE-MIB'}
-    && exists $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}
+    exists $host->snmp->{'BRIDGE-MIB'}
+    && exists $host->snmp->{'BRIDGE-MIB'}{'dot1dStpRootPort'}
   ) {
-    my $dot1d_stpr = $hdata->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
-    for my $vlan (keys %{$hdata->{'BRIDGE-MIB'}}) {
+    my $dot1d_stpr = $host->snmp->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
+    for my $vlan (keys %{$host->snmp->{'BRIDGE-MIB'}}) {
       # the keys under BRIDGE-MIB are both a) vlans b) object names
       # that are not defined per-vlan (such as dot1dStpRootPort);
       # that's we need to filter non-vlans out here
       next if $vlan !~ /^\d+$/;
       if(
-        exists $hdata->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
+        exists $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
       ) {
         $result |= 4;
         last;
@@ -1406,12 +1379,12 @@ sub port_flag_pack
   #--- STP portfast
 
   if(
-    exists $hdata->{'CISCO-STP-EXTENSIONS-MIB'}
-    && exists $hdata->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
+    exists $host->snmp->{'CISCO-STP-EXTENSIONS-MIB'}
+    && exists $host->snmp->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
   ) {
-    my $port_dot1d = $hdata->{'idx'}{'ifIndexToDot1d'}{$port};
+    my $port_dot1d = $host->ifindex_to_dot1d->{$port};
     my $portmode
-    = $hdata->{'CISCO-STP-EXTENSIONS-MIB'}
+    = $host->snmp->{'CISCO-STP-EXTENSIONS-MIB'}
               {'stpxFastStartPortTable'}{$port_dot1d}{'stpxFastStartPortMode'}
               {'enum'};
     if($portmode eq 'enable' || $portmode eq 'enableForTrunk') {
@@ -1486,26 +1459,24 @@ sub sql_get_vtp_masters_list
 sub sql_switch_info_update
 {
   my $host = shift;
-  my $stat = $swdata{$host}{stats};
-  my $h2 = $swdata2{$host};
+  my $stat = $host->port_stats;
   my $dbh = $cfg->get_dbi_handle('spam');
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
   my $rv;
   my $managementDomainTable
-  = $swdata{$host}{'CISCO-VTP-MIB'}{'managementDomainTable'}{1};
+  = $host->snmp->{'CISCO-VTP-MIB'}{'managementDomainTable'}{1};
 
-  #--- ensure database connection
-
-  if(!ref($dbh)) { return "Cannot connect to database (spam)"; }
+  # ensure database connection
+  return 'Cannot connect to database (spam)' unless ref $dbh;
 
   #--- try block begins here -----------------------------------------------
 
   try {
 
-    #--- first decide whether we will be updating or inserting ---
+    # first decide whether we will be updating or inserting ---
     $sth = $dbh->prepare('SELECT count(*) FROM swstat WHERE host = ?');
-    $sth->execute($host) || die "DBERR|" . $sth->errstr() . "\n";
+    $sth->execute($host->name) || die "DBERR|" . $sth->errstr() . "\n";
     my ($count) = $sth->fetchrow_array();
     $qtype = ($count == 0 ? 'i' : 'u');
 
@@ -1521,8 +1492,8 @@ sub sql_switch_info_update
       );
       @vals = ('?') x @fields;
       @args = (
-        $host,
-        $h2->location =~ s/'/''/r,
+        $host->name,
+        $host->location =~ s/'/''/r,
         $stat->{p_total},
         $stat->{p_act},
         $stat->{p_patch},
@@ -1532,8 +1503,8 @@ sub sql_switch_info_update
         $stat->{p_used},
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($h2->boottime)),
-        $h2->platform
+        strftime('%Y-%m-%d %H:%M:%S', localtime($host->boottime)),
+        $host->platform
       );
 
       $q = sprintf($q, join(',', @fields), join(',', @vals));
@@ -1551,7 +1522,7 @@ sub sql_switch_info_update
         'vtp_mode', 'platform'
       );
       @args = (
-        $h2->location =~ s/'/''/r,
+        $host->location =~ s/'/''/r,
         $stat->{p_total},
         $stat->{p_act},
         $stat->{p_patch},
@@ -1559,11 +1530,11 @@ sub sql_switch_info_update
         $stat->{p_errdis},
         $stat->{p_inact},
         $stat->{p_used},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($h2->boottime)),
+        strftime('%Y-%m-%d %H:%M:%S', localtime($host->boottime)),
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
-        $h2->platform,
-        $host
+        $host->platform,
+        $host->name
       );
 
       $q = sprintf($q, join(',', @fields));
@@ -1589,8 +1560,7 @@ sub sql_switch_info_update
   $stat->{vtpdomain} = $managementDomainTable->{'managementDomainName'}{'value'};
   $stat->{vtpmode} = $managementDomainTable->{'managementDomainLocalMode'}{'value'};
 
-  #--- return successfully
-
+  # finish sucessfully
   return $rv;
 }
 
@@ -1710,26 +1680,19 @@ sub clear_task_by_pid
 # field divided with semicolon; value of 'x' means empty value; second field
 # is either switch port (ignored by SPAM) or outlet name (processed by SPAM)
 #
-# Argument: 1. host to be processed (string)
+# Argument: 1. host to be processed (SPAM::Host instance)
 #===========================================================================
 
 sub sql_autoreg
 {
   my $host = shift;
-  my $h2 = $swdata2{$host};
   my @insert;
 
-  #--- check argument
+  # get site-code from hostname
+  my $site = $cfg->site_conv($host->name);
 
-  return if !$host;
-
-  #--- get site-code from hostname
-
-  my $site = $cfg->site_conv($host);
-
-  #--- iterate over all ports
-
-  $h2->iterate_ports(sub {
+  # iterate over all ports
+  $host->iterate_ports(sub {
     my $port = shift;
     my $descr = @_[6];
     my ($cp_descr, $cp_db);
@@ -1741,21 +1704,28 @@ sub sql_autoreg
       $cp_db = $port2cp->{$host}{$port};
       $cp_db =~ s/^.*!//;
       if(!$cp_db) {
-        push(@insert, qq{INSERT INTO porttable VALUES ( '$host', '$port', '$cp_descr', '$site', 'swcoll' )});
+        push(@insert,
+          sprintf(
+            qq{INSERT INTO porttable VALUES ( '%s', '%s', '%s', '%s', 'swcoll' )},
+            $host->name, $port, $cp_descr, $site
+          )
+        );
       }
     }
   });
 
-  #--- insert data into database
-
-  my $msg = sprintf("Found %d entr%s to autoregister", scalar(@insert), scalar(@insert) == 1 ? 'y' : 'ies');
-  tty_message("[$host] $msg\n");
+  # insert data into database
+  my $msg = sprintf(
+    'Found %d entr%s to autoregister',
+    scalar(@insert), scalar(@insert) == 1 ? 'y' : 'ies'
+  );
+  tty_message("[%s] %s\n", $host->name, $msg);
   if(@insert > 0) {
     my $e = sql_transaction(\@insert);
     if(!$e) {
-      tty_message("[$host] Auto-registration successful\n");
+      tty_message("[%s] Auto-registration successful\n", $host->name);
     } else {
-      tty_message("[$host] Auto-registration failed ($e)\n");
+      tty_message("[%s] Auto-registration failed ($e)\n", $host->name);
     }
   }
 }
@@ -1770,14 +1740,14 @@ sub sql_save_snmp_object
   #--- arguments
 
   my (
-    $host,         # 1. (strg) switch name
+    $host,         # 1. host instance
     $snmp_object   # 2. (strg) SNMP object to be saved
   ) = @_;
 
   #--- other variables
 
   my $dbh = $cfg->get_dbi_handle('spam');
-  my %stats = ( 'insert' => 0, 'update' => 0, 'delete' => 0 );
+  my %stats = ( insert => 0, update => 0, delete => 0 );
   my $err;                 # error message
   my $debug_fh;            # debug file handle
   my $ref_time = time();   # reference 'now' point of time
@@ -1788,7 +1758,7 @@ sub sql_save_snmp_object
     open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
     if($debug_fh) {
       printf $debug_fh
-        "==> sql_save_snmp_object(%s,%s)\n", $host, $snmp_object->name;
+        "==> sql_save_snmp_object(%s,%s)\n", $host->name, $snmp_object->name;
       printf $debug_fh
         "--> REFERENCE TIME: %s\n", scalar(localtime($ref_time));
     }
@@ -1800,44 +1770,20 @@ sub sql_save_snmp_object
 
   try {
 
-  #--- ensure database connection
+    # ensure database connection
+    die 'Cannot connect to database (spam)' unless ref $dbh;
 
-    if(!ref($dbh)) {
-      die 'Cannot connect to database (spam)';
-    }
-
-  #--- find the MIB object we're saving
-
+    # find the MIB object we're saving
     my $obj = $cfg->find_object($snmp_object->name);
     my @object_index = @{$snmp_object->index};
     printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
       if $debug_fh;
 
-  #--- find the object in $swdata
+    # find the object in $swdata
+    my $object = $host->get_snmp_object($snmp_object->name);
+    die "Object $snmp_object does not exist" unless $object;
 
-  # for sake of brevity, the caller only specifies object name, so we have
-  # to search for the actual object in the tree; there's one problem though:
-  # we have mingled the MIB keys with other non-MIB keys; so at this point
-  # we are relying on MIBs always ending in "-MIB", if MIBs that don't
-  # comply with this naming convention appear, we will need to use subtree
-  # for MIBs
-
-    my $object;
-    FINDOBJ: for my $mib (keys %{$swdata{$host}}) {
-      next if $mib !~ /-MIB$/;
-      for my $obj (keys %{$swdata{$host}{$mib}}) {
-        if($obj eq $snmp_object->name) {
-          $object = $swdata{$host}{$mib}{$obj};
-          last FINDOBJ;
-        }
-      }
-    }
-    if(!$object) {
-      die "Object $snmp_object does not exist";
-    }
-
-  #--- load the current state to %old
-
+    # load the current state to %old
     my %old;
     my $old_row_count = 0;
     my $table = 'snmp_' . $snmp_object->name;
@@ -1854,10 +1800,8 @@ sub sql_save_snmp_object
     );
 
     my $sth = $dbh->prepare($query);
-    my $r = $sth->execute($host);
-    if(!$r) {
-      die "Database query failed\n" .  $sth->errstr() . "\n";
-    }
+    my $r = $sth->execute($host->name);
+    die "Database query failed\n" .  $sth->errstr() . "\n" unless $r;
     while(my $h = $sth->fetchrow_hashref()) {
       hash_create_index(
         \%old, $h,
@@ -1865,6 +1809,8 @@ sub sql_save_snmp_object
       );
       $old_row_count++;
     }
+
+    # debugging output
     if($debug_fh && $old_row_count) {
       printf $debug_fh "--> LOADED %d CURRENT ROWS, DUMP FOLLOWS\n",
         $old_row_count;
@@ -1885,7 +1831,7 @@ sub sql_save_snmp_object
           'UPDATE snmp_%s SET fresh = false WHERE host = ?',
           $snmp_object->name
         ),
-        $host
+        $host->name
       ]
     );
 
@@ -1922,7 +1868,7 @@ sub sql_save_snmp_object
               ( map {
                 $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
               } @{$snmp_object->columns} ),
-              $host, @idx,
+              $host->name, @idx,
             ]
           );
 
@@ -1947,7 +1893,7 @@ sub sql_save_snmp_object
                   ('?') x (2 + @object_index + @{$snmp_object->columns})
                 ),
               ),
-              $host, 't', @idx,
+              $host->name, 't', @idx,
               map {
                 $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
               } @{$snmp_object->columns}
@@ -1977,7 +1923,7 @@ sub sql_save_snmp_object
                   $snmp_object->name,
                   join(' AND ', map { "$_ = ?" } ('host', @{$snmp_object->index}))
                 ),
-                $host, @idx
+                $host->name, @idx
               ]
             );
           }
@@ -2015,8 +1961,7 @@ sub sql_save_snmp_object
     printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
   };
 
-  #--- finish
-
+  # finish
   close($debug_fh) if $debug_fh;
   return $err // \%stats;
 }
@@ -2235,27 +2180,30 @@ try {
             if($task->[0] eq 'host') {
               tty_message("[$host] Processing started\n");
 
-              try { if(!poll_host($host, $cmd->mactable())) {
+              try { if(!poll_host($host, $cmd->mactable, $cmd->hostinfo)) {
+
+                # only hostinfo
+                die "\n";
 
 	      #--- find changes and update status table ---
 
                 tty_message("[$host] Updating status table (started)\n");
-                my ($update_plan, $update_stats) = find_changes($host);
+                my ($update_plan, $update_stats) = find_changes($swdata2{$host});
                 tty_message(
                   sprintf(
                     "[%s] Updating status table (%d/%d/%d/%d)\n",
                     $host, @$update_stats
                   )
                 );
-                my $e = sql_status_update($host, $update_plan);
+                my $e = sql_status_update($swdata2{$host}, $update_plan);
                 if($e) { tty_message("[$host] Updating status table (failed, $e)\n"); }
                 tty_message("[$host] Updating status table (finished)\n");
 
                 #--- update swstat table ---
 
                 tty_message("[$host] Updating swstat table (started)\n");
-                switch_info($host);
-                $e = sql_switch_info_update($host);
+                switch_info($swdata2{$host});
+                $e = sql_switch_info_update($swdata2{$host});
                 if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
                 tty_message("[$host] Updating swstat table (finished)\n");
 
@@ -2263,7 +2211,7 @@ try {
 
                 if($cmd->mactable()) {
                   tty_message("[$host] Updating mactable (started)\n");
-                  $e = sql_mactable_update($host);
+                  $e = sql_mactable_update($swdata2{$host});
                   if(defined $e) { print $e, "\n"; }
                   tty_message("[$host] Updating mactable (finished)\n");
                 }
@@ -2282,7 +2230,8 @@ try {
 	            }}
 
               catch {
-                tty_message("[$host] Host poll failed ($_)\n");
+                chomp;
+                tty_message("[$host] Host poll failed ($_)\n") if $_;
               };
 
             } # host processing block ends here
