@@ -250,8 +250,8 @@ sub poll_host
       if($obj->has_flag('mactable')) {
         if(!$get_mactable) {
           tty_message(
-            "[%s] Skipping %s, mactable loading not active\n",
-            $host->name, $mib->name
+            "[%s] Skipping %s::%s, mactable loading not active\n",
+            $host->name, $mib->name, $obj->name
           );
           next;
         }
