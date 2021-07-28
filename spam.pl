@@ -559,7 +559,8 @@ sub find_changes
     # interface's ifIndex
     my $if = $idx->{$k};
     # interface's [portModuleIndex, portIndex]
-    my $pi = $host->ifindex_to_portindex->{$if};
+    my $pi = $host->ifindex_to_portindex->{$if}
+      if $host->has_ifindex_to_portindex;
 
     if($host->get_port($k)) {
 
@@ -707,7 +708,8 @@ sub sql_status_update
   for my $k (@$update_plan) {
 
     my $if = $idx->{$k->[1]};
-    my $pi = $host->ifindex_to_portindex->{'ifIndexToPortIndex'}{$if};
+    my $pi = $host->ifindex_to_portindex->{$if}
+      if $host->has_ifindex_to_portindex;
     my $current_time = strftime("%c", localtime());
     my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
     my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
@@ -1332,7 +1334,10 @@ sub port_flag_pack
 
   #--- power over ethernet
 
-  if(exists $host->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}) {
+  if(
+    exists $host->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}
+    && $host->has_ifindex_to_portindex
+  ) {
     my $pi = $host->ifindex_to_portindex->{$port};
     if(
       exists
