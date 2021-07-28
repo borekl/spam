@@ -172,7 +172,6 @@ sub poll_host
   #--- other variables -----------------------------------------------------
 
   my $host = SPAM::Host->new(name => $hostname);
-  my $platform;
 
   #--- check if the hostname can be resolved
 
@@ -208,8 +207,8 @@ sub poll_host
       if(!$is_first_mib) {
         my $include_re = $obj->include;
         my $exclude_re = $obj->exclude;
-        next if $include_re && $platform !~ /$include_re/;
-        next if $exclude_re && $platform =~ /$exclude_re/;
+        next if $include_re && $host->platform !~ /$include_re/;
+        next if $exclude_re && $host->platform =~ /$exclude_re/;
       }
 
   #--- include additional MIBs
