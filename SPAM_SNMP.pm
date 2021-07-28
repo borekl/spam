@@ -29,7 +29,6 @@ our (@ISA, @EXPORT);
   snmp_get_arptable
   snmp_get_object
   snmp_get_active_vlans
-  build_entity_tree
 );
 
 
@@ -170,40 +169,6 @@ sub snmp_get_arptable
   #--- finish
 
   return \%arptable;
-}
-
-
-#=============================================================================
-# Build hash-tree that represents the entPhysicalTable returned by host. The
-# elements of the tree are SPAM::Entity instances
-#=============================================================================
-
-sub build_entity_tree
-{
-  my $s = shift; # swdata
-
-  #--- ensure the necessary entries exist in $swdata
-
-  croak 'No ENTITY-MIB entry found in swdata'
-    if !exists $s->{'ENTITY-MIB'};
-  croak 'No ENTITY-MIB::entPhysicalTable found in swdata'
-    if !exists $s->{'ENTITY-MIB'}{'entPhysicalTable'};
-
-  #--- convert the ENTITY-MIB into an array of SPAM::Entity instances
-
-  my $ePT = $s->{'ENTITY-MIB'}{'entPhysicalTable'};
-  my $eAMT = $s->{'ENTITY-MIB'}{'entAliasMappingTable'} // undef;
-  my @entries = map {
-    SPAM::Entity->new(
-      %{$ePT->{$_}},
-      entPhysicalIndex => $_,
-      ifIndex => $eAMT->{$_}{'0'}{'entAliasMappingIdentifier'}{'value'} // undef,
-    )
-  } keys %$ePT;
-
-  #--- build and return the tree
-
-  return SPAM::EntityTree->new(entities => \@entries);
 }
 
 
@@ -393,7 +358,7 @@ sub snmp_get_object
   my (
     $cmd,       # 1 / scal / SNMP command
     $host,      # 2 / scal / SNMP host (agent)
-    $community, # 3 / scal / SNMP community
+    $context,   # 3 / scal / SNMP context
     $mibs,      # 4 / aref / list of MIBs to load
     $object,    # 5 / scal / SNMP object to retrieve
     $columns,   # 6 / aref / columns (undef = all columns)
@@ -421,7 +386,7 @@ sub snmp_get_object
     if($fh) {
       printf $fh
         "--> SNMP_GET_OBJECT ARGS: 1:%s 2:%s 3:%s 4:%s 5:%s 6:%s\n",
-        $cmd,  $host, $community,
+        $cmd,  $host, $context // 'undef',
         ref $mibs ? join(',', @$mibs) : $mibs,
         $object,
         @$columns ? join(',', @$columns) : 'NO_COLUMNS';
@@ -451,7 +416,7 @@ sub snmp_get_object
     my $cmd = SPAM::Config->instance->get_snmp_command(
       command   => $cmd,
       host      => $host,
-      community => $community,
+      context   => $context,
       mibs      => $mibs,
       oid       => $entry
     );
@@ -615,13 +580,10 @@ sub snmp_get_object
 
 sub snmp_get_active_vlans
 {
-  #--- arguments
-
-  my ($s) = @_;
-
-  #--- other variables
+  #--- variables
 
   my %vlans;
+  my $s = $_[0]->snmp;
 
   #--- dynamic VLANs configured by user authentication
 
