@@ -358,7 +358,7 @@ sub snmp_get_object
   my (
     $cmd,       # 1 / scal / SNMP command
     $host,      # 2 / scal / SNMP host (agent)
-    $community, # 3 / scal / SNMP community
+    $context,   # 3 / scal / SNMP context
     $mibs,      # 4 / aref / list of MIBs to load
     $object,    # 5 / scal / SNMP object to retrieve
     $columns,   # 6 / aref / columns (undef = all columns)
@@ -386,7 +386,7 @@ sub snmp_get_object
     if($fh) {
       printf $fh
         "--> SNMP_GET_OBJECT ARGS: 1:%s 2:%s 3:%s 4:%s 5:%s 6:%s\n",
-        $cmd,  $host, $community,
+        $cmd,  $host, $context // 'undef',
         ref $mibs ? join(',', @$mibs) : $mibs,
         $object,
         @$columns ? join(',', @$columns) : 'NO_COLUMNS';
@@ -416,7 +416,7 @@ sub snmp_get_object
     my $cmd = SPAM::Config->instance->get_snmp_command(
       command   => $cmd,
       host      => $host,
-      community => $community,
+      context   => $context,
       mibs      => $mibs,
       oid       => $entry
     );

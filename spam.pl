@@ -263,12 +263,11 @@ sub poll_host
 
       for my $vlan (@vlans) {
         next if $vlan > 999;
-        my $cmtvlan = $cfg->snmp_community($host) . ($vlan ? "\@$vlan" : '');
 
   #--- retrieve the SNMP object
 
         my $r = snmp_get_object(
-          'snmpwalk', $host->name, $cmtvlan, \@mib_list,
+          'snmpwalk', $host->name, $vlan, \@mib_list,
           $obj->name,
           $obj->columns,
           sub {

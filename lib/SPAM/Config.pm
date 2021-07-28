@@ -273,6 +273,8 @@ sub _get_snmp_config
 
 #=============================================================================
 # Return snmp command and option strings for given (host, mib, oid, vlan)
+# Following arguments are accepted: host, command, mibs, oids,
+# context(optional)
 #=============================================================================
 
 sub get_snmp_command
@@ -284,7 +286,7 @@ sub get_snmp_command
   my $cmd  = $arg{command} // 'snmpwalk';
   my $mibs = $arg{mibs} // undef;
   my $oid  = $arg{oid} // '';
-  my $vlan = $arg{vlan} // '';
+  my $ctx  = $arg{context} // '';
 
   # get configuration
   my $snmp = $self->_get_snmp_config($host);
@@ -311,13 +313,16 @@ sub get_snmp_command
   if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
   my $miblist = join(':', @$mibs);
 
+  # context needs '@' separator
+  $ctx = '@' . $ctx if $ctx ne '';
+
   # perform placeholder replacement
   my $options = $snmp->{$cmd}{options};
   $options =~ s/%c/$cmty/g;
   $options =~ s/%h/$host/g;
   $options =~ s/%r/$oid/g;
   $options =~ s/%m/$miblist/g;
-  $options =~ s/%x/\@$vlan/g;
+  $options =~ s/%x/$ctx/g;
 
   # finish
   return $snmp->{$cmd}{exec} . ' ' . $options;
