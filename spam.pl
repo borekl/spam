@@ -510,7 +510,7 @@ sub poll_host
 
   #--- finish
 
-  return;
+  return $host;
 }
 
 
@@ -2017,9 +2017,8 @@ try {
 
 	#--- bind to native database ---------------------------------------
 
-	if(!exists $cfg->config()->{dbconn}{spam}) {
-	  die "Database binding 'spam' not defined\n";
-        }
+  die "Database binding 'spam' not defined\n"
+  unless exists $cfg->config()->{dbconn}{spam};
 
 	#--- run maintenance when user told us to do so --------------------
 
@@ -2033,7 +2032,7 @@ try {
 
 	#--- host removal --------------------------------------------------
 
-	# Currently only single host removal, the hastname must match
+	# Currently only single host removal, the hostname must match
 	# precisely
 
 	if(my $cmd_remove_host = $cmd->remove_host()) {
@@ -2048,39 +2047,36 @@ try {
 
 	#--- bind to ondb database -----------------------------------------
 
-	if(!exists $cfg->config()->{dbconn}{ondb}) {
-	  die "Database binding 'ondb' not defined\n";
-        }
+  die "Database binding 'ondb' not defined\n"
+  unless exists $cfg->config()->{dbconn}{ondb};
 
 	#--- retrieve list of switches -------------------------------------
 
-	{
-          if($cmd->list_hosts()) {
-            my $n = 0;
-            print "\nDumping configured switches:\n\n";
-            for my $k (sort keys %{$cfg->hosts()}) {
-              print $k, "\n";
-              $n++;
-            }
-            print "\n$n switches configured\n\n";
-            die "OK\n";
-          }
-	}
+  if($cmd->list_hosts()) {
+    my $n = 0;
+    print "\nDumping configured switches:\n\n";
+    for my $k (sort keys %{$cfg->hosts()}) {
+      print $k, "\n";
+      $n++;
+    }
+    print "\n$n switches configured\n\n";
+    die "OK\n";
+  }
 
 	#--- retrieve list of arp servers ----------------------------------
 
 	if($cmd->arptable() || $cmd->list_arpservers()) {
-          tty_message("[main] Loading list of arp servers (started)\n");
-          if($cmd->list_arpservers()) {
-            my $n = 0;
-            print "\nDumping configured ARP servers:\n\n";
-            for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->arpservers()}) {
-              print $k->[0], "\n";
-              $n++;
-            }
-            print "\n$n ARP servers configured\n\n";
-            die "OK\n";
-          }
+    tty_message("[main] Loading list of arp servers (started)\n");
+    if($cmd->list_arpservers()) {
+      my $n = 0;
+      print "\nDumping configured ARP servers:\n\n";
+      for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->arpservers()}) {
+        print $k->[0], "\n";
+        $n++;
+      }
+      print "\n$n ARP servers configured\n\n";
+      die "OK\n";
+    }
 	}
 
 	#--- close connection to ondb database -----------------------------
@@ -2091,7 +2087,7 @@ try {
 	#--- load port and outlet tables -----------------------------------
 
 	tty_message("[main] Loading port table (started)\n");
-        my $ret;
+  my $ret;
 	($ret, $port2cp) = load_port_table();
 	if($ret) { die "$ret\n"; }
 	undef $ret;
@@ -2107,178 +2103,177 @@ try {
 	my $wl_idx = 0;
 	my $poll_hosts_re = $cmd->hostre();
 	foreach my $host (sort keys %{$cfg->hosts()}) {
-          if(
-            (
-              @{$cmd->hosts()} &&
-              grep { lc($host) eq lc($_); } @{$cmd->hosts}
-            ) || (
-              $poll_hosts_re &&
-              $host =~ /$poll_hosts_re/i
-            ) || (
-              !@{$cmd->hosts()} && !defined($poll_hosts_re)
-            )
-          ) {
-            push(@work_list, [ 'host', $host, undef ]);
-          }
+    if(
+      (
+        @{$cmd->hosts()} &&
+        grep { lc($host) eq lc($_); } @{$cmd->hosts}
+      ) || (
+        $poll_hosts_re &&
+        $host =~ /$poll_hosts_re/i
+      ) || (
+        !@{$cmd->hosts()} && !defined($poll_hosts_re)
+      )
+    ) {
+      push(@work_list, [ 'host', $host, undef ]);
+    }
 	}
 	tty_message("[main] %d hosts scheduled to be processed\n", scalar(@work_list));
 
 	#--- add arptable task to the work list
 
-	if($cmd->arptable()) {
-	  push(@work_list, [ 'arp', undef, undef ]);
-	}
+  push(@work_list, [ 'arp', undef, undef ]) if $cmd->arptable();
 
-        #--- --worklist option selected, only print the worklist and finish
+  #--- --worklist option selected, only print the worklist and finish
 
-        if($cmd->list_worklist()) {
-          printf("\nFollowing host would be scheduled for polling\n");
-          printf(  "=============================================\n");
-          for my $we (@work_list) {
-            printf("%s %s\n",@{$we}[0..1]);
-          }
-          print "\n";
-          die "OK\n";
-        }
+  if($cmd->list_worklist()) {
+    printf("\nFollowing host would be scheduled for polling\n");
+    printf(  "=============================================\n");
+    for my $we (@work_list) {
+      printf("%s %s\n",@{$we}[0..1]);
+    }
+    print "\n";
+    die "OK\n";
+  }
 
 	#--- loop through all tasks ----------------------------------------
 
 	my $tasks_cur = 0;
 
 	while(defined(my $task = schedule_task(\@work_list))) {
-          my $host = $task->[1];
-    	  my $pid = fork();
+    my $host = $task->[1];
+    my $pid = fork();
 	  if($pid == -1) {
 	    die "Cannot fork() new process";
 	  } elsif($pid > 0) {
 
-        #--- parent --------------------------------------------------------
+      #--- parent --------------------------------------------------------
 
-            $tasks_cur++;
-            $task->[2] = $pid;
-            tty_message("[main] Child $host (pid $pid) started\n");
-            if($tasks_cur >= $cmd->tasks()) {
-              my $cpid;
-              if(($cpid = wait()) != -1) {
-                $tasks_cur--;
-                my $ctask = clear_task_by_pid(\@work_list, $cpid);
-                tty_message(
-                  "[main] Child %s reaped\n",
-                  $ctask->[0] eq 'host' ? $ctask->[1] : 'arptable'
-                );
-              } else {
-                die "Assertion failed! No children running.";
-              }
-            }
-          } else {
-
-        #--- child ---------------------------------------------------------
-
-        #--- host processing
-
-            if($task->[0] eq 'host') {
-              tty_message("[$host] Processing started\n");
-
-              try { if(!poll_host($host, $cmd->mactable, $cmd->hostinfo)) {
-
-                # only hostinfo
-                die "\n" if $cmd->hostinfo;
-
-	      #--- find changes and update status table ---
-
-                tty_message("[$host] Updating status table (started)\n");
-                my ($update_plan, $update_stats) = find_changes($swdata2{$host});
-                tty_message(
-                  sprintf(
-                    "[%s] Updating status table (%d/%d/%d/%d)\n",
-                    $host, @$update_stats
-                  )
-                );
-                my $e = sql_status_update($swdata2{$host}, $update_plan);
-                if($e) { tty_message("[$host] Updating status table (failed, $e)\n"); }
-                tty_message("[$host] Updating status table (finished)\n");
-
-                #--- update swstat table ---
-
-                tty_message("[$host] Updating swstat table (started)\n");
-                switch_info($swdata2{$host});
-                $e = sql_switch_info_update($swdata2{$host});
-                if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
-                tty_message("[$host] Updating swstat table (finished)\n");
-
-            #--- update mactable ---
-
-                if($cmd->mactable()) {
-                  tty_message("[$host] Updating mactable (started)\n");
-                  $e = sql_mactable_update($swdata2{$host});
-                  if(defined $e) { print $e, "\n"; }
-                  tty_message("[$host] Updating mactable (finished)\n");
-                }
-
-            #--- run autoregistration
-	    # this goes over all port descriptions and those, that contain outlet
-	    # designation AND have no associated outlet in porttable are inserted
-            # there
-
-                if($cmd->autoreg()) {
-                  tty_message("[$host] Running auto-registration (started)\n");
-                  sql_autoreg($host);
-                  tty_message("[$host] Running auto-registration (finished)\n");
-                }
-
-	            }}
-
-              catch {
-                chomp;
-                tty_message("[$host] Host poll failed ($_)\n") if $_;
-              };
-
-            } # host processing block ends here
-
-            #--- getting arptable
-
-            elsif($task->[0] eq 'arp') {
-              tty_message("[arptable] Updating arp table (started)\n");
-              my $r = snmp_get_arptable(
-                $cfg->arpservers(), $cfg->snmp_community,
-                sub {
-                  tty_message("[arptable] Retrieved arp table from $_[0]\n");
-                }
-              );
-              if(!ref($r)) {
-                tty_message("[arptable] Updating arp table (failed, $r)\n");
-              } else {
-                $arptable = $r;
-                tty_message("[arptable] Updating arp table (processing)\n");
-                my $e = sql_arptable_update();
-                if($e) { tty_message("[arptable] Updating arp table (failed, $e)\n"); }
-                else { tty_message("[arptable] Updating arp table (finished)\n"); }
-              }
-            }
-
-	    #--- child finish
-
-            exit(0);
-	  }
-
-	} # the concurrent section ends here
-
-        #--- clean-up ------------------------------------------------------
-
+      $tasks_cur++;
+      $task->[2] = $pid;
+      tty_message("[main] Child $host (pid $pid) started\n");
+      if($tasks_cur >= $cmd->tasks()) {
         my $cpid;
-        while(($cpid = wait()) != -1) {
+        if(($cpid = wait()) != -1) {
           $tasks_cur--;
           my $ctask = clear_task_by_pid(\@work_list, $cpid);
           tty_message(
             "[main] Child %s reaped\n",
             $ctask->[0] eq 'host' ? $ctask->[1] : 'arptable'
           );
-          tty_message("[main] $tasks_cur children remaining\n");
+        } else {
+          die "Assertion failed! No children running.";
         }
-        if($tasks_cur) {
-          die "Assertion failed! \$tasks_cur non-zero.";
+      }
+    }
+
+    #--- child ---------------------------------------------------------
+
+    else {
+      if($task->[0] eq 'host') {
+        tty_message("[$host] Processing started\n");
+
+        try {
+
+          if(!(my $hi = poll_host($host, $cmd->mactable, $cmd->hostinfo))) {
+
+            # only hostinfo, no more processing
+            die "\n" if $cmd->hostinfo;
+
+  	        # find changes and update status table
+            tty_message("[$host] Updating status table (started)\n");
+            my ($update_plan, $update_stats) = find_changes($hi);
+            tty_message(
+              sprintf(
+                "[%s] Updating status table (%d/%d/%d/%d)\n",
+                $host, @$update_stats
+              )
+            );
+            my $e = sql_status_update($hi, $update_plan);
+            if($e) {
+              tty_message("[$host] Updating status table (failed, $e)\n");
+            } else {
+              tty_message("[$host] Updating status table (finished)\n");
+            }
+
+            # update swstat table
+
+            tty_message("[$host] Updating swstat table (started)\n");
+            switch_info($hi);
+            $e = sql_switch_info_update($hi);
+            if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
+            tty_message("[$host] Updating swstat table (finished)\n");
+
+            # update mactable
+
+            if($cmd->mactable()) {
+              tty_message("[$host] Updating mactable (started)\n");
+              $e = sql_mactable_update($hi);
+              if(defined $e) { print $e, "\n"; }
+              tty_message("[$host] Updating mactable (finished)\n");
+            }
+
+            # run autoregistration
+
+            if($cmd->autoreg()) {
+              tty_message("[$host] Running auto-registration (started)\n");
+              sql_autoreg($host);
+              tty_message("[$host] Running auto-registration (finished)\n");
+            }
+
+          }
         }
-        tty_message("[main] Concurrent section finished\n");
+
+        catch {
+          chomp;
+          tty_message("[$host] Host poll failed ($_)\n") if $_;
+        };
+
+      } # host processing block ends here
+
+      #--- getting arptable
+
+      elsif($task->[0] eq 'arp') {
+        tty_message("[arptable] Updating arp table (started)\n");
+        my $r = snmp_get_arptable(
+          $cfg->arpservers(), $cfg->snmp_community,
+          sub {
+            tty_message("[arptable] Retrieved arp table from $_[0]\n");
+          }
+        );
+        if(!ref($r)) {
+          tty_message("[arptable] Updating arp table (failed, $r)\n");
+        } else {
+          $arptable = $r;
+          tty_message("[arptable] Updating arp table (processing)\n");
+          my $e = sql_arptable_update();
+          if($e) { tty_message("[arptable] Updating arp table (failed, $e)\n"); }
+          else { tty_message("[arptable] Updating arp table (finished)\n"); }
+        }
+      }
+
+	    #--- child finish
+
+      exit(0);
+	  }
+
+	} # the concurrent section ends here
+
+  #--- clean-up ------------------------------------------------------
+
+  my $cpid;
+  while(($cpid = wait()) != -1) {
+    $tasks_cur--;
+    my $ctask = clear_task_by_pid(\@work_list, $cpid);
+    tty_message(
+      "[main] Child %s reaped\n",
+      $ctask->[0] eq 'host' ? $ctask->[1] : 'arptable'
+    );
+    tty_message("[main] $tasks_cur children remaining\n");
+  }
+  if($tasks_cur) {
+    die "Assertion failed! \$tasks_cur non-zero.";
+  }
+  tty_message("[main] Concurrent section finished\n");
 
 } catch {
   if($_ && $_ ne "OK\n") {
