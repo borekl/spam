@@ -34,7 +34,6 @@ $| = 1;
 
 my $cfg;             # SPAM::Config instance
 my $port2cp;         # switchport->CP mapping (from porttable)
-my %swdata2;         # holder for host instances, replaces %swdata
 my $arptable;        # arptable data (hash reference)
 
 
@@ -95,7 +94,7 @@ sub get_trunk_vlans_bitstring
 
 #===========================================================================
 # This routine will load content of the status table from the backend
-# database into a $swdata structure (only rows relevant to specified host).
+# database into a host instance.
 #
 # Arguments: 1. host
 # Returns:   1. error message or undef
@@ -172,7 +171,7 @@ sub poll_host
 
   #--- other variables -----------------------------------------------------
 
-  my $host = $swdata2{$hostname} = SPAM::Host->new(name => $hostname);
+  my $host = SPAM::Host->new(name => $hostname);
   my $platform;
 
   #--- check if the hostname can be resolved
@@ -1183,7 +1182,7 @@ sub sql_host_remove
 
 
 #===========================================================================
-# Generate some statistics info on server and store it into %swdata.
+# Generate some statistics info on server and store it to host instance.
 #===========================================================================
 
 sub switch_info
@@ -1235,7 +1234,7 @@ sub switch_info
 
 
 #===========================================================================
-# Creates flags bitfield from information scattered in $swdata. The
+# Creates flags bitfield from information scattered in host instance. The
 # bitfield is as follows:
 #
 #  0. CDP .................................... 1
@@ -1778,7 +1777,7 @@ sub sql_save_snmp_object
     printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
       if $debug_fh;
 
-    # find the object in $swdata
+    # find the object in the host instance
     my $object = $host->get_snmp_object($snmp_object->name);
     die "Object $snmp_object does not exist" unless $object;
 
