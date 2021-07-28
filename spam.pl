@@ -355,7 +355,7 @@ sub poll_host
     return undef;
   });
 
-  return if $hostinfo;
+  return undef if $hostinfo;
 
   #--- prune non-ethernet interfaces and create portName -> ifIndex hash
 
@@ -2173,7 +2173,7 @@ try {
 
         try {
 
-          if(!(my $hi = poll_host($host, $cmd->mactable, $cmd->hostinfo))) {
+          if(my $hi = poll_host($host, $cmd->mactable, $cmd->hostinfo)) {
 
             # only hostinfo, no more processing
             die "\n" if $cmd->hostinfo;
