@@ -2182,7 +2182,7 @@ try {
               try { if(!poll_host($host, $cmd->mactable, $cmd->hostinfo)) {
 
                 # only hostinfo
-                die "\n";
+                die "\n" if $cmd->hostinfo;
 
 	      #--- find changes and update status table ---
 
