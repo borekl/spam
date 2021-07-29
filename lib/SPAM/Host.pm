@@ -27,6 +27,7 @@ with 'SPAM::Host::Location';
 with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
 with 'SPAM::Host::EntityTree';
+with 'SPAM::Host::TrunkVlans';
 
 # portname to ifindex hash
 has port_to_ifindex => ( is => 'rw', predicate => 1 );

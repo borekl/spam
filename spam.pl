@@ -38,61 +38,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# Helper function to concatenate the bitstrings that represent enabled VLANs
-# on a trunk (gleaned from vlaTrunkPortVlansEnabled group of columns).
-# Filling in of ommited values is also performed here.
-#===========================================================================
-
-sub get_trunk_vlans_bitstring
-{
-  #--- arguments
-
-  my ($host, $if) = @_;
-
-  #--- other variables
-
-  my $e = $host->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if} // undef;
-  my $trunk_vlans;
-
-  #--- check for existence of the required keys
-
-  if(!$e || !exists $e->{'vlanTrunkPortVlansEnabled'}{'bitstring'}) {
-    return undef;
-  }
-
-  #--- perform concatenation with filling in zeroes
-
-  # the values received from SNMP seem to sometimes omit the unnecessary
-  # zeros, so we fill them in here
-
-  for my $key (qw(
-    vlanTrunkPortVlansEnabled
-    vlanTrunkPortVlansEnabled2k
-    vlanTrunkPortVlansEnabled3k
-    vlanTrunkPortVlansEnabled4k
-  )) {
-    my $v = '';
-    my $l = 0;
-    if(exists $e->{$key}{'bitstring'}) {
-      $v = $e->{$key}{'bitstring'};
-      $l = length($v);
-    }
-    if($l > 1024) {
-      warn('Trimming excessive number of bits from $key');
-      $v = substr($v, 0, 1024);
-      $l = 1024;
-    }
-    if($l < 1024) {
-      $v .= ('0' x (1024 - $l));
-    }
-    $trunk_vlans .= $v;
-  }
-
-  return $trunk_vlans;
-}
-
-
-#===========================================================================
 # This routine will load content of the status table from the backend
 # database into a host instance.
 #
@@ -588,7 +533,7 @@ sub find_changes
         [ 'vmVlan', 'n', $old->[5],
           $vmMembershipTable->{'vmVlan'}{'value'} ],
         [ 'vlanTrunkPortVlansEnabled', 's', $old->[13],
-          get_trunk_vlans_bitstring($host, $if) ],
+          $host->trunk_vlans_bitstring($if) ],
         [ 'ifAlias', 's', $old->[6],
           $ifXTable->{'ifAlias'}{'value'} ],
         [ 'portDuplex', 'n', $old->[7],
@@ -737,7 +682,7 @@ sub sql_status_update
         $current_time,
         $if,
         $vmMembershipTable->{'vmVlan'}{'value'},
-        get_trunk_vlans_bitstring($host, $if),
+        $host->trunk_vlans_bitstring($if),
         $ifXTable->{'ifAlias'}{'value'},
         $portTable->{'portDuplex'}{'value'},
         #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
@@ -773,7 +718,7 @@ sub sql_status_update
           $ifTable->{'ifOutUcastPkts'}{'value'},
           $if,
           $vmMembershipTable->{'vmVlan'}{'value'},
-          get_trunk_vlans_bitstring($host, $if),
+          $host->trunk_vlans_bitstring($if),
           $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
           $portTable->{'portDuplex'}{'value'},
           #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
