@@ -5,11 +5,6 @@ use strict;
 use warnings;
 use experimental 'signatures';
 
-with 'SPAM::Host::Location';
-with 'SPAM::Host::Platform';
-with 'SPAM::Host::Boottime';
-with 'SPAM::Host::EntityTree';
-
 # hostname
 has name => (
   is => 'ro',
@@ -26,6 +21,12 @@ has ports => ( is => 'ro', default => sub {{}} );
 # under {MIB_NAME}{VLAN_NO} (ie. the same was stored in %swdata). This should
 # probably be improved upon later.
 has snmp => ( is => 'ro', default => sub {{}} );
+
+# roles dependent on 'snmp'
+with 'SPAM::Host::Location';
+with 'SPAM::Host::Platform';
+with 'SPAM::Host::Boottime';
+with 'SPAM::Host::EntityTree';
 
 # portname to ifindex hash
 has port_to_ifindex => ( is => 'rw', predicate => 1 );

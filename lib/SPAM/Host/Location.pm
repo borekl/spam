@@ -3,6 +3,8 @@ package SPAM::Host::Location;
 use Moo::Role;
 use experimental 'signatures';
 
+requires 'snmp';
+
 # SNMP sysLocation
 has location => ( is => 'lazy' );
 

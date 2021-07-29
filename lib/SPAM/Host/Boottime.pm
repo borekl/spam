@@ -3,6 +3,8 @@ package SPAM::Host::Boottime;
 use Moo::Role;
 use experimental 'signatures';
 
+requires 'snmp';
+
 # current boottime (derived from SNMP sysUpTimeInstance)
 has boottime => ( is => 'lazy' );
 

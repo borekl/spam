@@ -6,6 +6,8 @@ use experimental 'signatures';
 use SPAM::Entity;
 use SPAM::EntityTree;
 
+requires 'snmp';
+
 # processed ENTITY-MIB information (SPAM::EntityTree instance)
 has entity_tree => ( is => 'lazy' );
 
