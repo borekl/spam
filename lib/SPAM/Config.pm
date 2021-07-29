@@ -430,19 +430,25 @@ sub iter_mibs
 }
 
 #=============================================================================
-# Find MIBobject with requested 'table' attribute value.
+# Find MIBobject with requested 'table' attribute value or by evaluating
+# a callback.
 #=============================================================================
+
 
 sub find_object
 {
-  my ($self, $snmp_object) = @_;
+  my ($self, $cond) = @_;
   my $result;
 
   $self->iter_mibs(sub {
     my $mib = shift;
     $mib->iter_objects(sub {
       my $object = shift;
-      $result = $object if $object->name eq $snmp_object;
+      if(ref $cond) {
+        $result = $object if $cond->($object);
+      } else {
+        $result = $object if $object->name eq $cond;
+      }
       return $result;
     });
     return $result;

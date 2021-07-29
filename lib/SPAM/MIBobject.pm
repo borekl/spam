@@ -16,7 +16,7 @@ use Moo;
 #=== ATTRIBUTES ==============================================================
 #=============================================================================
 
-# SNMP MIB object name/type
+# SNMP MIB object name/type/MIB
 
 has name => (
   is => 'ro',
@@ -24,6 +24,11 @@ has name => (
 );
 
 has type => (
+  is => 'ro',
+  required => 1
+);
+
+has mib_name => (
   is => 'ro',
   required => 1
 );

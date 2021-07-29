@@ -65,6 +65,7 @@ sub _load_objects
     die 'MIB object definition missing table/scalar key' unless $def{name};
     $def{type} = exists $o->{table} ? 'table' : 'scalar';
     $def{config} = $o;
+    $def{mib_name} = $mib->{mib};
 
     foreach my $attr (qw(index columns addmib include exclude dbmaxage flags)) {
       $def{$attr} = $o->{$attr} if exists $o->{$attr};

@@ -91,21 +91,14 @@ sub snmp_get_arptable
 
   my %tree;
   my %arptable;
-  my $cfg = SPAM::Config->instance->config;
+  my $cfg = SPAM::Config->instance;
 
   #--- MIB and object to use for arptable processing; note, that only the
   #--- first MIB object with flag 'arptable' will be used
 
-  my ($mib_name, $object);
-  MIBLOOP: for my $mib (@{$cfg->{'mibs'}}) {
-    $mib_name = $mib->{'mib'};
-    for my $object_iter (@{$mib->{'objects'}}) {
-      if(grep { $_ eq 'arptable' } @{$object_iter->{'flags'}}) {
-        $object = $object_iter;
-        last MIBLOOP;
-      }
-    }
-  }
+  my $object = $cfg->find_object(sub {
+    return 1 if $_[0]->has_flag('arptable');
+  });
 
   #-------------------------------------------------------------------------
   #--- read the relevant MIB sections --------------------------------------
@@ -114,20 +107,15 @@ sub snmp_get_arptable
   for my $arp_source (@$arpdef) {
     my $r;
 
-  #--- SNMP community, either default or per-server
-
-    my $cmty = $arp_source->[1] // $def_cmty;
-    $tree{$arp_source->[0]} = {};
-
   #--- read the MIB tree
 
     $r = snmp_get_object(
       'snmpwalk',
       $arp_source->[0],
-      $cmty,
-      $mib_name,
-      $object->{'table'},
-      $object->{'columns'}
+      undef,
+      $object->mib_name,
+      $object->name,
+      $object->columns
     );
 
   #--- handle the result
@@ -135,6 +123,8 @@ sub snmp_get_arptable
     if(!ref($r)) {
       die sprintf("failed to get arptable from %s (%s)", $arp_source->[0], $r);
     } else {
+      # FIXME: What the hell is this trying to achieve???
+      $tree{$arp_source->[0]} = {};
       my $t = $tree{$arp_source->[0]};
       %$t = ( %$t, %$r );
     }
