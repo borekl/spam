@@ -8,24 +8,16 @@ use experimental 'signatures';
 use SPAM::Entity;
 use SPAM::EntityTree;
 
+with 'SPAM::Host::Location';
+with 'SPAM::Host::Platform';
+with 'SPAM::Host::Boottime';
+
 # hostname
 has name => (
   is => 'ro',
   required => 1,
   coerce => sub { lc $_[0] },
 );
-
-# SNMP sysLocation
-has location => ( is => 'lazy' );
-
-# current boottime (derived from SNMP sysUpTimeInstance)
-has boottime => ( is => 'lazy' );
-
-# last boottime (loaded from database)
-has boottime_prev => ( is => 'rw' );
-
-# platform (loaded SNMP sysObjectID)
-has platform => ( is => 'lazy' );
 
 # port list ("dbStatus" in the old structure, in fact a hashref with port names
 # as keys)
@@ -61,71 +53,6 @@ has port_stats => ( is => 'ro', default => sub {{
 }} );
 
 #==============================================================================
-
-# location builder
-
-sub _build_location ($self)
-{
-  if(
-    %{$self->snmp}
-    && $self->snmp->{'SNMPv2-MIB'}
-    && $self->snmp->{'SNMPv2-MIB'}{'sysLocation'}
-  ) {
-    return $self->snmp->{'SNMPv2-MIB'}{'sysLocation'}{0}{value};
-  } else {
-    return undef;
-  }
-}
-
-# platform builder
-
-sub _build_platform ($self)
-{
-  if(
-    %{$self->snmp}
-    && $self->snmp->{'SNMPv2-MIB'}
-    && $self->snmp->{'SNMPv2-MIB'}{'sysObjectID'}
-  ) {
-    my $platform = $self->snmp->{'SNMPv2-MIB'}{'sysObjectID'}{0}{'value'};
-    $platform =~ s/^.*:://;
-    return $platform;
-  } else {
-    return undef;
-  }
-}
-
-# boottime builder
-
-sub _build_boottime ($self)
-{
-  if(
-    %{$self->snmp}
-    && $self->snmp->{'SNMPv2-MIB'}
-    && $self->snmp->{'SNMPv2-MIB'}{'sysUpTimeInstance'}
-  ) {
-    my $uptime = $self->snmp->{'SNMPv2-MIB'}{'sysUpTimeInstance'}{undef}{'value'};
-    return time() - int($uptime / 100);
-  } else {
-    return undef;
-  }
-}
-
-# return true if the switch seems to have been rebooted since we last checked
-# on it; this is slightly imprecise -- the switch returns its uptime as
-# timeticks from its boot up and we calculate boot time from local system clock;
-# since these two clocks can be misaligned, we're introducing bit of a fudge
-# to reduce false alarms
-
-sub is_rebooted ($self)
-{
-  if($self->boottime && $self->boottime_prev) {
-    # 30 is fudge factor to account for imprecise clocks
-    if(abs($self->boottime - $self->boottime_prev) > 30) {
-      return 1;
-    }
-  }
-  return 0;
-}
 
 # add one port as pulled from database by sql_load_status(); FIXME: this needs
 # refactoring
