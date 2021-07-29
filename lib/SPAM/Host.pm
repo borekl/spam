@@ -5,12 +5,10 @@ use strict;
 use warnings;
 use experimental 'signatures';
 
-use SPAM::Entity;
-use SPAM::EntityTree;
-
 with 'SPAM::Host::Location';
 with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
+with 'SPAM::Host::EntityTree';
 
 # hostname
 has name => (
@@ -37,9 +35,6 @@ has ifindex_to_portindex => ( is => 'rw', predicate => 1 );
 
 # ifIndex to BRIDGE-MIB index
 has ifindex_to_dot1d => ( is => 'rw', predicate => 1 );
-
-# processed ENTITY-MIB information (SPAM::EntityTree instance)
-has entity_tree => ( is => 'lazy' );
 
 # port statistics
 has port_stats => ( is => 'ro', default => sub {{
@@ -114,33 +109,6 @@ sub get_snmp_object ($self, $object_name)
   }
 
   return undef;
-}
-
-# build a hash-tree that represents entPhysicalTable returned by host; the
-# elements of the three are SPAM::Entity instances
-
-sub _build_entity_tree ($self)
-{
-  # ensure the necessary entries exist; if they don't, just bail out
-  return undef
-  unless
-    exists $self->snmp->{'ENTITY-MIB'}
-    && exists $self->snmp->{'ENTITY-MIB'}{'entPhysicalTable'};
-
-  #--- convert the ENTITY-MIB into an array of SPAM::Entity instances
-
-  my $ePT = $self->snmp->{'ENTITY-MIB'}{'entPhysicalTable'};
-  my $eAMT = $self->snmp->{'ENTITY-MIB'}{'entAliasMappingTable'} // undef;
-  my @entries = map {
-    SPAM::Entity->new(
-      %{$ePT->{$_}},
-      entPhysicalIndex => $_,
-      ifIndex => $eAMT->{$_}{'0'}{'entAliasMappingIdentifier'}{'value'} // undef,
-    )
-  } keys %$ePT;
-
-  # finish
-  return SPAM::EntityTree->new(entities => \@entries);
 }
 
 #==============================================================================
