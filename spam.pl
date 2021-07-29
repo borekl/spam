@@ -393,6 +393,12 @@ sub poll_host
   #--- dump swstat and entity table
 
   if($ENV{'SPAM_DEBUG'}) {
+
+    # dump collected SNMP info
+    open(my $fh, '>', "debug.swstat.$$." . $host->name . '.log') || die;
+    print $fh Dumper($host->snmp);
+    close($fh);
+
     if($host->entity_tree) {
       open(my $fh, '>', "debug.entities.$$.log") || die;
 
@@ -547,7 +553,7 @@ sub find_changes
           )
         ],
         [ 'port_flags', 'n', $old->[9],
-          port_flag_pack($host, $if) ],
+          $host->get_port_flags($if) ],
         [ 'ifAdminStatus', 'n', $old->[10],
           $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
@@ -687,7 +693,7 @@ sub sql_status_update
         $portTable->{'portDuplex'}{'value'},
         #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
         $ifrate->($if),
-        port_flag_pack($host, $if),
+        $host->get_port_flags($if),
         $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
@@ -723,7 +729,7 @@ sub sql_status_update
           $portTable->{'portDuplex'}{'value'},
           #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
           $ifrate->($if),
-          port_flag_pack($host, $if),
+          $host->get_port_flags($if),
           $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'
@@ -1176,172 +1182,6 @@ sub switch_info
     }
   }
   return;
-}
-
-
-#===========================================================================
-# Creates flags bitfield from information scattered in host instance. The
-# bitfield is as follows:
-#
-#  0. CDP .................................... 1
-#  1. portfast ............................... 2
-#  2. STP root ............................... 4
-#  3. trunk dot1q ............................ 8
-#  4. trunk isl ............................. 16
-#  5. trunk unknown ......................... 32
-#  6. dot1x force-authorized (new) .......... 64
-#  7. dot1x force-unauthorized (new) ....... 128
-#  8. dot1x auto (new) ..................... 256
-#  9. dot1x authorized ..................... 512
-# 10. dot1x unauthorized .................. 1024
-# 11. MAB auth success .................... 2048
-# 12. PoE port ............................ 4096
-# 13. PoE port enabled .................... 8192
-# 14. PoE port supplying power ........... 16384
-#===========================================================================
-
-sub port_flag_pack
-{
-  #--- arguments
-
-  my (
-    $host,      # 1. host instance
-    $port       # 2. port ifindex
-  ) = @_;
-
-  #--- other variables
-
-  my $result = 0;
-
-  #--- trunking mode
-
-  if(
-    exists $host->snmp->{'CISCO-VTP-MIB'}
-    && exists $host->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}
-  ) {
-    my $trunk_flag;
-    my $s = $host->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$port};
-    if($s->{'vlanTrunkPortDynamicStatus'}{'enum'} eq 'trunking') {
-      $trunk_flag = $s->{'vlanTrunkPortEncapsulationOperType'}{'enum'};
-    }
-    if($trunk_flag eq 'dot1Q')  { $result |= 8; }
-    elsif($trunk_flag eq 'isl') { $result |= 16; }
-    elsif($trunk_flag)          { $result |= 32; }
-  }
-
-  # FIXME: 802.1x/Auth needs rework, as implemented now it doesn't make good
-  # sense: we should be displaying cafSMS info prominently
-
-  #--- 802.1x Auth (from dot1xAuthConfigTable)
-
-  if(
-    exists $host->snmp->{'IEEE8021-PAE-MIB'}
-    && exists $host->snmp->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}
-  ) {
-    my %dot1x_flag;
-    my $s
-    = $host->snmp->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$port};
-    $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{'enum'};
-    $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{'enum'};
-    if($dot1x_flag{'pc'} eq 'forceUnauthorized') { $result |= 128; }
-    if($dot1x_flag{'pc'} eq 'auto') { $result |= 256; }
-    if($dot1x_flag{'pc'} eq 'forceAuthorized') { $result |= 64; }
-    if($dot1x_flag{'st'} eq 'authorized') { $result |= 512; }
-    if($dot1x_flag{'st'} eq 'unauthorized') { $result |= 1024; }
-  }
-
-  #--- MAC bypass active
-
-  if(
-    exists $host->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}
-    && exists $host->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
-  ) {
-    my $s = $host->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$port};
-    for my $sessid (keys %$s) {
-      if(
-        exists $s->{$sessid}{'macAuthBypass'}
-        && $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'} eq 'authcSuccess'
-      ) {
-        $result |= 2048;
-      }
-    }
-  }
-
-  #--- CDP
-
-  if(
-    exists $host->snmp->{'CISCO-CDP-MIB'}
-    && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
-    && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$port}
-  ) {
-    $result |= 1;
-  }
-
-  #--- power over ethernet
-
-  if(
-    exists $host->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}
-    && $host->has_ifindex_to_portindex
-  ) {
-    my $pi = $host->ifindex_to_portindex->{$port};
-    if(
-      exists
-        $host->snmp->{'POWER-ETHERNET-MIB'}
-                {'pethPsePortTable'}
-                {$pi->[0]}{$pi->[1]}
-                {'pethPsePortDetectionStatus'}
-    ) {
-      my $s = $host->snmp->{'POWER-ETHERNET-MIB'}
-                      {'pethPsePortTable'}
-                      {$pi->[0]}{$pi->[1]}
-                      {'pethPsePortDetectionStatus'};
-
-      $result |= 4096;
-      $result |= 8192 if $s->{'enum'} ne 'disabled';
-      $result |= 16384 if $s->{'enum'} eq 'deliveringPower';
-    }
-  }
-
-  #--- STP root port
-
-  if(
-    exists $host->snmp->{'BRIDGE-MIB'}
-    && exists $host->snmp->{'BRIDGE-MIB'}{'dot1dStpRootPort'}
-  ) {
-    my $dot1d_stpr = $host->snmp->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
-    for my $vlan (keys %{$host->snmp->{'BRIDGE-MIB'}}) {
-      # the keys under BRIDGE-MIB are both a) vlans b) object names
-      # that are not defined per-vlan (such as dot1dStpRootPort);
-      # that's we need to filter non-vlans out here
-      next if $vlan !~ /^\d+$/;
-      if(
-        exists $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
-      ) {
-        $result |= 4;
-        last;
-      }
-    }
-  }
-
-  #--- STP portfast
-
-  if(
-    exists $host->snmp->{'CISCO-STP-EXTENSIONS-MIB'}
-    && exists $host->snmp->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
-  ) {
-    my $port_dot1d = $host->ifindex_to_dot1d->{$port};
-    my $portmode
-    = $host->snmp->{'CISCO-STP-EXTENSIONS-MIB'}
-              {'stpxFastStartPortTable'}{$port_dot1d}{'stpxFastStartPortMode'}
-              {'enum'};
-    if($portmode eq 'enable' || $portmode eq 'enableForTrunk') {
-      $result |= 2;
-    }
-  }
-
-  #--- finish
-
-  return $result;
 }
 
 
