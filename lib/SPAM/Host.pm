@@ -105,7 +105,7 @@ sub get_snmp_object ($self, $object_name)
 {
   my $mibs = $self->snmp;
 
-  foreach my $mib (%$mibs) {
+  foreach my $mib (keys %$mibs) {
     foreach my $object (keys %{$mibs->{$mib}}) {
       return $mibs->{$mib}{$object} if $object_name eq $object;
     }
