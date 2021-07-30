@@ -302,45 +302,41 @@ sub poll_host
 
   return undef if $hostinfo;
 
+  #--- make sure ifTable and ifXTable exist
+
+  die 'ifTable/ifXTable do not exist' unless $host->has_iftable;
+
   #--- prune non-ethernet interfaces and create portName -> ifIndex hash
 
   my $cnt_prune = 0;
   my (%by_ifindex, %by_ifname);
-  if(
-    exists $host->snmp->{'IF-MIB'}{'ifTable'} &&
-    exists $host->snmp->{'IF-MIB'}{'ifXTable'}
-  ) {
-    tty_message("[%s] Pruning non-ethernet interfaces (started)\n", $host->name);
-    for my $if (keys %{ $host->snmp->{'IF-MIB'}{'ifTable'} }) {
-      if(
-        # interfaces of type other than 'ethernetCsmacd'
-        $host->snmp->{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
-          ne 'ethernetCsmacd'
-        # special case; some interfaces are ethernetCsmacd and yet they are
-        # not real interfaces (good job, Cisco) and cause trouble
-        || $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
-          =~ /^vl/i
-      ) {
-        # matching interfaces are deleted
-        delete $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
-        delete $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
-        $cnt_prune++;
-      } else {
-        #non-matching interfaces are indexed
-        $by_ifindex{$if}
-        = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
-      }
+  tty_message("[%s] Pruning non-ethernet interfaces (started)\n", $host->name);
+  for my $if (keys %{ $host->snmp->{'IF-MIB'}{'ifTable'} }) {
+    if(
+      # interfaces of type other than 'ethernetCsmacd'
+      $host->snmp->{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
+        ne 'ethernetCsmacd'
+      # special case; some interfaces are ethernetCsmacd and yet they are
+      # not real interfaces (good job, Cisco) and cause trouble
+      || $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
+        =~ /^vl/i
+    ) {
+      # matching interfaces are deleted
+      delete $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
+      delete $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
+      $cnt_prune++;
+    } else {
+      #non-matching interfaces are indexed
+      $by_ifindex{$if}
+      = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
     }
-    %by_ifname = reverse %by_ifindex;
-    $host->port_to_ifindex(\%by_ifname);
-    tty_message(
-      "[%s] Pruning non-ethernet interfaces (finished, %d pruned)\n",
-      $host->name, $cnt_prune
-    );
-  } else {
-    tty_message("[%s] ifTable/ifXTable not found\n", $host->name);
-    die "ifTable/ifXTable don't exist on $host";
   }
+  %by_ifname = reverse %by_ifindex;
+  $host->port_to_ifindex(\%by_ifname);
+  tty_message(
+    "[%s] Pruning non-ethernet interfaces (finished, %d pruned)\n",
+    $host->name, $cnt_prune
+  );
 
   #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex
 

@@ -114,6 +114,21 @@ sub get_snmp_object ($self, $object_name)
   return undef;
 }
 
+# return true if ifTable AND ifXTable exist
+
+sub has_iftable ($self)
+{
+  if(
+    exists $self->snmp->{'IF-MIB'} &&
+    exists $self->snmp->{'IF-MIB'}{'ifTable'} &&
+    exists $self->snmp->{'IF-MIB'}{'ifXTable'}
+  ) {
+    return 1;
+  } else {
+    return undef;
+  }
+}
+
 #==============================================================================
 
 1;
