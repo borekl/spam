@@ -395,7 +395,7 @@ sub poll_host
   if($ENV{'SPAM_DEBUG'}) {
 
     # dump collected SNMP info
-    open(my $fh, '>', "debug.swstat.$$." . $host->name . '.log') || die;
+    open(my $fh, '>', "debug.host.$$." . $host->name . '.log') || die;
     print $fh Dumper($host->snmp);
     close($fh);
 
