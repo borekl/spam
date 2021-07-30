@@ -253,7 +253,8 @@ sub poll_host
 
       if(
         $obj->has_flag('save')
-        && $host->snmp->{$mib_key}{$obj->name}
+        && exists $host->snmp->{$mib_key}
+        && exists $host->snmp->{$mib_key}{$obj->name}
       ) {
         tty_message("[%s] Saving %s (started)\n", $host->name, $obj->name);
         my $r = sql_save_snmp_object($host, $obj);
@@ -1528,7 +1529,7 @@ sub sql_save_snmp_object
 
   my (
     $host,         # 1. host instance
-    $snmp_object   # 2. (strg) SNMP object to be saved
+    $snmp_object   # 2. SNMP object to be saved
   ) = @_;
 
   #--- other variables
