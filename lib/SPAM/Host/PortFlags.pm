@@ -139,7 +139,10 @@ sub get_port_flags ($self, $if)
   }
 
   # STP fast start
-  if(exists $self->snmp->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}) {
+  if(
+    exists $self->snmp->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
+    && $self->has_ifindex_to_dot1d
+  ) {
     my $port_dot1d = $self->ifindex_to_dot1d->{$if};
     if($port_dot1d) {
       my $portmode
