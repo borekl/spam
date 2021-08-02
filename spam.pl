@@ -2001,7 +2001,7 @@ try {
 
             if($cmd->autoreg()) {
               tty_message("[$host] Running auto-registration (started)\n");
-              sql_autoreg($host);
+              sql_autoreg($hi);
               tty_message("[$host] Running auto-registration (finished)\n");
             }
 
