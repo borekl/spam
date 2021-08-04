@@ -4,15 +4,17 @@
 
 package SPAM::Config;
 
-use v5.10;
+use v5.16;
 use warnings;
 use integer;
 use strict;
 
 use Moo;
 with 'MooX::Singleton';
+use experimental 'signatures';
 
 use Carp;
+use Scalar::Util qw(reftype);
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
 use DBI;
@@ -524,6 +526,33 @@ sub snmpwalk
 {
   my $self = shift;
   return $self->config->{snmpwalk}
+}
+
+# this function walks the parsed configuration, invokes a callback for every
+# value and lets the callback return a new value; if undef is returned, the
+# old value is retained
+
+sub _recurse ($h, $cb)
+{
+  if(reftype $h eq 'ARRAY') {
+    foreach my $i (keys @$h) {
+      if(ref $h->[$i]) {
+        __SUB__->($h->[$i], $cb);
+      } else {
+        $h->[$i] = $cb->($h->[$i]) // $h->[$i];
+      }
+    }
+  }
+
+  elsif(reftype $h eq 'HASH') {
+    foreach my $k (keys %$h) {
+      if(ref $h->{$k}) {
+        __SUB__->($h->{$k}, $cb);
+      } else {
+        $h->{$k} = $cb->($h->{$k}) // $h->{$k};
+      }
+    }
+  }
 }
 
 #=============================================================================
