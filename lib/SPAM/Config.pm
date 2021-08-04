@@ -19,7 +19,7 @@ use JSON::MaybeXS;
 use Path::Tiny qw(path);
 use DBI;
 use SPAM::MIB;
-
+use SPAM::Keys;
 
 #=============================================================================
 #=== ATTRIBUTES ==============================================================
@@ -34,7 +34,17 @@ has config_file => (
 
 # parsed configuration
 
-has config => ( is => 'lazy' );
+has config => ( is => 'lazy', predicate => 1 );
+
+# keys, instance of SPAM::Keys that stores various security-critical tokens
+# such as passwords, secrets, community strings etc
+
+has keys => (
+  is => 'ro',
+  lazy => 1,
+  default => sub { SPAM::Keys->new },
+  predicate => 1
+);
 
 # database connection handles
 # This is used to cache DBI connection handles in a way that makes them
@@ -91,15 +101,20 @@ has vlanservers => (
 sub _build_config
 {
   my ($self) = @_;
+
+  # load and parse the config file
   my $file = $self->config_file();
-  if(!-e $file) {
-    croak "Configuration file '$file' cannot be found or read";
-  }
+  croak "Configuration file '$file' cannot be found or read" unless -e $file;
   my $cfg = JSON->new->relaxed(1)->decode(path($file)->slurp());
 
+  # perform placeholder replacement
+  _recurse->($cfg, sub ($s) {
+    return $self->keys->fill($s);
+  });
+
+  #finish
   return $cfg;
 }
-
 
 #=============================================================================
 # Get DBI handle for supplied configured connection id. This handles local
