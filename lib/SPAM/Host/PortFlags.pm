@@ -26,7 +26,7 @@ my %flag_map = (
   mac_bypass         =>  2048,
   poe                =>  4096,
   poe_enabled        =>  8192,
-  poe_delivering     => 16384
+  poe_deliver        => 16384
 );
 
 # extract various flags from information scattered in the host instance
@@ -84,6 +84,8 @@ sub get_port_flags ($self, $if)
     for my $sessid (keys %$s) {
       if(
         exists $s->{$sessid}{'macAuthBypass'}
+        && exists $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}
+        && exists $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'}
         && $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'} eq 'authcSuccess'
       ) {
         push(@flags, 'mac_bypass');
@@ -116,8 +118,8 @@ sub get_port_flags ($self, $if)
                       {'pethPsePortDetectionStatus'};
 
       push(@flags, 'poe');
-      push(@flags, 'poe-enabled') if $s->{'enum'} ne 'disabled';
-      push(@flags, 'poe-deliver') if $s->{'enum'} eq 'deliveringPower';
+      push(@flags, 'poe_enabled') if $s->{'enum'} ne 'disabled';
+      push(@flags, 'poe_deliver') if $s->{'enum'} eq 'deliveringPower';
     }
   }
 
