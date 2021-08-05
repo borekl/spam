@@ -276,6 +276,8 @@ sub poll_host
   #--- first MIB entry is special as it gives us information about the host
 
     if($is_first_mib) {
+
+      # --hostinfo command-line option in effect
       if($hostinfo) {
         tty_message(
           "[%s] Platform: %s\n", $host->name, $host->platform // '?'
@@ -289,6 +291,12 @@ sub poll_host
         );
         return 1;
       }
+
+      # if platform information is unavailable it means the SNMP communications
+      # with the device has failed and we should abort
+      die "Failed to get platform information\n" unless $host->platform;
+
+      # display message about platform and boottime
       tty_message(
         "[%s] System info: platform=%s boottime=%s\n",
         $host->name,
