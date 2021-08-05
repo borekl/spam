@@ -330,9 +330,6 @@ sub get_snmp_command
   if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
   my $miblist = join(':', @$mibs);
 
-  # context needs '@' separator
-  $ctx = '@' . $ctx if $ctx ne '';
-
   # perform placeholder replacement
   my $options = $snmp->{$cmd}{options};
   $options =~ s/%c/$cmty/g;
@@ -340,6 +337,8 @@ sub get_snmp_command
   $options =~ s/%r/$oid/g;
   $options =~ s/%m/$miblist/g;
   $options =~ s/%x/$ctx/g;
+  $options =~ s/%X/\@$ctx/g if $ctx;
+  $options =~ s/%X//g unless $ctx;
 
   # finish
   return $snmp->{$cmd}{exec} . ' ' . $options;

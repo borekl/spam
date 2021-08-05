@@ -101,7 +101,7 @@
     {
       "snmpwalk" : {
         "exec" : "/usr/bin/snmpbulkwalk",
-        "options" : "-Lf /dev/null -Pd -OX -m +%m -c %c %h %r",
+        "options" : "-Lf /dev/null -Pd -OX -m +%m -c %c%X %h %r",
       },
     },
 
