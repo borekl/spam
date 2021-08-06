@@ -11,7 +11,7 @@ module.exports = function(grunt)
        }
      }
    },
-   
+
    browserify: {
      main: {
        files: {
@@ -29,7 +29,7 @@ module.exports = function(grunt)
        }
      }
    },
-   
+
    copy: {
      common: {
        files: [
@@ -39,6 +39,14 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/EntityTree.pm', dest: '../prod/lib/SPAM/EntityTree.pm' },
          { nonull: true, src: 'lib/SPAM/MIB.pm', dest: '../prod/lib/SPAM/MIB.pm' },
          { nonull: true, src: 'lib/SPAM/MIBobject.pm', dest: '../prod/lib/SPAM/MIBobject.pm' },
+         { nonull: true, src: 'lib/SPAM/Host.pm', dest: '../prod/lib/SPAM/Host.pm' },
+         { nonull: true, src: 'lib/SPAM/Keys.pm', dest: '../prod/lib/SPAM/Keys.pm' },
+         { nonull: true, src: 'lib/SPAM/Host/Boottime.pm', dest: '../prod/lib/SPAM/Host/Boottime.pm' },
+         { nonull: true, src: 'lib/SPAM/Host/EntityTree.pm', dest: '../prod/lib/SPAM/Host/EntityTree.pm' },
+         { nonull: true, src: 'lib/SPAM/Host/Location.pm', dest: '../prod/lib/SPAM/Host/Location.pm' },
+         { nonull: true, src: 'lib/SPAM/Host/Platform.pm', dest: '../prod/lib/SPAM/Host/Platform.pm' },
+         { nonull: true, src: 'lib/SPAM/Host/PortFlags.pm', dest: '../prod/lib/SPAM/Host/PortFlags.pm' },
+         { nonull: true, src: 'lib/SPAM/Host/TrunkVlans.pm', dest: '../prod/lib/SPAM/Host/TrunkVlans.pm' }
        ]
      },
      www: {
