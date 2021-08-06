@@ -106,11 +106,8 @@ sub get_port_flags ($self, $if)
   ) {
     my $pi = $self->ifindex_to_portindex->{$if};
     if(
-      exists
-        $self->snmp->{'POWER-ETHERNET-MIB'}
-                {'pethPsePortTable'}
-                {$pi->[0]}{$pi->[1]}
-                {'pethPsePortDetectionStatus'}
+      ref $pi && @$pi
+      && exists $self->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}{$pi->[0]}{$pi->[1]}{'pethPsePortDetectionStatus'}
     ) {
       my $s = $self->snmp->{'POWER-ETHERNET-MIB'}
                       {'pethPsePortTable'}
