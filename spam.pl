@@ -1491,9 +1491,11 @@ sub sql_autoreg
       next if $cp_descr eq 'x';
       next if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
       $cp_descr = substr($cp_descr, 0, 10);
-      $cp_db = $port2cp->{$host}{$port};
+      $cp_db = $port2cp->{$host->name}{$port};
+      # FIXME: load_port_table() returns hash with values in the form of
+      # "port!cp"
       $cp_db =~ s/^.*!//;
-      if(!$cp_db) {
+      if(!$cp_db && !exists $port2cp->{$host->name}{$port}) {
         push(@insert,
           sprintf(
             qq{INSERT INTO porttable VALUES ( '%s', '%s', '%s', '%s', 'swcoll' )},
