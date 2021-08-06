@@ -18,6 +18,7 @@ use SPAM::Config;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
+  load_config
   tty_message
   sql_find_user_group
   compare_ports
@@ -39,7 +40,7 @@ our @EXPORT = qw(
 #=== variables =============================================================
 
 #--- configuration
-my $cfg = SPAM::Config->instance;
+my $cfg;
 
 #--- Database connection parameters ---
 my %sites_cache;
@@ -47,6 +48,16 @@ my %sites_cache;
 #--- configuration ---
 my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
 
+
+#===========================================================================
+# Legacy config loading; this must be called after the SPAM::Config
+# singleton was already instantiated
+#===========================================================================
+
+sub load_config
+{
+  $cfg = SPAM::Config->instance;
+}
 
 #===========================================================================
 # Displays message on TTY

@@ -1801,6 +1801,7 @@ try {
 
 	tty_message("[main] Loading master config (started)\n");
 	$cfg = SPAM::Config->instance();
+  load_config();
 	tty_message("[main] Loading master config (finished)\n");
 
 	#--- initialize SPAM_SNMP library

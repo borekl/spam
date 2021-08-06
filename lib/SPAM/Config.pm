@@ -32,6 +32,14 @@ has config_file => (
   default => 'spam.cfg.json',
 );
 
+# configuration directory, this is automatically filled in from 'config_file'
+
+has _config_dir => (
+  is => 'ro',
+  lazy => 1,
+  default => sub ($s) { path($s->config_file)->absolute->parent },
+);
+
 # parsed configuration
 
 has config => ( is => 'lazy', predicate => 1 );
@@ -42,7 +50,7 @@ has config => ( is => 'lazy', predicate => 1 );
 has keys => (
   is => 'ro',
   lazy => 1,
-  default => sub { SPAM::Keys->new },
+  default => sub ($s) { SPAM::Keys->new(keys_dir => $s->_config_dir) },
   predicate => 1
 );
 

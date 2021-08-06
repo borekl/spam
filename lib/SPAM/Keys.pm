@@ -41,6 +41,10 @@ has keys_file => (
   default => 'authkeys.json',
 );
 
+has keys_dir => (
+  is => 'ro'
+);
+
 has _keys => (
   is => 'lazy',
   predicate => 1,
@@ -53,7 +57,13 @@ has _keys => (
 
 sub _build__keys ($self)
 {
-  my $file = $self->keys_file;
+  my $file;
+  if($self->keys_dir) {
+    $file = path($self->keys_dir)->child($self->keys_file);
+  } else {
+    $file = $self->keys_file;
+  }
+
   croak "Key file '$file' cannot be found or read" unless -e $file;
   return JSON->new->relaxed(1)->decode(path($file)->slurp());
 }

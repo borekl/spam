@@ -18,6 +18,7 @@ use integer;
 use utf8;
 use charnames ':full';
 use lib '../', '../lib';
+use FindBin qw($Bin);
 
 
 #=== modules =================================================================
@@ -55,15 +56,7 @@ my ($db_ondb, $db_spam);
 BEGIN
 {
   #--- read config
-
-  # we're assuming the path of the script is in form
-  # "/<prefix>/{prod,dev}/<suffix>/<script>" and that the 'spam.cfg' is in
-  # "/<prefix>/{prod,dev}" directory.
-
-  my $cfg_file = sprintf(abs_path($0));
-  $cfg_file =~ s/^(\/.+\/(?:prod|dev))\/.*$/$1/;
-  $cfg_file = sprintf('%s/spam.cfg.json', $cfg_file);
-  $cfg2 = SPAM::Config->instance(config_file => $cfg_file);
+  $cfg2 = SPAM::Config->instance(config_file => "$Bin/../spam.cfg.json");
   $cfg = load_config();
 
   #--- misc init
