@@ -820,9 +820,7 @@ sub sql_transaction
 
   #--- ensure database connection
 
-    if(!ref($dbh)) {
-      die "Cannot connect to database (spam)\n";
-    }
+    die "Cannot connect to database (spam)\n" unless ref $dbh;
 
   #--- begin transaction
 
