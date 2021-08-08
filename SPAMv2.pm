@@ -18,7 +18,6 @@ use SPAM::Config;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
-  load_config
   tty_message
   sql_find_user_group
   compare_ports
@@ -39,25 +38,16 @@ our @EXPORT = qw(
 
 #=== variables =============================================================
 
-#--- configuration
-my $cfg;
-
 #--- Database connection parameters ---
 my %sites_cache;
 
-#--- configuration ---
-my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
-
 
 #===========================================================================
-# Legacy config loading; this must be called after the SPAM::Config
-# singleton was already instantiated
+# Convenience functions for getting DBI handle of the backend database.
 #===========================================================================
 
-sub load_config
-{
-  $cfg = SPAM::Config->instance;
-}
+sub db { SPAM::Config->instance->get_dbi_handle($_[0]) }
+
 
 #===========================================================================
 # Displays message on TTY
@@ -87,7 +77,7 @@ sub tty_message
 sub sql_find_user_group
 {
   my ($user) = @_;
-  my $c = $cfg->get_dbi_handle('ondb');
+  my $c = db('ondb');
   my ($q, $r, $sth, $group);
 
   #--- sanitize arguments
@@ -208,7 +198,7 @@ sub compare_ports
 sub load_port_table
 {
   my ($r, $e);
-  my $dbh = $cfg->get_dbi_handle('spam');
+  my $dbh = db('spam');
   my %port2cp;
 
   if(!ref($dbh)) { return 'Database connection failed (spam)'; }
@@ -238,7 +228,7 @@ sub sql_sites
 {
   my $table = lc($_[0]);
   if(exists $sites_cache{$table}) { return $sites_cache{$table}; }
-  my $dbh = $cfg->get_dbi_handle('spam');
+  my $dbh = db('spam');
   my $q = "SELECT DISTINCT site FROM $table ORDER BY site ASC";
   my @result;
 
@@ -271,7 +261,7 @@ sub sql_sites
 sub sql_site_uses_cp
 {
   my $site = lc($_[0]);
-  my $dbh = $cfg->get_dbi_handle('spam');
+  my $dbh = db('spam');
   my $query = qq{SELECT site FROM out2cp GROUP BY site HAVING site = ?};
 
   if(!ref($dbh) || !$site) { return undef; }
