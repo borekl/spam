@@ -40,8 +40,7 @@ use SPAM::EntityTree;
 #=== globals =================================================================
 
 my $debug = JSON->false;    # debugging flag, is set acc. to user's ondb entry
-my $cfg;                    # configuration from spam.cfg
-my $cfg2;
+my $cfg;
 my $js;
 my %dbh;
 my ($db_ondb, $db_spam);
@@ -56,8 +55,7 @@ my ($db_ondb, $db_spam);
 BEGIN
 {
   #--- read config
-  $cfg2 = SPAM::Config->instance(config_file => "$Bin/../spam.cfg.json");
-  $cfg = load_config();
+  $cfg = SPAM::Config->instance(config_file => "$Bin/../spam.cfg.json");
 
   #--- misc init
 
@@ -66,8 +64,8 @@ BEGIN
 
   #--- database init
 
-  $dbh{'spam'} = $db_spam = $cfg2->get_dbi_handle('spamui');
-  $dbh{'ondb'} = $db_ondb = $cfg2->get_dbi_handle('ondbui');
+  $dbh{'spam'} = $db_spam = $cfg->get_dbi_handle('spamui');
+  $dbh{'ondb'} = $db_ondb = $cfg->get_dbi_handle('ondbui');
 }
 
 
@@ -1034,7 +1032,7 @@ sub sql_search
 
     if(
       exists $row->{'host'} &&
-      scalar(grep { $_ eq $row->{'host'} } @{$cfg->{'knownports'}}) &&
+      scalar(grep { $_ eq $row->{'host'} } @{$cfg->config->{'knownports'}}) &&
       $row->{'status'} != 0 &&
       !$row->{'cp'}
     ) {
