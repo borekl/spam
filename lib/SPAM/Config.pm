@@ -133,7 +133,12 @@ sub get_dbi_handle
 {
   my ($self, $dbid) = @_;
   my $cfg;
-  my %dbi_params = ( AutoCommit => 1, pg_enable_utf => 1, PrintError => 0 );
+  my %dbi_params = (
+    AutoCommit => 1,
+    pg_enable_utf => 1,
+    PrintError => 0,
+    FetchHashKeyName => 'NAME_lc'
+  );
 
   #--- sanity checks
 
