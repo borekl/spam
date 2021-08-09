@@ -26,6 +26,7 @@ use SPAM::SNMP;
 use SPAM::Cmdline;
 use SPAM::Config;
 use SPAM::Host;
+use SPAM::DbTransaction;
 use SPAM::Model::Porttable;
 
 $| = 1;
@@ -640,8 +641,11 @@ sub sql_status_update
 {
   my ($host, $update_plan) = @_;
   my $idx = $host->port_to_ifindex;
-  my ($r, $q, $fields, @update);
+  my ($r, $q, $fields);
   my (@fields, @vals, @bind);
+
+  # get new transaction
+  my $tx = SPAM::DbTransaction->new;
 
   #--- aux function to handle ifSpeed/ifHighSpeed
 
@@ -773,108 +777,12 @@ sub sql_status_update
       die('FATAL ERROR');
 
     }
-    push(@update, [ $q, @bind ]);
+    $tx->add($q, @bind);
   }
 
   #--- sent data to db and finish---
 
-  $r = sql_transaction(\@update);
-  return $r;
-}
-
-
-#==========================================================================
-# This function performs database transaction
-#
-# Arguments: 1. reference to list of lines to be sent do db
-# Returns:   1. error message or undef
-#
-# The list of database statements to be performed may take two forms.
-# One is just string containing the statement. The other is array ref,
-# that contains the statement in [0] and the rest of the array are bind
-# variables. Both forms can be mixed freely.
-#==========================================================================
-
-sub sql_transaction
-{
-  my $update = shift;
-  my $dbh = $cfg->get_dbi_handle('spam');
-  my ($r, $rv);
-  my $fh;         # debugging output filehandle
-
-  #--- write the transation to file (for debugging)
-
-  if($ENV{'SPAM_DEBUG'}) {
-    my $line = 1;
-    open($fh, '>>', "debug.transaction.$$.log");
-    if($fh) {
-      printf $fh "---> TRANSACTION LOG START\n";
-      for my $row (@$update) {
-        printf $fh "%d. %s\n", $line++,
-          sql_show_query(@$row);
-      }
-      printf $fh "---> TRANSACTION LOG END\n";
-    }
-  }
-
-  try { #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  #--- ensure database connection
-
-    die "Cannot connect to database (spam)\n" unless ref $dbh;
-
-  #--- begin transaction
-
-    $dbh->begin_work()
-    || die sprintf(
-      "Cannot begin database transaction (spam, %s)\n", $dbh->errstr()
-    );
-
-  #--- perform update
-
-    my $line = 1;
-    for my $row (@$update) {
-      my $qry = ref($row) ? $row->[0] : $row;
-      my @args;
-      if(ref($row)) { @args = @$row[1 .. scalar(@$row)-1]; }
-      my $sth = $dbh->prepare($qry);
-      my $r = $sth->execute(@args);
-      my $err1 = $sth->errstr();
-      if(!$r) {
-        die sprintf(
-          "Database update failed (line %d, %s), transaction rolled back\n",
-          $line, $err1
-        );
-      }
-      $line++;
-    }
-
-  #--- commit transaction
-
-    $dbh->commit()
-    || die sprintf("Cannot commit database transaction (%s)\n", $dbh->errstr());
-    printf $fh "---> TRANSACTION FINISHED SUCCESSFULLY\n" if $fh;
-
-  } #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-  #--- catch failure
-
-  catch {
-    chomp($_);
-    $rv = $_;
-    printf $fh "---> TRANSACTION FAILED (%s)\n", $_ if $fh;
-    if(!$dbh->rollback()) {
-      printf $fh "---> TRANSACTION ABORT FAILED (%s)\n", $dbh->errstr() if $fh;
-      $rv .= ', ' . $dbh->errstr();
-    } else {
-      printf $fh "---> TRANSACTION ABORTED SUCCESSFULLY\n" if $fh
-    }
-  };
-
-  #--- finish
-
-  close($fh) if $fh;
-  return $rv;
+  return $tx->commit;
 }
 
 
@@ -891,9 +799,11 @@ sub sql_mactable_update
   my $h = $host->snmp->{'BRIDGE-MIB'};
   my $dbh = $cfg->get_dbi_handle('spam');
   my $ret;
-  my @update;              # update plan
   my %mac_current;         # contents of 'mactable'
   my $debug_fh;
+
+  # get new transaction instance
+  my $tx = SPAM::DbTransaction->new;
 
   #--- insta-sub for normalizing MAC values
 
@@ -934,12 +844,9 @@ sub sql_mactable_update
 
   #--- reset 'active' field to 'false'
 
-  push(
-    @update,
-    [
-      q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'},
-      $host->name
-    ]
+  $tx->add(
+    q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'},
+    $host->name
   );
 
   #--- get list of VLANs, exclude non-numeric keys (those do not denote VLANs
@@ -1021,13 +928,13 @@ sub sql_mactable_update
 
         $mac_current{$mac_n} = 1;
       }
-      push(@update, [ $q, @bind ]) if $q;
+      $tx->add($q, @bind) if $q;
     }
   }
 
   #--- sent data to db and finish---
 
-  $ret = sql_transaction(\@update);
+  $ret = $tx->commit;
   close($debug_fh) if $debug_fh;
   return $ret if defined $ret;
   return undef;
@@ -1042,7 +949,10 @@ sub sql_arptable_update
 {
   my $dbh = $cfg->get_dbi_handle('spam');
   my %arp_current;
-  my ($mac, $ret, @update, $q);
+  my ($mac, $ret, $q);
+
+  # get new transaction instance
+  my $tx = SPAM::DbTransaction->new;
 
   #--- ensure database connection ---
 
@@ -1065,12 +975,10 @@ sub sql_arptable_update
 
       #--- update ---
 
-      push(@update, [
+      $tx->add(
         q{UPDATE arptable SET ip = ?, lastchk = ? WHERE mac = ?},
-        $arptable->{$mac},
-        $aux,
-        $mac
-      ]);
+        $arptable->{$mac}, $aux, $mac
+      );
 
     } else {
 
@@ -1091,24 +999,21 @@ sub sql_arptable_update
           push(@bind, lc($dnsname));
         }
 
-        push(@update, [
+        $tx->add(
           sprintf(
             q{INSERT INTO arptable ( %s ) VALUES ( %s )},
             join(',', @fields),
             join(',', (('?') x @fields))
           ),
           @bind
-        ]);
-
+        );
       }
     }
   }
 
   #--- send update to the database ---
 
-  $ret = sql_transaction(\@update);
-  return $ret if defined $ret;
-  return undef;
+  return $tx->commit;
 }
 
 
@@ -1125,15 +1030,15 @@ sub sql_host_remove
 
   #--- other variables
 
-  my @transaction;
+  my $tx = SPAM::DbTransaction->new;
   my $r;
 
   #--- perform removal
 
   for my $table (qw(status hwinfo swstat badports mactable modwire)) {
-    push(@transaction, [ "DELETE FROM $table WHERE host = ?", $host ]);
+    $tx->add("DELETE FROM $table WHERE host = ?", $host);
   }
-  return sql_transaction(\@transaction);
+  return $tx->commit;
 }
 
 
@@ -1477,7 +1382,7 @@ sub clear_task_by_pid
 sub sql_autoreg
 {
   my $host = shift;
-  my @insert;
+  my $tx = SPAM::DbTransaction->new;
 
   # get site-code from hostname
   my $site = $cfg->site_conv($host->name);
@@ -1496,7 +1401,7 @@ sub sql_autoreg
       next if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
       $cp_descr = substr($cp_descr, 0, 10);
       if(!$port2cp->exists($host->name, $port)) {
-        push(@insert, $port2cp->insert(
+        $tx->add($port2cp->insert(
           host => $host->name,
           port => $port,
           cp => $cp_descr,
@@ -1511,11 +1416,11 @@ sub sql_autoreg
   # insert data into database
   my $msg = sprintf(
     'Found %d entr%s to autoregister',
-    scalar(@insert), scalar(@insert) == 1 ? 'y' : 'ies'
+    $tx->count, $tx->count == 1 ? 'y' : 'ies'
   );
   tty_message("[%s] %s\n", $host->name, $msg);
-  if(@insert > 0) {
-    my $e = sql_transaction(\@insert);
+  if($tx->count) {
+    my $e = $tx->commit;
     if(!$e) {
       tty_message("[%s] Auto-registration successful\n", $host->name);
     } else {
@@ -1545,6 +1450,7 @@ sub sql_save_snmp_object
   my $err;                 # error message
   my $debug_fh;            # debug file handle
   my $ref_time = time();   # reference 'now' point of time
+  my $tx = SPAM::DbTransaction->new;
 
   #--- open debug file
 
@@ -1619,14 +1525,12 @@ sub sql_save_snmp_object
   #--- 3. entries that do exist in %old but not in $object (= retrieved via
   #---    SNMP) will be deleted
 
-    my @update_plan = (
-      [
-        sprintf(
-          'UPDATE snmp_%s SET fresh = false WHERE host = ?',
-          $snmp_object->name
-        ),
-        $host->name
-      ]
+    $tx->add(
+      sprintf(
+        'UPDATE snmp_%s SET fresh = false WHERE host = ?',
+        $snmp_object->name
+      ),
+      $host->name
     );
 
   #--- iterate over the SNMP-loaded data
@@ -1647,23 +1551,21 @@ sub sql_save_snmp_object
 
         if($val_old) {
           $stats{'update'}++;
-          push(@update_plan,
-            [
-              sprintf(
-                'UPDATE snmp_%s SET %s WHERE %s',
-                $snmp_object->name,
-                join(',', (
-                  'chg_when = current_timestamp',
-                  'fresh = true',
-                  map { "$_ = ?" } @{$snmp_object->columns}
-                )),
-                join(' AND ', map { "$_ = ?" } ('host', @object_index))
-              ),
-              ( map {
-                $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
-              } @{$snmp_object->columns} ),
-              $host->name, @idx,
-            ]
+          $tx->add(
+            sprintf(
+              'UPDATE snmp_%s SET %s WHERE %s',
+              $snmp_object->name,
+              join(',', (
+                'chg_when = current_timestamp',
+                'fresh = true',
+                map { "$_ = ?" } @{$snmp_object->columns}
+              )),
+              join(' AND ', map { "$_ = ?" } ('host', @object_index))
+            ),
+            ( map {
+              $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
+            } @{$snmp_object->columns} ),
+            $host->name, @idx,
           );
 
   #--- set the age of the entry to zero, so it's not selected for deletion
@@ -1675,23 +1577,21 @@ sub sql_save_snmp_object
 
         else {
           $stats{'insert'}++;
-          push(@update_plan,
-            [
-              sprintf(
-                'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
-                $snmp_object->name,
-                join(',',
-                  ('host', 'fresh', @object_index, @{$snmp_object->columns})
-                ),
-                join(',',
-                  ('?') x (2 + @object_index + @{$snmp_object->columns})
-                ),
+          $tx-add(
+            sprintf(
+              'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
+              $snmp_object->name,
+              join(',',
+                ('host', 'fresh', @object_index, @{$snmp_object->columns})
               ),
-              $host->name, 't', @idx,
-              map {
-                $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
-              } @{$snmp_object->columns}
-            ]
+              join(',',
+                ('?') x (2 + @object_index + @{$snmp_object->columns})
+              ),
+            ),
+            $host->name, 't', @idx,
+            map {
+              $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
+            } @{$snmp_object->columns}
           );
         }
       }
@@ -1710,15 +1610,13 @@ sub sql_save_snmp_object
 
           if($leaf->{'chg_age'} > $dbmaxage) {
             $stats{'delete'}++;
-            push(@update_plan,
-              [
-                sprintf(
-                  'DELETE FROM snmp_%s WHERE %s',
-                  $snmp_object->name,
-                  join(' AND ', map { "$_ = ?" } ('host', @{$snmp_object->index}))
-                ),
-                $host->name, @idx
-              ]
+            $tx->add(
+              sprintf(
+                'DELETE FROM snmp_%s WHERE %s',
+                $snmp_object->name,
+                join(' AND ', map { "$_ = ?" } ('host', @{$snmp_object->index}))
+              ),
+              $host->name, @idx
             );
           }
         }
@@ -1729,18 +1627,14 @@ sub sql_save_snmp_object
 
     if($debug_fh) {
       printf $debug_fh
-        "--> UPDATE PLAN START (%d rows, %d inserts, %d updates, %d deletes)\n",
-        scalar(@update_plan), @stats{'insert','update', 'delete'};
-      for my $row (@update_plan) {
-        print $debug_fh sql_show_query(@$row), "\n";
-      }
-      print $debug_fh "--> UPDATE PLAN END\n";
+        "--> UPDATE PLAN INFO (%d rows, %d inserts, %d updates, %d deletes)\n",
+        $tx->count, @stats{'insert','update', 'delete'};
     }
 
   #--- perform database transaction
 
-    if(@update_plan) {
-      my $e = sql_transaction(\@update_plan);
+    if($tx->count) {
+      my $e = $tx->commit;
       die $e if $e;
     }
 

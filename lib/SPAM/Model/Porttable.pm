@@ -55,10 +55,10 @@ sub exists ($self, $h, $p)
 sub insert ($self, %args)
 {
   my $site = substr($args{host}, 0, 3);
-  [
+  (
     'INSERT INTO porttable (host,portname,cp,site,chg_who) VALUES (?,?,?,?,?)',
     $args{host}, $args{port}, $args{cp}, $args{site} // $site, 'swcoll'
-  ]
+  )
 }
 
 1;
