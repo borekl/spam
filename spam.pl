@@ -26,6 +26,7 @@ use SPAM::SNMP;
 use SPAM::Cmdline;
 use SPAM::Config;
 use SPAM::Host;
+use SPAM::Model::Porttable;
 
 $| = 1;
 
@@ -1157,7 +1158,7 @@ sub switch_info
     my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'};
     my $portname = $ifXTable->{$if}{'ifName'}{'value'};
     $stat->{p_total}++;
-    $stat->{p_patch}++ if exists $port2cp->{$host->name}{$portname};
+    $stat->{p_patch}++ if $port2cp->exists($host->name, $portname);
     $stat->{p_act}++
       if $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up';
     # p_errdis used to count errordisable ports, but required SNMP variable
@@ -1166,7 +1167,7 @@ sub switch_info
     if(
       $knownports
       && $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up'
-      && !exists $port2cp->{$host->name}{$portname}
+      && !$port2cp->exists($host->name, $portname)
       && !(
         exists $host->snmp->{'CISCO-CDP-MIB'}
         && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
@@ -1481,29 +1482,30 @@ sub sql_autoreg
   # get site-code from hostname
   my $site = $cfg->site_conv($host->name);
 
-  # iterate over all ports
+  # iterate over all ports; FIXME: this is iterating ports loaded from the
+  # database, not ports actually seen on the host -- this needs to be changed
+  # to be correct; the workaround for now is to not run --autoreg on every
+  # spam run or just hope the races won't occur
   $host->iterate_ports(sub {
     my $port = shift;
     my $descr = @_[6];
-    my ($cp_descr, $cp_db);
-    if($descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
+    my $cp_descr;
+    if($descr && $descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
       $cp_descr = $1;
       next if $cp_descr eq 'x';
       next if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
       $cp_descr = substr($cp_descr, 0, 10);
-      $cp_db = $port2cp->{$host->name}{$port};
-      # FIXME: load_port_table() returns hash with values in the form of
-      # "port!cp"
-      $cp_db =~ s/^.*!//;
-      if(!$cp_db && !exists $port2cp->{$host->name}{$port}) {
-        push(@insert,
-          sprintf(
-            qq{INSERT INTO porttable VALUES ( '%s', '%s', '%s', '%s', 'swcoll' )},
-            $host->name, $port, $cp_descr, $site
-          )
-        );
+      if(!$port2cp->exists($host->name, $port)) {
+        push(@insert, $port2cp->insert(
+          host => $host->name,
+          port => $port,
+          cp => $cp_descr,
+          site => $site
+        ));
       }
     }
+    # continue iterating
+    return undef;
   });
 
   # insert data into database
@@ -1880,10 +1882,7 @@ try {
 	#--- load port and outlet tables -----------------------------------
 
 	tty_message("[main] Loading port table (started)\n");
-  my $ret;
-	($ret, $port2cp) = load_port_table();
-	if($ret) { die "$ret\n"; }
-	undef $ret;
+	$port2cp = SPAM::Model::Porttable->new;
 	tty_message("[main] Loading port table (finished)\n");
 
 	#--- disconnect parent database handle before forking --------------

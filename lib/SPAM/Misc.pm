@@ -21,7 +21,6 @@ our @EXPORT = qw(
   tty_message
   sql_find_user_group
   compare_ports
-  load_port_table
   sql_sites
   sql_site_uses_cp
   multipush
@@ -180,38 +179,6 @@ sub compare_ports
   if($comp_num == 0) { return $comp_type; }
   if(!$mode) { return $comp_num; }
   return $comp_type;
-}
-
-
-#===========================================================================
-# Loads ports to consolidation point map
-#
-# This seems to be somewhat inefficient since this loads all the 4000+ entry
-# porttable into memory even if only one host is being polled. The
-# information is only used for swstat generation.
-#
-# Arguments: -none-
-# Returns:   1. error message or empty string
-#            2. port to cons. point hash
-#===========================================================================
-
-sub load_port_table
-{
-  my ($r, $e);
-  my $dbh = db('spam');
-  my %port2cp;
-
-  if(!ref($dbh)) { return 'Database connection failed (spam)'; }
-  my $sth = $dbh->prepare('SELECT host, portname, cp, chg_who FROM porttable');
-  $r = $sth->execute();
-  if(!$r) {
-    return 'Database query failed (spam, ' . $sth->errstr() . ')';
-  }
-  while(my $ra = $sth->fetchrow_arrayref()) {
-    my $site = substr($ra->[0], 0, 3);
-    $port2cp{$ra->[0]}{$ra->[1]} = $site . '!' . $ra->[2];
-  }
-  return ('', \%port2cp);
 }
 
 
