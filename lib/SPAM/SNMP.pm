@@ -7,10 +7,10 @@
 #===========================================================================
 
 
-package SPAM_SNMP;
+package SPAM::SNMP;
 require Exporter;
 use lib 'lib';
-use SPAMv2 qw(file_lineread hash_create_index);
+use SPAM::Misc qw(file_lineread hash_create_index);
 use SPAM::Entity;
 use SPAM::EntityTree;
 use SPAM::Config;

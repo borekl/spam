@@ -24,7 +24,6 @@ use FindBin qw($Bin);
 #=== modules =================================================================
 
 use Cwd qw(abs_path);
-use SPAMv2;
 use JSON::MaybeXS;
 use Data::Dumper;
 use Try::Tiny;
@@ -32,6 +31,7 @@ use Plack::Request;
 use Plack::Response;
 
 use ONdb::Authorize;
+use SPAM::Misc;
 use SPAM::Config;
 use SPAM::Entity;
 use SPAM::EntityTree;

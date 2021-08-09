@@ -7,7 +7,7 @@
 #===========================================================================
 
 
-package SPAMv2;
+package SPAM::Misc;
 require Exporter;
 use lib 'lib';
 use integer;

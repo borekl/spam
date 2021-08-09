@@ -1,4 +1,4 @@
-#!/usr/bin/perl -I.
+#!/usr/bin/perl
 
 #===========================================================================
 # SWITCH PORTS ACTIVITY MONITOR, 3rd GENERATION
@@ -17,12 +17,12 @@
 use strict;
 use lib 'lib';
 use POSIX qw(strftime);
-use SPAMv2;
-use SPAM_SNMP;
 use Socket;
 use Data::Dumper;
 use Try::Tiny;
 
+use SPAM::Misc;
+use SPAM::SNMP;
 use SPAM::Cmdline;
 use SPAM::Config;
 use SPAM::Host;
