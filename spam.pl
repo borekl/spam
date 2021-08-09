@@ -19,7 +19,7 @@ use lib 'lib';
 use POSIX qw(strftime);
 use Socket;
 use Data::Dumper;
-use Try::Tiny;
+use Feature::Compat::Try;
 
 use SPAM::Misc;
 use SPAM::SNMP;
@@ -1242,13 +1242,12 @@ sub sql_switch_info_update
 
   #--- try block ends here -------------------------------------------------
 
-  } catch {
-    chomp;
-    my ($msg, $err) = split(/\|/);
-    if($msg eq 'DBERR') {
-      print $rv = "Database update error ($err) on query '$q'\n";
-    }
-  };
+  } catch ($err) {
+    chomp $err;
+    my ($code, $errmsg) = split(/\|/, $err);
+    print $rv = "Database update error ($err) on query '$q'\n"
+      if $code eq 'DBERR';
+  }
 
   #--- ???: why is this updated HERE? ---
   # $swdata{HOST}{stats}{vtpdomain,vtpmode} are not used anywhere
@@ -1644,10 +1643,9 @@ sub sql_save_snmp_object
   #=== catch block =========================================================
   #=========================================================================
 
-  catch {
-    $err = $_;
+  catch ($err) {
     printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
-  };
+  }
 
   # finish
   close($debug_fh) if $debug_fh;
@@ -1909,10 +1907,10 @@ try {
           }
         }
 
-        catch {
-          chomp;
-          tty_message("[$host] Host poll failed ($_)\n") if $_;
-        };
+        catch ($err) {
+          chomp $err;
+          tty_message("[$host] Host poll failed ($err)\n");
+        }
 
       } # host processing block ends here
 
@@ -1961,12 +1959,12 @@ try {
   }
   tty_message("[main] Concurrent section finished\n");
 
-} catch {
-  if($_ && $_ ne "OK\n") {
+} catch ($err) {
+  if($err && $err ne "OK\n") {
     if (! -t STDOUT) { print "spam: "; }
     print $_;
   }
-};
+}
 
 #--- release lock file ---
 

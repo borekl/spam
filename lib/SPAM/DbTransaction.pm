@@ -8,7 +8,7 @@ use v5.12;
 use warnings;
 use experimental 'signatures';
 use Carp;
-use Try::Tiny;
+use Feature::Compat::Try;
 
 use SPAM::Config;
 use SPAM::Misc qw(sql_show_query);
@@ -104,15 +104,15 @@ sub commit ($self)
   }
 
   # deal with transaction failure
-  catch {
-    chomp;
+  catch ($err) {
+    chomp $err;
     $self->_debug('---> TRANSACTION FAILED (%s)', $rv = $_);
     if(!$dbh->rollback) {
       $self->_debug('---> TRANSACTION ABORT FAILED (%s)', $dbh->errstr);
     } else {
       $self->_debug('---> TRANSACTION ABORTED SUCCESSFULLY');
     }
-  };
+  }
 
   # finish
   $self->_debug(undef);
