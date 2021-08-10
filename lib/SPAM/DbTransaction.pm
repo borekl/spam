@@ -62,6 +62,7 @@ sub commit ($self)
 {
   my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
   my $rv;
+  my $line = 1;
   
   # ensure we have database
   croak 'Database connection failed' unless $dbh;
@@ -77,35 +78,25 @@ sub commit ($self)
   try {
 
     # commence the transaction
-    $dbh->begin_work
-    || die sprintf(
-      "Failed to start database transaction (spam, %s)\n", $dbh->errstr
-    );
+    $dbh->begin_work;
 
     # send the transaction off to the database
-    my $line = 1;
     foreach my $row (@{$self->_tx_buffer}) {
       my $qry = shift @$row;
       my $sth = $dbh->prepare($qry);
       my $r = $sth->execute(@$row);
-      die sprintf(
-        'Database update failed (line %d, %s), transaction abort pending',
-        $line, $sth->errstr
-      ) unless $r;
       $line++;
     }
 
     # finish the transaction
-    $dbh->commit
-    || die sprintf(
-      "Failed to commit database transaction (spam, %s)\n", $dbh->errstr
-    );
+    $dbh->commit;
 
   }
 
   # deal with transaction failure
   catch ($err) {
     chomp $err;
+    my $rv = $err;
     $self->_debug('---> TRANSACTION FAILED (%s)', $rv = $_);
     if(!$dbh->rollback) {
       $self->_debug('---> TRANSACTION ABORT FAILED (%s)', $dbh->errstr);

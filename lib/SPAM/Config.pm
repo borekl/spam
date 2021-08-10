@@ -135,6 +135,7 @@ sub get_dbi_handle
   my $cfg;
   my %dbi_params = (
     AutoCommit => 1,
+    RaiseError => 1,
     pg_enable_utf => 1,
     PrintError => 0,
     FetchHashKeyName => 'NAME_lc'
@@ -222,9 +223,6 @@ sub _build_hosts
 
   my $sth = $dbh->prepare('SELECT * FROM v_switchlist');
   my $r = $sth->execute();
-  if(!$r) {
-    die 'Failed to load list of switches from database';
-  }
 
   # the way the info is stored is the same as the old $cfg->{'host'} hash
 
@@ -255,9 +253,6 @@ sub _build_arpservers
 
   my $sth = $dbh->prepare('SELECT * FROM v_arpservers');
   my $r = $sth->execute();
-  if(!$r) {
-    die 'Failed to load list of arpservers from database';
-  }
 
   my @arpservers;
   while(my ($s, $cmty) = $sth->fetchrow_array()) {

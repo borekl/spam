@@ -13,6 +13,7 @@ use lib 'lib';
 use integer;
 use warnings;
 use strict;
+use Feature::Compat::Try;
 
 use SPAM::Config;
 
@@ -86,20 +87,20 @@ sub sql_find_user_group
 
   #--- ensure database connection
 
-  if(!ref($c)) {
-    return 'Database connection failed (ondb)';
-  }
+  return 'Database connection failed (ondb)' unless ref $c;
 
   #--- perform query
 
-  $sth = $c->prepare('SELECT grpid FROM users WHERE userid = ?');
-  $r = $sth->execute($user);
-  if(!$r) {
-    return 'Database query failed (' . $sth->errstr() . ')';
+  try {
+    $sth = $c->prepare('SELECT grpid FROM users WHERE userid = ?');
+    $r = $sth->execute($user);
+    ($group) = $sth->fetchrow_array();
+  } catch ($err) {
+    chomp $err;
+    return 'Database query failed (ondb, ' . $c->errstr . ')';
   }
-  ($group) = $sth->fetchrow_array();
 
-  if(!$group) { return "Cannot find user or no group assigned"; }
+  if(!$group) { return 'Cannot find user or no group assigned'; }
   return (undef, $group);
 }
 
@@ -199,14 +200,17 @@ sub sql_sites
   my $q = "SELECT DISTINCT site FROM $table ORDER BY site ASC";
   my @result;
 
-  if(!ref($dbh)) { return 'Cannot connect to database'; }
-  my $sth = $dbh->prepare($q);
-  my $r = $sth->execute();
-  if(!$r) {
-    return 'Database query failed (spam, ' . $sth->errstr() . ')';
-  }
-  while(my $x = $sth->fetchrow_arrayref()) {
-    push(@result, $x->[0]);
+  return 'Database connection failed' unless ref $dbh;
+
+  try {
+    my $sth = $dbh->prepare($q);
+    $sth->execute();
+    while(my $x = $sth->fetchrow_arrayref()) {
+      push(@result, $x->[0]);
+    }
+  } catch ($err) {
+    chomp $err;
+    return 'Database query failed (spam, ' . $dbh->errstr . ')';
   }
 
   ### UGLY HACK ### FIXME ###
@@ -231,9 +235,16 @@ sub sql_site_uses_cp
   my $dbh = db('spam');
   my $query = qq{SELECT site FROM out2cp GROUP BY site HAVING site = ?};
 
-  if(!ref($dbh) || !$site) { return undef; }
-  my $sth = $dbh->prepare($query);
-  return int($sth->execute($site));
+  return undef unless !ref $dbh || !$site;
+
+  try {
+    my $sth = $dbh->prepare($query);
+    $sth->execute($site);
+  } catch ($err) {
+    return 0;
+  }
+
+  return 1;
 }
 
 

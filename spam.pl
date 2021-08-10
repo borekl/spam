@@ -52,7 +52,8 @@ sub sql_load_status
   my $host = shift;
   my $dbh = $cfg->get_dbi_handle('spam');
 
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
+  die "Database connection failed\n" unless ref $dbh;
+
   my $qry = 'SELECT %s FROM status WHERE host = ?';
   my @fields = (
     'portname',
@@ -74,9 +75,6 @@ sub sql_load_status
   $qry = sprintf($qry, join(',', @fields));
   my $sth = $dbh->prepare($qry);
   my $r = $sth->execute($host->name);
-  if(!$r) {
-    return 'Database query failed (spam, ' . $sth->errstr() . ')';
-  }
 
   while(my $ra = $sth->fetchrow_arrayref()) {
     $host->add_port(@$ra);
@@ -1110,14 +1108,18 @@ sub sql_get_vtp_masters_list
 
   #--- pull data from database ---
 
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-  my $sth = $dbh->prepare('SELECT * FROM vtpmasters');
-  if(!$sth->execute()) {
-    return 'Database query failed (spam,' . $sth->errstr() . ')';
-  }
-  while(my @a = $sth->fetchrow_array) {
-    $a[2] = $cfg->snmp_community($a[0]);
-    push(@list, \@a);
+  return "Database connection failed\n" unless ref $dbh;
+
+  try {
+    my $sth = $dbh->prepare('SELECT * FROM vtpmasters');
+    $sth->execute;
+    while(my @a = $sth->fetchrow_array) {
+      $a[2] = $cfg->snmp_community($a[0]);
+      push(@list, \@a);
+    }
+  } catch ($err) {
+    chomp $err;
+    return 'Database query failed (' . $dbh->errstr . ')';
   }
 
   #--- for VTP domains with preferred masters, eliminate all other masters;
@@ -1238,15 +1240,13 @@ sub sql_switch_info_update
     }
 
     $sth = $dbh->prepare($q);
-    my $r = $sth->execute(@args) || die 'DBERR|' . $sth->errstr() . "\n";
+    $sth->execute(@args);
 
   #--- try block ends here -------------------------------------------------
 
   } catch ($err) {
     chomp $err;
-    my ($code, $errmsg) = split(/\|/, $err);
-    print $rv = "Database update error ($err) on query '$q'\n"
-      if $code eq 'DBERR';
+    $rv = "Database update error ($err) on query '$q'";
   }
 
   #--- ???: why is this updated HERE? ---
@@ -1281,21 +1281,21 @@ sub maintenance
   $dbh->do(
     q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
     undef, $t, $cfg->arptableage
-  ) or return 'Cannot delete from database (spam)';
+  );
 
   #--- mactable purging
 
   $dbh->do(
     q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
     undef, $t, $cfg->mactableage
-  ) or return 'Cannot delete from database (spam)';
+  );
 
   #--- status table purging
 
   $dbh->do(
     q{DELETE FROM status WHERE (? - date_part('epoch', lastchk)) > ?},
     undef, $t, 7776000 # 90 days
-  ) or return 'Cannot delete from database (spam)';
+  );
 
   #--- swstat table purging ---
 

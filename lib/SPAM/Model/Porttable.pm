@@ -28,8 +28,7 @@ sub _build_porttable ($self)
   my $sth = $dbh->prepare(
     'SELECT host, portname, cp FROM porttable'
   );
-  my $r = $sth->execute;
-  croak 'Database query failed (spam, ' . $sth->errstr . ')' unless $r;
+  $sth->execute;
 
   # process the result
   while(my ($host, $port, $cp) = $sth->fetchrow_array) {
