@@ -17,7 +17,7 @@ use Carp;
 use Scalar::Util qw(reftype);
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
-use DBI;
+use DBIx::Connector;
 use SPAM::MIB;
 use SPAM::Keys;
 
@@ -124,12 +124,9 @@ sub _build_config
   return $cfg;
 }
 
-#=============================================================================
-# Get DBI handle for supplied configured connection id. This handles local
-# caching of the handles, so that there's only one handle per process.
-#=============================================================================
-
-sub get_dbi_handle
+#-----------------------------------------------------------------------------
+# Get DBIx::Connector instance for given database binding.
+sub get_dbx_handle
 {
   my ($self, $dbid) = @_;
   my $cfg;
@@ -141,47 +138,45 @@ sub get_dbi_handle
     FetchHashKeyName => 'NAME_lc'
   );
 
-  #--- sanity checks
-
-  if(!exists $self->config()->{'dbconn'}) {
-    croak qq{Database configuration section missing};
-  }
+  # sanity checks
+  croak qq{Database configuration section missing}
+  unless exists $self->config()->{'dbconn'};
   $cfg = $self->config()->{'dbconn'};
 
-  if(!$dbid) {
-    croak qq{Invalid argument in SPAM::Config::get_dbi_handle()};
-  }
-
-  if(!exists $cfg->{$dbid}) {
-    croak qq{Undefined database connection id "$dbid"};
-  }
+  croak qq{Invalid argument in SPAM::Config::get_dbi_handle()} unless $dbid;
+  croak qq{Undefined database connection id "$dbid"} unless exists $cfg->{$dbid};
   $cfg = $cfg->{$dbid};
 
-  #--- if already connected, just return the handle
-
+  # if already connected, just return the handle
   if(exists $self->dbconn()->{$dbid}) {
     return $self->dbconn()->{$dbid};
   }
 
-  #--- otherwise try to connect to the database
-
+  # otherwise try to connect to the database
   my $dsn = 'dbi:Pg:db=' . $cfg->{'dbname'};
   $dsn .= ';host=' . $cfg->{'dbhost'} if $cfg->{'dbhost'};
 
-  my $dbh = DBI->connect(
+  my $conn = DBIx::Connector->new(
     $dsn,
     $cfg->{'dbuser'},
     $cfg->{'dbpass'},
+    \%dbi_params
   );
 
-  if(!ref($dbh)) {
-    return DBI::errstr();
-  }
+  die 'Failed to initialize DBIx::Connector instance' unless ref $conn;
 
-  #--- finish
+  # finish
+  $self->dbconn()->{$dbid} = $conn;
+  return $conn;
+}
 
-  $self->dbconn()->{$dbid} = $dbh;
-  return $dbh;
+
+#-----------------------------------------------------------------------------
+# Get DBI handle
+sub get_dbi_handle
+{
+  my ($self, $dbid) = @_;
+  $self->get_dbx_handle($dbid)->dbh;
 }
 
 

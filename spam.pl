@@ -1777,10 +1777,6 @@ try {
 	$port2cp = SPAM::Model::Porttable->new;
 	tty_message("[main] Loading port table (finished)\n");
 
-	#--- disconnect parent database handle before forking --------------
-
-	$cfg->close_dbi_handle('spam');
-
 	#--- create work list of hosts that are to be processed ------------
 
 	my @work_list;
