@@ -60,13 +60,10 @@ sub count($self) { scalar @{$self->_tx_buffer} }
 # commit transaction
 sub commit ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $rv;
   my $line = 1;
   
-  # ensure we have database
-  croak 'Database connection failed' unless $dbh;
-
   # do a debug dump
   if($ENV{SPAM_DEBUG}) {
     my $line = 1;
@@ -75,34 +72,19 @@ sub commit ($self)
     }
   }
 
+  # send the transaction off to the database
   try {
-
-    # commence the transaction
-    $dbh->begin_work;
-
-    # send the transaction off to the database
-    foreach my $row (@{$self->_tx_buffer}) {
-      my $qry = shift @$row;
-      my $sth = $dbh->prepare($qry);
-      my $r = $sth->execute(@$row);
-      $line++;
-    }
-
-    # finish the transaction
-    $dbh->commit;
-
-  }
-
-  # deal with transaction failure
-  catch ($err) {
+    $dbx->txn(fix_up => sub {
+      foreach my $row (@{$self->_tx_buffer}) {
+        my $qry = shift @$row;
+        my $sth = $_->prepare($qry);
+        my $r = $sth->execute(@$row);
+        $line++;
+      }
+    });
+  } catch ($err) {
     chomp $err;
-    my $rv = $err;
     $self->_debug('---> TRANSACTION FAILED (%s)', $rv = $_);
-    if(!$dbh->rollback) {
-      $self->_debug('---> TRANSACTION ABORT FAILED (%s)', $dbh->errstr);
-    } else {
-      $self->_debug('---> TRANSACTION ABORTED SUCCESSFULLY');
-    }
   }
 
   # finish
