@@ -46,7 +46,8 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/Host/Location.pm', dest: '../prod/lib/SPAM/Host/Location.pm' },
          { nonull: true, src: 'lib/SPAM/Host/Platform.pm', dest: '../prod/lib/SPAM/Host/Platform.pm' },
          { nonull: true, src: 'lib/SPAM/Host/PortFlags.pm', dest: '../prod/lib/SPAM/Host/PortFlags.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/TrunkVlans.pm', dest: '../prod/lib/SPAM/Host/TrunkVlans.pm' }
+         { nonull: true, src: 'lib/SPAM/Host/TrunkVlans.pm', dest: '../prod/lib/SPAM/Host/TrunkVlans.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' }
        ]
      },
      www: {
@@ -60,8 +61,9 @@ module.exports = function(grunt)
      coll: {
        files: [
          { nonull: true, src: 'spam.pl', dest: '../prod/spam.pl' },
-         { nonull: true, src: 'SPAMv2.pm', dest: '../prod/SPAMv2.pm' },
-         { nonull: true, src: 'SPAM_SNMP.pm', dest: '../prod/SPAM_SNMP.pm' }
+         { nonull: true, src: 'lib/SPAM/Misc.pm', dest: '../prod/lib/SPAM/Misc.pm' },
+         { nonull: true, src: 'lib/SPAM/SNMP.pm', dest: '../prod/lib/SPAM/SNMP.pm' },
+         { nonull: true, src: 'lib/SPAM/DbTransaction.pm', dest: '../prod/lib/SPAM/DbTransaction.pm' }
        ]
      }
    },
