@@ -42,9 +42,7 @@ with 'SPAM::Host::EntityTree';
 with 'SPAM::Host::TrunkVlans';
 with 'SPAM::Host::PortFlags';
 with 'SPAM::Host::PortToIfIndex';
-
-# ifIndex to (portModuleIndex, portIndex), some CISCO MIBs use this
-has ifindex_to_portindex => ( is => 'rw', predicate => 1 );
+with 'SPAM::Host::IfIndexToPortIndex';
 
 # ifIndex to BRIDGE-MIB index
 has ifindex_to_dot1d => ( is => 'rw', predicate => 1 );

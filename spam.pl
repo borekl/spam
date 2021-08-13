@@ -319,22 +319,6 @@ sub poll_host
 
   die 'ifTable/ifXTable do not exist' unless $host->has_iftable;
 
-  # some CISCO MIBs use this kind of indexing instead of ifIndex
-
-  my %by_portindex;
-  if(
-    exists $host->snmp->{'CISCO-STACK-MIB'}{'portTable'}
-  ) {
-    my $t = $host->snmp->{'CISCO-STACK-MIB'}{'portTable'};
-    for my $idx_mod (keys %$t) {
-      for my $idx_port (keys %{$t->{$idx_mod}}) {
-        $by_portindex{$t->{$idx_mod}{$idx_port}{'portIfIndex'}{'value'}}
-        = [ $idx_mod, $idx_port ];
-      }
-    }
-    $host->ifindex_to_portindex(\%by_portindex);
-  }
-
   #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
 
   my %by_dot1d;
