@@ -54,6 +54,7 @@ sub sql_load_status
   my $host = shift;
   my $dbh = $cfg->get_dbi_handle('spam');
 
+  carp 'DEPRECATED sql_load_status';
   die "Database connection failed\n" unless ref $dbh;
 
   my $qry = 'SELECT %s FROM status WHERE host = ?';
@@ -118,7 +119,9 @@ sub poll_host
 
   #--- other variables -----------------------------------------------------
 
-  my $host = SPAM::Host->new(name => $hostname);
+  my $host = SPAM::Host->new(name => $hostname, mesg => sub {
+    my $s = shift; tty_message("$s\n", @_);
+  });
 
   #--- check if the hostname can be resolved
 
@@ -315,40 +318,6 @@ sub poll_host
   #--- make sure ifTable and ifXTable exist
 
   die 'ifTable/ifXTable do not exist' unless $host->has_iftable;
-
-  #--- prune non-ethernet interfaces and create portName -> ifIndex hash
-
-  my $cnt_prune = 0;
-  my (%by_ifindex, %by_ifname);
-  tty_message("[%s] Pruning non-ethernet interfaces (started)\n", $host->name);
-  for my $if (keys %{ $host->snmp->{'IF-MIB'}{'ifTable'} }) {
-    if(
-      # interfaces of type other than 'ethernetCsmacd'
-      $host->snmp->{'IF-MIB'}{'ifTable'}{$if}{'ifType'}{'enum'}
-        ne 'ethernetCsmacd'
-      # special case; some interfaces are ethernetCsmacd and yet they are
-      # not real interfaces (good job, Cisco) and cause trouble
-      || $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'}
-        =~ /^vl/i
-    ) {
-      # matching interfaces are deleted
-      delete $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
-      delete $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
-      $cnt_prune++;
-    } else {
-      #non-matching interfaces are indexed
-      $by_ifindex{$if}
-      = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'};
-    }
-  }
-  %by_ifname = reverse %by_ifindex;
-  $host->port_to_ifindex(\%by_ifname);
-  tty_message(
-    "[%s] Pruning non-ethernet interfaces (finished, %d pruned)\n",
-    $host->name, $cnt_prune
-  );
-
-  #--- create ifindex->CISCO-STACK-MIB::portModuleIndex,portIndex
 
   # some CISCO MIBs use this kind of indexing instead of ifIndex
 
@@ -1085,7 +1054,7 @@ sub switch_info
     # ports that were used within period defined by "inactivethreshold2"
     # configuration parameter
     if($knownports) {
-      if($host->get_port($portname, 12) < 2592000) {
+      if($host->get_port_db($portname, 'age') < 2592000) {
         $stat->{p_used}++;
       }
     }
@@ -1392,19 +1361,18 @@ sub sql_autoreg
   # database, not ports actually seen on the host -- this needs to be changed
   # to be correct; the workaround for now is to not run --autoreg on every
   # spam run or just hope the races won't occur
-  $host->iterate_ports(sub {
-    my $port = shift;
-    my $descr = @_[6];
+  $host->iterate_ports_db(sub ($portname, $port) {
+    my $descr = $port->{descr};
     my $cp_descr;
     if($descr && $descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
       $cp_descr = $1;
       next if $cp_descr eq 'x';
       next if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
       $cp_descr = substr($cp_descr, 0, 10);
-      if(!$port2cp->exists($host->name, $port)) {
+      if(!$port2cp->exists($host->name, $portname)) {
         $tx->add($port2cp->insert(
           host => $host->name,
-          port => $port,
+          port => $portname,
           cp => $cp_descr,
           site => $site
         ));
