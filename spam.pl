@@ -319,37 +319,6 @@ sub poll_host
 
   die 'ifTable/ifXTable do not exist' unless $host->has_iftable;
 
-  #--- create mapping from IF-MIB to BRIDGE-MIB interfaces
-
-  my %by_dot1d;
-
-  if(
-    exists $host->snmp->{'BRIDGE-MIB'}
-    && exists $host->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
-  ) {
-    my @vlans
-    = keys %{
-      $host->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
-    };
-    for my $vlan (@vlans) {
-      if(
-        exists $host->snmp->{'BRIDGE-MIB'}{$vlan}
-        && exists $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
-      ) {
-        my @dot1idxs
-        = keys %{
-          $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
-        };
-        for my $dot1d (@dot1idxs) {
-          $by_dot1d{
-            $host->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
-          } = $dot1d;
-        }
-      }
-    }
-    $host->ifindex_to_dot1d(\%by_dot1d);
-  }
-
   #--- dump swstat and entity table
 
   if($ENV{'SPAM_DEBUG'}) {

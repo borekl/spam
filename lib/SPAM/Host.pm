@@ -43,9 +43,7 @@ with 'SPAM::Host::TrunkVlans';
 with 'SPAM::Host::PortFlags';
 with 'SPAM::Host::PortToIfIndex';
 with 'SPAM::Host::IfIndexToPortIndex';
-
-# ifIndex to BRIDGE-MIB index
-has ifindex_to_dot1d => ( is => 'rw', predicate => 1 );
+with 'SPAM::Host::IfIndexToDot1d';
 
 # port statistics
 has port_stats => ( is => 'ro', default => sub {{
