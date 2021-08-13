@@ -164,6 +164,21 @@ sub has_iftable ($self)
   }
 }
 
+#------------------------------------------------------------------------------
+# give list of ports that we have in database, but can no longer see in SNMP
+# data
+sub vanished_ports ($self)
+{
+  my @vanished;
+  my @in_db = $self->ports_db2->list_ports;
+
+  $self->iterate_ports_db(sub ($pn, $p) {
+    push(@vanished) if (!grep { $_ eq $pn } @in_db)
+  });
+
+  return @vanished;
+}
+
 #==============================================================================
 
 1;

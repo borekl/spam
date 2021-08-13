@@ -423,15 +423,9 @@ sub find_changes
     }
   }
 
-  #--- delete: ports that no longer exist (not found via SNMP) ---
-
-  $host->iterate_ports(sub {
-    my $k = shift;
-    if(!grep { $_ eq $k } @idx_keys) {
-      push(@update_plan, [ 'd', $k ]);       # 'd' as 'delete'
-      $stats[1]++;
-    }
-  });
+  # delete: ports that no longer exist (not found via SNMP)
+  push(@update_plan, map { [ 'd', $_ ] } $host->vanished_ports);
+  $stats[1] = @update_plan;
 
   #--- now we scan entries found via SNMP ---
 
