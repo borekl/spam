@@ -16,9 +16,11 @@
 
 use strict;
 use lib 'lib';
+use experimental 'signatures';
 use POSIX qw(strftime);
 use Socket;
 use Data::Dumper;
+use Carp;
 use Feature::Compat::Try;
 
 use SPAM::Misc;
