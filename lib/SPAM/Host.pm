@@ -59,11 +59,10 @@ has port_stats => ( is => 'ro', default => sub {{
 # message display callback
 has mesg => ( is => 'ro', predicate => 1, isa => sub { ref $_[0] } );
 
-#==============================================================================
 
+#------------------------------------------------------------------------------
 # add one port as pulled from database by sql_load_status(); FIXME: this needs
 # refactoring
-
 sub add_port ($self, $key, @fields)
 {
   carp 'DEPRECATED SPAM::Host->add_port()';
@@ -72,8 +71,8 @@ sub add_port ($self, $key, @fields)
   $self->ports_db->{$key} = [ @fields ];
 }
 
+#------------------------------------------------------------------------------
 # iterate over ports; semantically same as swdata_status_iter() legacy function
-
 sub iterate_ports ($self, $cb)
 {
   carp 'DEPRECATED SPAM::Host->iterate_ports()';
@@ -82,7 +81,7 @@ sub iterate_ports ($self, $cb)
     last if $r;
   }
 }
-
+#------------------------------------------------------------------------------
 sub iterate_ports_db ($self, $cb)
 {
   foreach my $portname ($self->ports_db2->list_ports) {
@@ -91,8 +90,8 @@ sub iterate_ports_db ($self, $cb)
   }
 }
 
+#------------------------------------------------------------------------------
 # reimplementation of swdata_status_get() legacy function
-
 sub get_port ($self, $key, $col=undef)
 {
   carp 'DEPRECATED SPAM::Host->get_port()';
@@ -108,6 +107,7 @@ sub get_port ($self, $key, $col=undef)
   }
 }
 
+#------------------------------------------------------------------------------
 sub get_port_db ($self, $key, $col=undef)
 {
   if(exists $self->ports_db2->{$key}) {
@@ -122,8 +122,8 @@ sub get_port_db ($self, $key, $col=undef)
   }
 }
 
+#------------------------------------------------------------------------------
 # add SNMP object
-
 sub add_snmp_object ($self, $mib, $vlan, $object, $data)
 {
   if($vlan) {
@@ -133,8 +133,8 @@ sub add_snmp_object ($self, $mib, $vlan, $object, $data)
   }
 }
 
+#------------------------------------------------------------------------------
 # find and return reference to a snmp entity; trees with VLANs not supported
-
 sub get_snmp_object ($self, $object_name)
 {
   my $mibs = $self->snmp;
@@ -148,8 +148,9 @@ sub get_snmp_object ($self, $object_name)
   return undef;
 }
 
-# return true if ifTable AND ifXTable exist
 
+#------------------------------------------------------------------------------
+# return true if ifTable AND ifXTable exist
 sub has_iftable ($self)
 {
   if(
