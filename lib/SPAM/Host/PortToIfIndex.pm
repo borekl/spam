@@ -4,7 +4,7 @@ use Moo::Role;
 use experimental 'signatures';
 use Carp;
 
-requires 'snmp';
+requires qw(snmp has_iftable);
 
 # portname to ifindex hash
 has port_to_ifindex => ( is => 'lazy' );
@@ -21,12 +21,8 @@ sub _build_port_to_ifindex ($self)
   $m->('[%s] Pruning non-ethernet interfaces (started)', $self->name) if $m;
 
   # ifTable needs to be loaded, otherwise fail
-  if(
-    !exists $self->snmp->{'IF-MIB'}
-    || !exists $self->snmp->{'IF-MIB'}{'ifTable'}
-  ) {
-    croak q{ifTable not loaded, cannot create 'port_to_ifindex' attribute};
-  }
+  croak q{ifTable not loaded, cannot create 'port_to_ifindex' attribute}
+  unless $self->has_iftable;
 
   # helper for accessing ifIndex
   my $_if = sub { $self->snmp->{'IF-MIB'}{'ifTable'}{$_[0]} };
