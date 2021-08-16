@@ -10,7 +10,7 @@ use POSIX qw(strftime);
 
 use SPAM::Config;
 use SPAM::Model::PortStatus;
-use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object snmp_get_active_vlans);
+use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object);
 
 # hostname
 has name => (
@@ -49,6 +49,7 @@ with 'SPAM::Host::PortFlags';
 with 'SPAM::Host::PortToIfIndex';
 with 'SPAM::Host::IfIndexToPortIndex';
 with 'SPAM::Host::IfIndexToDot1d';
+with 'SPAM::Host::ActiveVlans';
 
 # port statistics
 has port_stats => ( is => 'ro', default => sub {{
@@ -280,7 +281,7 @@ sub poll ($self, $get_mactable, $hostinfo=undef)
       # known VLANs; this means that vtpVlanName must be already retrieved; this
       # is required for reading MAC addresses from switch via BRIDGE-MIB
       if($obj->has_flag('vlans')) {
-        @vlans = snmp_get_active_vlans($self);
+        @vlans = @{$self->active_vlans};
         if(!@vlans) { @vlans = ( undef ); }
       }
 
