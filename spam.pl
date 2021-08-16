@@ -1223,7 +1223,6 @@ try {
           }
 
           # update swstat table
-
           tty_message("[$host] Updating swstat table (started)\n");
           switch_info($hi);
           $e = sql_switch_info_update($hi);
@@ -1231,7 +1230,6 @@ try {
           tty_message("[$host] Updating swstat table (finished)\n");
 
           # update mactable
-
           if($cmd->mactable()) {
             tty_message("[$host] Updating mactable (started)\n");
             $e = sql_mactable_update($hi);
@@ -1239,8 +1237,10 @@ try {
             tty_message("[$host] Updating mactable (finished)\n");
           }
 
-          # run autoregistration
+          # save SNMP data for use by frontend
+          $hi->save_snmp_data;
 
+          # run autoregistration
           if($cmd->autoreg()) {
             tty_message("[$host] Running auto-registration (started)\n");
             sql_autoreg($hi);

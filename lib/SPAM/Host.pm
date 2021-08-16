@@ -336,25 +336,6 @@ sub poll ($self, $get_mactable, $hostinfo=undef)
         }
       }
 
-      # this saves the MIB table into database if it has 'save' flag, only
-      # supported for tables, not scalars
-      if(
-        $obj->has_flag('save')
-        && exists $self->snmp->{$mib->name}
-        && exists $self->snmp->{$mib->name}{$obj->name}
-      ) {
-        $self->_m('Saving %s (started)', $obj->name);
-        my $r = sql_save_snmp_object($self, $obj);
-        if(!ref $r) {
-          $self->_m('Saving %s (failed)', $obj->name);
-        } else {
-          $self->_m(
-            'Saving %s (finished, i=%d,u=%d,d=%d)',
-            $obj->name, @{$r}{qw(insert update delete)}
-          );
-        }
-      }
-
       # false to continue iterating
       return undef;
     });
@@ -458,6 +439,33 @@ sub poll ($self, $get_mactable, $hostinfo=undef)
       close($fh);
     }
   }
+}
+
+#------------------------------------------------------------------------------
+# This saves all MIB objects marked with 'save' flag to the backend database
+# for access from frontend
+sub save_snmp_data ($self)
+{
+  SPAM::Config->instance->iter_mibs(sub ($mib, $is_first_mib=undef) {
+    $mib->iter_objects(sub ($obj) {
+      if(
+        $obj->has_flag('save')
+        && exists $self->snmp->{$mib->name}
+        && exists $self->snmp->{$mib->name}{$obj->name}
+      ) {
+        $self->_m('Saving %s (started)', $obj->name);
+        my $r = sql_save_snmp_object($self, $obj);
+        if(!ref $r) {
+          $self->_m('Saving %s (failed)', $obj->name);
+        } else {
+          $self->_m(
+            'Saving %s (finished, i=%d,u=%d,d=%d)',
+            $obj->name, @{$r}{qw(insert update delete)}
+          );
+        }
+      }
+    });
+  });
 }
 
 #==============================================================================
