@@ -42,25 +42,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# This function loads last boot time for a host stored in db
-#===========================================================================
-
-sub sql_load_uptime
-{
-  my $host = shift;
-  my $dbh = $cfg->get_dbi_handle('spam');
-
-  die 'Cannot connect to database (spam)' unless ref $dbh;
-  my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
-  my $sth = $dbh->prepare($qry);
-  my $r = $sth->execute($host->name);
-  die 'Database query failed (spam, ' . $sth->errstr() . ')' unless $r;
-  my ($v) = $sth->fetchrow_array();
-  return $v;
-}
-
-
-#===========================================================================
 # This routine encapsulates loading of all data for a single configured
 # host; throws exception when it encounters an error.
 #===========================================================================
@@ -85,7 +66,6 @@ sub poll_host
     tty_message("[%s] Load status (status failed, $r)\n", $host->name);
     die "Failed to load table STATUS\n";
   }
-  $host->boottime_prev(sql_load_uptime($host));
   tty_message("[%s] Load status (finished)\n", $host->name);
 
   #--- load supported MIB trees --------------------------------------------

@@ -3,13 +3,21 @@ package SPAM::Host::Boottime;
 use Moo::Role;
 use experimental 'signatures';
 
-requires 'snmp';
+use SPAM::Model::Boottime;
+
+requires qw(snmp name);
 
 # current boottime (derived from SNMP sysUpTimeInstance)
 has boottime => ( is => 'lazy' );
 
 # last boottime (loaded from database)
-has boottime_prev => ( is => 'rw' );
+has boottime_prev => (
+  is => 'ro',
+  lazy => 1,
+  default => sub ($self) {
+    SPAM::Model::Boottime->new(hostname => $self->name)->boottime_db
+  }
+);
 
 # boottime builder
 sub _build_boottime ($self)
