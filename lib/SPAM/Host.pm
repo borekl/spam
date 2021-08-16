@@ -182,7 +182,7 @@ sub vanished_ports ($self)
   my @in_db = $self->ports_db2->list_ports;
 
   $self->iterate_ports_db(sub ($pn, $p) {
-    push(@vanished) if (!grep { $_ eq $pn } @in_db)
+    push(@vanished, $pn) if (!grep { $_ eq $pn } @in_db)
   });
 
   return @vanished;
