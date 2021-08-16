@@ -1781,7 +1781,7 @@ try {
             my ($update_plan, $update_stats) = find_changes($hi);
             tty_message(
               sprintf(
-                "[%s] Updating status table (%d/%d/%d/%d)\n",
+                "[%s] Updating status table (i=%d/d=%d/U=%d/u=%d)\n",
                 $host, @$update_stats
               )
             );
