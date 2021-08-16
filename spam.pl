@@ -42,52 +42,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# This routine will load content of the status table from the backend
-# database into a host instance.
-#
-# Arguments: 1. host
-# Returns:   1. error message or undef
-#===========================================================================
-
-sub sql_load_status
-{
-  my $host = shift;
-  my $dbh = $cfg->get_dbi_handle('spam');
-
-  carp 'DEPRECATED sql_load_status';
-  die "Database connection failed\n" unless ref $dbh;
-
-  my $qry = 'SELECT %s FROM status WHERE host = ?';
-  my @fields = (
-    'portname',
-    'status',                        # 0
-    'inpkts',                        # 1
-    'outpkts',                       # 2
-    q{date_part('epoch', lastchg)},  # 3
-    q{date_part('epoch', lastchk)},  # 4
-    'vlan',                          # 5
-    'descr',                         # 6
-    'duplex',                        # 7
-    'rate',                          # 8
-    'flags',                         # 9
-    'adminstatus',                   # 10
-    'errdis',                        # 11
-    q{floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg))},
-    'vlans'                          # 13
-  );
-  $qry = sprintf($qry, join(',', @fields));
-  my $sth = $dbh->prepare($qry);
-  my $r = $sth->execute($host->name);
-
-  while(my $ra = $sth->fetchrow_arrayref()) {
-    $host->add_port(@$ra);
-  }
-
-  return undef;
-}
-
-
-#===========================================================================
 # This function loads last boot time for a host stored in db
 #===========================================================================
 
@@ -126,7 +80,7 @@ sub poll_host
   #--- load last status from backend db ------------------------------------
 
   tty_message("[%s] Load status (started)\n", $host->name);
-  my $r = sql_load_status($host);
+  my $r = $host->sql_load_status;
   if(defined $r) {
     tty_message("[%s] Load status (status failed, $r)\n", $host->name);
     die "Failed to load table STATUS\n";

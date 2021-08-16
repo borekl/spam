@@ -7,6 +7,7 @@ use experimental 'signatures';
 use Carp;
 use Socket;
 
+use SPAM::Config;
 use SPAM::Model::PortStatus;
 
 # hostname
@@ -193,6 +194,53 @@ sub vanished_ports ($self)
 sub _m ($self, $message, @args)
 {
   $self->mesg->('[' . $self->name . '] ' . $message, @args);
+}
+
+#------------------------------------------------------------------------------
+# TEMPORARY: Legacy database 'status' loading function, superseded by the
+# PortStatus class.
+sub sql_load_status ($self)
+{
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+
+  carp 'DEPRECATED sql_load_status';
+  die "Database connection failed\n" unless ref $dbh;
+
+  my $qry = 'SELECT %s FROM status WHERE host = ?';
+  my @fields = (
+    'portname',
+    'status',                        # 0
+    'inpkts',                        # 1
+    'outpkts',                       # 2
+    q{date_part('epoch', lastchg)},  # 3
+    q{date_part('epoch', lastchk)},  # 4
+    'vlan',                          # 5
+    'descr',                         # 6
+    'duplex',                        # 7
+    'rate',                          # 8
+    'flags',                         # 9
+    'adminstatus',                   # 10
+    'errdis',                        # 11
+    q{floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg))},
+    'vlans'                          # 13
+  );
+  $qry = sprintf($qry, join(',', @fields));
+  my $sth = $dbh->prepare($qry);
+  my $r = $sth->execute($self->name);
+
+  while(my $ra = $sth->fetchrow_arrayref()) {
+    $self->add_port(@$ra);
+  }
+
+  return undef;
+}
+
+#------------------------------------------------------------------------------
+sub poll ($self, $hostname, $hostinfo=undef)
+{
+  $self->_m('Load status (started)');
+  ...;
+  $self->_m('Load status (finished)');
 }
 
 #==============================================================================
