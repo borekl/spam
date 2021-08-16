@@ -60,8 +60,12 @@ has port_stats => ( is => 'ro', default => sub {{
   p_used => undef,
 }} );
 
-# message display callback
-has mesg => ( is => 'ro', predicate => 1, isa => sub { ref $_[0] } );
+# message display callback, default is an empty sub doing nothing
+has mesg => (
+  is => 'ro',
+  isa => sub { ref $_[0] },
+  default => sub {}
+);
 
 
 #------------------------------------------------------------------------------

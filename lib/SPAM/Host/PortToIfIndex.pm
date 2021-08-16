@@ -18,7 +18,7 @@ sub _build_port_to_ifindex ($self)
   my $cnt_prune = 0;
 
   # feedback message
-  $m->('[%s] Pruning non-ethernet interfaces (started)', $self->name) if $m;
+  $m->('[%s] Pruning non-ethernet interfaces (started)', $self->name);
 
   # ifTable needs to be loaded, otherwise fail
   croak q{ifTable not loaded, cannot create 'port_to_ifindex' attribute}
@@ -46,7 +46,7 @@ sub _build_port_to_ifindex ($self)
   $m->(
     '[%s] Pruning non-ethernet interfaces (finished, %d pruned)',
     $self->name, $cnt_prune
-  ) if $m;
+  );
 
   # turn ifindex->portname into portname->ifindex hash
   return { reverse %by_ifindex };
