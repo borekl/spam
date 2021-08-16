@@ -123,10 +123,6 @@ sub poll_host
     my $s = shift; tty_message("$s\n", @_);
   });
 
-  #--- check if the hostname can be resolved
-
-  die "DNS resolution failed\n" unless inet_aton($host->name);
-
   #--- load last status from backend db ------------------------------------
 
   tty_message("[%s] Load status (started)\n", $host->name);

@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use experimental 'signatures';
 use Carp;
+use Socket;
 
 use SPAM::Model::PortStatus;
 
@@ -13,6 +14,9 @@ has name => (
   is => 'ro',
   required => 1,
   coerce => sub { lc $_[0] },
+  isa => sub ($v) {
+    die 'DNS resolution failed' unless inet_aton($v);
+  }
 );
 
 # port list ("dbStatus" in the old structure, in fact a hashref with port names
