@@ -42,277 +42,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# This routine encapsulates loading of all data for a single configured
-# host; throws exception when it encounters an error.
-#===========================================================================
-
-sub poll_host
-{
-  #--- arguments -----------------------------------------------------------
-
-  my ($hostname, $get_mactable, $hostinfo) = @_;
-
-  #--- other variables -----------------------------------------------------
-
-  my $host = SPAM::Host->new(name => $hostname, mesg => sub {
-    my $s = shift; tty_message("$s\n", @_);
-  });
-
-  #--- load supported MIB trees --------------------------------------------
-
-  # The first MIB must contain reading sysObjectID, sysLocation and
-  # sysUpTime. If these cannot be loaded; the whole function fails.
-
-  $cfg->iter_mibs(sub {
-    my ($mib, $is_first_mib) = @_;
-    my $mib_key = $mib->name;
-    my @mib_list = ( $mib_key );
-    my @vlans = ( undef );
-
-    $mib->iter_objects(sub {
-      my $obj = shift;
-
-  #--- match platform string
-
-      if(!$is_first_mib) {
-        my $include_re = $obj->include;
-        my $exclude_re = $obj->exclude;
-        next if $include_re && $host->platform !~ /$include_re/;
-        next if $exclude_re && $host->platform =~ /$exclude_re/;
-      }
-
-  #--- include additional MIBs
-
-  # this implements the 'addmib' object key; we use this to load product
-  # MIBs that translate sysObjectID into nice textual platform identifiers;
-  # note that the retrieved values will be stored under the first MIB name
-  # in the array @$mib
-
-      push(@mib_list, @{$obj->addmib});
-
-  #--- process additional flags
-
-      # 'arptable' is only relevant for reading arptables from _routers_;
-      # here we just skip it
-
-      next if $obj->has_flag('arptable');
-
-      # 'vlans' flag; this causes to VLAN number to be added to the
-      # community string (as community@vlan) and the tree retrieval is
-      # iterated over all known VLANs; this means that vtpVlanName must be
-      # already retrieved; this is required for reading MAC addresses from
-      # switch via BRIDGE-MIB
-
-      if($obj->has_flag('vlans')) {
-        @vlans = snmp_get_active_vlans($host);
-        if(!@vlans) { @vlans = ( undef ); }
-      }
-
-      # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
-      # value of 1; these two are mutually exclusive
-
-      if($obj->has_flag('vlan1')) {
-        @vlans = ( 1 );
-      }
-
-      # 'mactable' MIBs should only be read when --mactable switch is active
-
-      if($obj->has_flag('mactable')) {
-        if(!$get_mactable) {
-          tty_message(
-            "[%s] Skipping %s::%s, mactable loading not active\n",
-            $host->name, $mib->name, $obj->name
-          );
-          next;
-        }
-      }
-
-  #--- iterate over vlans
-
-      for my $vlan (@vlans) {
-        next if $vlan > 999;
-
-  #--- retrieve the SNMP object
-
-        my $r = snmp_get_object(
-          'snmpwalk', $host->name, $vlan, \@mib_list,
-          $obj->name,
-          $obj->columns,
-          sub {
-            my ($var, $cnt) = @_;
-            return if !$var;
-            my $msg = sprintf("[%s] Loading %s::%s", $host->name, $mib_key, $var);
-            if($vlan) { $msg .= " $vlan"; }
-            if($cnt) { $msg .= " ($cnt)"; }
-            tty_message("$msg\n");
-          }
-        );
-
-  #--- handle error
-
-        if(!ref $r) {
-          if($vlan) {
-            tty_message(
-              "[%s] Processing %s/%d (failed, %s)\n",
-              $host->name, $mib->name, $vlan, $r
-            );
-          } else {
-            tty_message(
-              "[%s] Processing %s (failed, %s)\n",
-              $host->name, $mib->name, $r
-            );
-          }
-        }
-
-  #--- process result
-
-        else {
-          $host->add_snmp_object($mib, $vlan, $obj, $r);
-        }
-      }
-
-  #--- process "save" flag
-
-  # this saves the MIB table into database, only supported for tables, not
-  # scalars
-
-      if(
-        $obj->has_flag('save')
-        && exists $host->snmp->{$mib_key}
-        && exists $host->snmp->{$mib_key}{$obj->name}
-      ) {
-        tty_message("[%s] Saving %s (started)\n", $host->name, $obj->name);
-        my $r = sql_save_snmp_object($host, $obj);
-        if(!ref $r) {
-          tty_message("[%s] Saving %s (failed)\n", $host->name, $obj->name);
-        } else {
-          tty_message(
-            "[%s] Saving %s (finished, i=%d,u=%d,d=%d)\n",
-            $host->name, $obj->name,
-            @{$r}{qw(insert update delete)}
-          );
-        }
-      }
-
-      # false to continue iterating
-      return undef;
-    });
-
-  #--- first MIB entry is special as it gives us information about the host
-
-    if($is_first_mib) {
-
-      # --hostinfo command-line option in effect
-      if($hostinfo) {
-        tty_message(
-          "[%s] Platform: %s\n", $host->name, $host->platform // '?'
-        );
-        tty_message(
-          "[%s] Booted on: %s\n",
-          $host->name, strftime('%Y-%m-%d', localtime($host->boottime))
-        ) if $host->boottime;
-        tty_message(
-          "[%s] Location: %s\n", $host->name, $host->location // '?'
-        );
-        return 1;
-      }
-
-      # if platform information is unavailable it means the SNMP communications
-      # with the device has failed and we should abort
-      die "Failed to get platform information\n" unless $host->platform;
-
-      # display message about platform and boottime
-      tty_message(
-        "[%s] System info: platform=%s boottime=%s\n",
-        $host->name,
-        $host->platform, strftime('%Y-%m-%d', localtime($host->boottime))
-      );
-    }
-
-    # false to continue iterating
-    return undef;
-  });
-
-  return undef if $hostinfo;
-
-  #--- make sure ifTable and ifXTable exist
-
-  die 'ifTable/ifXTable do not exist' unless $host->has_iftable;
-
-  #--- dump swstat and entity table
-
-  if($ENV{'SPAM_DEBUG'}) {
-
-    # dump collected SNMP info
-    open(my $fh, '>', "debug.host.$$." . $host->name . '.log') || die;
-    print $fh Dumper($host->snmp);
-    close($fh);
-
-    if($host->entity_tree) {
-      open(my $fh, '>', "debug.entities.$$.log") || die;
-
-      # dump the whole entity tree
-      print $fh "entity index         | if     | class        | pos | model        | name\n";
-      print $fh "---------------------+--------+--------------+-----+--------------+---------------------------\n";
-      $host->entity_tree->traverse(sub {
-        my ($node, $level) = @_;
-        printf $fh "%-20s | %6s | %-12s | %3d | %12s | %s\n",
-          ('  ' x $level) . $node->entPhysicalIndex,
-          $node->ifIndex // '',
-          $node->entPhysicalClass,
-          $node->entPhysicalParentRelPos,
-          $node->entPhysicalModelName,
-          $node->entPhysicalName;
-      });
-
-      # display some derived knowledge
-      my @chassis = $host->entity_tree->chassis;
-      printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
-      for(my $i = 0; $i < @chassis; $i++) {
-        printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
-      }
-
-      my @ps = $host->entity_tree->power_supplies;
-      printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
-      for(my $i = 0; $i < @ps; $i++) {
-        printf $fh "%d. chassis=%d %s\n", $i+1,
-          $ps[$i]->chassis_no,
-          $ps[$i]->disp;
-      }
-
-      my @cards = $host->entity_tree->linecards;
-      printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
-      for(my $i = 0; $i < @cards; $i++) {
-        printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
-          $cards[$i]->chassis_no,
-          $cards[$i]->linecard_no,
-          $cards[$i]->disp;
-      }
-
-      my @fans = $host->entity_tree->fans;
-      printf $fh "\nFANS (%d found)\n", scalar(@fans);
-      for(my $i = 0; $i < @fans; $i++) {
-        printf $fh "%d. chassis=%d %s\n", $i+1,
-          $fans[$i]->chassis_no,
-          $fans[$i]->disp;
-      }
-
-      my $hwinfo = $host->entity_tree->hwinfo;
-      printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
-      print $fh "\n", Dumper($hwinfo), "\n";
-
-      # finish
-      close($fh);
-    }
-  }
-
-  #--- finish
-
-  return $host;
-}
-
-
-#===========================================================================
 # This function compares old data (retrieved from backend database into
 # "dbStatus" subtree of swdata) and the new data retrieved via SNMP from
 # given host. It updates in-memory data and prepares plan for database
@@ -1266,230 +995,6 @@ sub sql_autoreg
 }
 
 
-#===========================================================================
-# This function saves SNMP table into database.
-#===========================================================================
-
-sub sql_save_snmp_object
-{
-  #--- arguments
-
-  my (
-    $host,         # 1. host instance
-    $snmp_object   # 2. SNMP object to be saved
-  ) = @_;
-
-  #--- other variables
-
-  my $dbh = $cfg->get_dbi_handle('spam');
-  my %stats = ( insert => 0, update => 0, delete => 0 );
-  my $err;                 # error message
-  my $debug_fh;            # debug file handle
-  my $ref_time = time();   # reference 'now' point of time
-  my $tx = SPAM::DbTransaction->new;
-
-  #--- open debug file
-
-  if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
-    if($debug_fh) {
-      printf $debug_fh
-        "==> sql_save_snmp_object(%s,%s)\n", $host->name, $snmp_object->name;
-      printf $debug_fh
-        "--> REFERENCE TIME: %s\n", scalar(localtime($ref_time));
-    }
-  }
-
-  #=========================================================================
-  #=== try block start =====================================================
-  #=========================================================================
-
-  try {
-
-    # ensure database connection
-    die 'Cannot connect to database (spam)' unless ref $dbh;
-
-    # find the MIB object we're saving
-    my $obj = $cfg->find_object($snmp_object->name);
-    my @object_index = @{$snmp_object->index};
-    printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
-      if $debug_fh;
-
-    # find the object in the host instance
-    my $object = $host->get_snmp_object($snmp_object->name);
-    die "Object $snmp_object does not exist" unless $object;
-
-    # load the current state to %old
-    my %old;
-    my $old_row_count = 0;
-    my $table = 'snmp_' . $snmp_object->name;
-
-    my @fields = (
-      '*',
-      "$ref_time - extract(epoch from date_trunc('second', chg_when)) AS chg_age"
-    );
-
-    my $query = sprintf(
-      'SELECT %s FROM %s WHERE host = ?',
-      join(', ', @fields),
-      $table
-    );
-
-    my $sth = $dbh->prepare($query);
-    my $r = $sth->execute($host->name);
-    die "Database query failed\n" .  $sth->errstr() . "\n" unless $r;
-    while(my $h = $sth->fetchrow_hashref()) {
-      hash_create_index(
-        \%old, $h,
-        map { $h->{lc($_)}; } @object_index
-      );
-      $old_row_count++;
-    }
-
-    # debugging output
-    if($debug_fh && $old_row_count) {
-      printf $debug_fh "--> LOADED %d CURRENT ROWS, DUMP FOLLOWS\n",
-        $old_row_count;
-      print $debug_fh Dumper(\%old), "\n";
-      print $debug_fh "--> CURRENT ROWS DUMP END\n";
-    }
-
-  #--- collect update plan; there are three conceptual steps:
-  #--- 1. entries that do not exist in %old (= loaded from database) will be
-  #---    inserted as new
-  #--- 2. entries that do exist in %old will be updated in place
-  #--- 3. entries that do exist in %old but not in $object (= retrieved via
-  #---    SNMP) will be deleted
-
-    $tx->add(
-      sprintf(
-        'UPDATE snmp_%s SET fresh = false WHERE host = ?',
-        $snmp_object->name
-      ),
-      $host->name
-    );
-
-  #--- iterate over the SNMP-loaded data
-
-    hash_iterator(
-      $object,
-      scalar(@object_index),
-      sub {
-        my $leaf = shift;
-        my @idx = @_;
-        my $val_old = hash_index_access(\%old, @idx);
-        my (@fields, @values, $query, @cond);
-
-  #--- UPDATE - note, that we are not actually checking, if the data
-  #--- changed; just existence of the same (host, @index) will cause all
-  #--- columns to be overwritten with new values and 'chg_when' field
-  #--- updated
-
-        if($val_old) {
-          $stats{'update'}++;
-          $tx->add(
-            sprintf(
-              'UPDATE snmp_%s SET %s WHERE %s',
-              $snmp_object->name,
-              join(',', (
-                'chg_when = current_timestamp',
-                'fresh = true',
-                map { "$_ = ?" } @{$snmp_object->columns}
-              )),
-              join(' AND ', map { "$_ = ?" } ('host', @object_index))
-            ),
-            ( map {
-              $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
-            } @{$snmp_object->columns} ),
-            $host->name, @idx,
-          );
-
-  #--- set the age of the entry to zero, so it's not selected for deletion
-
-          $val_old->{'chg_age'} = 0;
-        }
-
-  #--- INSERT
-
-        else {
-          $stats{'insert'}++;
-          $tx-add(
-            sprintf(
-              'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
-              $snmp_object->name,
-              join(',',
-                ('host', 'fresh', @object_index, @{$snmp_object->columns})
-              ),
-              join(',',
-                ('?') x (2 + @object_index + @{$snmp_object->columns})
-              ),
-            ),
-            $host->name, 't', @idx,
-            map {
-              $leaf->{$_}{'enum'} // $leaf->{$_}{'value'} // undef
-            } @{$snmp_object->columns}
-          );
-        }
-      }
-    );
-
-  #--- DELETE
-
-    my $dbmaxage = $snmp_object->dbmaxage // undef;
-    if(defined $dbmaxage) {
-      hash_iterator(
-        \%old,
-        scalar(@object_index),
-        sub {
-          my $leaf = shift;
-          my @idx = splice @_, 0;
-
-          if($leaf->{'chg_age'} > $dbmaxage) {
-            $stats{'delete'}++;
-            $tx->add(
-              sprintf(
-                'DELETE FROM snmp_%s WHERE %s',
-                $snmp_object->name,
-                join(' AND ', map { "$_ = ?" } ('host', @{$snmp_object->index}))
-              ),
-              $host->name, @idx
-            );
-          }
-        }
-      );
-    }
-
-  #--- debug output
-
-    if($debug_fh) {
-      printf $debug_fh
-        "--> UPDATE PLAN INFO (%d rows, %d inserts, %d updates, %d deletes)\n",
-        $tx->count, @stats{'insert','update', 'delete'};
-    }
-
-  #--- perform database transaction
-
-    if($tx->count) {
-      my $e = $tx->commit;
-      die $e if $e;
-    }
-
-  }
-
-  #=========================================================================
-  #=== catch block =========================================================
-  #=========================================================================
-
-  catch ($err) {
-    printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
-  }
-
-  # finish
-  close($debug_fh) if $debug_fh;
-  return $err // \%stats;
-}
-
-
 #================  #  ======================================================
 #===                         ===============================================
 #===  ## #   ###  ##  ####   ===============================================
@@ -1691,52 +1196,55 @@ try {
 
         try {
 
-          if(my $hi = poll_host($host, $cmd->mactable, $cmd->hostinfo)) {
+          my $hi = SPAM::Host->new(name => $host, mesg => sub ($s, @arg) {
+            tty_message("$s\n", @arg);
+          });
 
-            # only hostinfo, no more processing
-            die "\n" if $cmd->hostinfo;
+          # perform host poll
+          $hi->poll($cmd->mactable, $cmd->hostinfo);
 
-  	        # find changes and update status table
-            tty_message("[$host] Updating status table (started)\n");
-            my ($update_plan, $update_stats) = find_changes($hi);
-            tty_message(
-              sprintf(
-                "[%s] Updating status table (i=%d/d=%d/U=%d/u=%d)\n",
-                $host, @$update_stats
-              )
-            );
-            my $e = sql_status_update($hi, $update_plan);
-            if($e) {
-              tty_message("[$host] Updating status table (failed, $e)\n");
-            } else {
-              tty_message("[$host] Updating status table (finished)\n");
-            }
+          # only hostinfo, no more processing
+          die "\n" if $cmd->hostinfo;
 
-            # update swstat table
+          # find changes and update status table
+          tty_message("[$host] Updating status table (started)\n");
+          my ($update_plan, $update_stats) = find_changes($hi);
+          tty_message(
+            sprintf(
+              "[%s] Updating status table (i=%d/d=%d/U=%d/u=%d)\n",
+              $host, @$update_stats
+            )
+          );
+          my $e = sql_status_update($hi, $update_plan);
+          if($e) {
+            tty_message("[$host] Updating status table (failed, $e)\n");
+          } else {
+            tty_message("[$host] Updating status table (finished)\n");
+          }
 
-            tty_message("[$host] Updating swstat table (started)\n");
-            switch_info($hi);
-            $e = sql_switch_info_update($hi);
-            if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
-            tty_message("[$host] Updating swstat table (finished)\n");
+          # update swstat table
 
-            # update mactable
+          tty_message("[$host] Updating swstat table (started)\n");
+          switch_info($hi);
+          $e = sql_switch_info_update($hi);
+          if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
+          tty_message("[$host] Updating swstat table (finished)\n");
 
-            if($cmd->mactable()) {
-              tty_message("[$host] Updating mactable (started)\n");
-              $e = sql_mactable_update($hi);
-              if(defined $e) { print $e, "\n"; }
-              tty_message("[$host] Updating mactable (finished)\n");
-            }
+          # update mactable
 
-            # run autoregistration
+          if($cmd->mactable()) {
+            tty_message("[$host] Updating mactable (started)\n");
+            $e = sql_mactable_update($hi);
+            if(defined $e) { print $e, "\n"; }
+            tty_message("[$host] Updating mactable (finished)\n");
+          }
 
-            if($cmd->autoreg()) {
-              tty_message("[$host] Running auto-registration (started)\n");
-              sql_autoreg($hi);
-              tty_message("[$host] Running auto-registration (finished)\n");
-            }
+          # run autoregistration
 
+          if($cmd->autoreg()) {
+            tty_message("[$host] Running auto-registration (started)\n");
+            sql_autoreg($hi);
+            tty_message("[$host] Running auto-registration (finished)\n");
           }
         }
 

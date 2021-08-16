@@ -6,9 +6,11 @@ use warnings;
 use experimental 'signatures';
 use Carp;
 use Socket;
+use POSIX qw(strftime);
 
 use SPAM::Config;
 use SPAM::Model::PortStatus;
+use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object snmp_get_active_vlans);
 
 # hostname
 has name => (
@@ -242,11 +244,219 @@ sub _build_ports_db ($self)
 }
 
 #------------------------------------------------------------------------------
-sub poll ($self, $hostname, $hostinfo=undef)
+# poll host for SNMP data
+sub poll ($self, $get_mactable, $hostinfo=undef)
 {
-  $self->_m('Load status (started)');
-  ...;
-  $self->_m('Load status (finished)');
+  # load configure MIBs; the first MIB is special and must contain reading
+  # sysObjectID, sysLocation and sysUpTime; if these cannot be loaded; the
+  # whole function fails.
+  SPAM::Config->instance->iter_mibs(sub ($mib, $is_first_mib=undef) {
+    my @mib_list = ( $mib->name );
+    my @vlans = ( undef );
+
+    # iterate over individual objects in a MIB
+    $mib->iter_objects(sub ($obj) {
+
+      # match platform string if defined
+      if(!$is_first_mib) {
+        my $include_re = $obj->include;
+        my $exclude_re = $obj->exclude;
+        next if $include_re && $self->platform !~ /$include_re/;
+        next if $exclude_re && $self->platform =~ /$exclude_re/;
+      }
+
+      # include additional MIBs; this implements the 'addmib' object key; we use
+      # this to load product MIBs that translate sysObjectID into nice textual
+      # platform identifiers; note that the retrieved values will be stored
+      # under the first MIB name in the array @$mib
+      push(@mib_list, @{$obj->addmib});
+
+      # 'arptable' is only relevant for reading arptables from _routers_; here
+      # we just skip it
+      return undef if $obj->has_flag('arptable');
+
+      # 'vlans' flag; this causes to VLAN number to be added to the community
+      # string (as community@vlan) and the tree retrieval is iterated over all
+      # known VLANs; this means that vtpVlanName must be already retrieved; this
+      # is required for reading MAC addresses from switch via BRIDGE-MIB
+      if($obj->has_flag('vlans')) {
+        @vlans = snmp_get_active_vlans($self);
+        if(!@vlans) { @vlans = ( undef ); }
+      }
+
+      # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
+      # value of 1; these two are mutually exclusive
+      if($obj->has_flag('vlan1')) {
+        @vlans = ( 1 );
+      }
+
+      # 'mactable' MIBs should only be read when --mactable switch is active
+      if($obj->has_flag('mactable')) {
+        if(!$get_mactable) {
+          $self->_m(
+            'Skipping %s::%s, mactable loading not active',
+            $mib->name, $obj->name
+          );
+          return undef;
+        }
+      }
+
+      # iterate over vlans
+      for my $vlan (@vlans) {
+        next if $vlan && $vlan > 999;
+
+        # retrieve the SNMP object
+        my $r = snmp_get_object(
+          'snmpwalk', $self->name, $vlan, \@mib_list,
+          $obj->name,
+          $obj->columns,
+          sub {
+            my ($var, $cnt) = @_;
+            return if !$var;
+            my $msg = sprintf("Loading %s::%s", $mib->name, $var);
+            if($vlan) { $msg .= " $vlan"; }
+            if($cnt) { $msg .= " ($cnt)"; }
+            $self->_m($msg);
+          }
+        );
+
+        # handle error
+        if(!ref $r) {
+          if($vlan) {
+            $self->_m('Processing %s/%d (failed, %s)', $mib->name, $vlan, $r);
+          } else {
+            $self->_m('Processing %s (failed, %s)', $mib->name, $r);
+          }
+        }
+
+        # process result
+        else {
+          $self->add_snmp_object($mib, $vlan, $obj, $r);
+        }
+      }
+
+      # this saves the MIB table into database if it has 'save' flag, only
+      # supported for tables, not scalars
+      if(
+        $obj->has_flag('save')
+        && exists $self->snmp->{$mib->name}
+        && exists $self->snmp->{$mib->name}{$obj->name}
+      ) {
+        $self->_m('Saving %s (started)', $obj->name);
+        my $r = sql_save_snmp_object($self, $obj);
+        if(!ref $r) {
+          $self->_m('Saving %s (failed)', $obj->name);
+        } else {
+          $self->_m(
+            'Saving %s (finished, i=%d,u=%d,d=%d)',
+            $obj->name, @{$r}{qw(insert update delete)}
+          );
+        }
+      }
+
+      # false to continue iterating
+      return undef;
+    });
+
+  #--- first MIB entry is special as it gives us information about the host
+
+    if($is_first_mib) {
+
+      # --hostinfo command-line option in effect
+      if($hostinfo) {
+        $self->_m('Platform: %s', $self->platform // '?');
+        $self->_m(
+          'Booted on: %s', strftime('%Y-%m-%d', localtime($self->boottime))
+        ) if $self->boottime;
+        $self->_m('Location: %s', $self->location // '?');
+        return 1;
+      }
+
+      # if platform information is unavailable it means the SNMP communications
+      # with the device has failed and we should abort
+      die "Failed to get platform information\n" unless $self->platform;
+
+      # display message about platform and boottime
+      $self->_m(
+        'System info: platform=%s boottime=%s',
+        $self->platform, strftime('%Y-%m-%d', localtime($self->boottime))
+      );
+    }
+
+    # false to continue iterating
+    return undef;
+  });
+
+  return undef if $hostinfo;
+
+  # make sure ifTable and ifXTable exist
+  die 'ifTable/ifXTable do not exist' unless $self->has_iftable;
+
+  # dump swstat and entity table
+  if($ENV{'SPAM_DEBUG'}) {
+
+    # dump collected SNMP info
+    open(my $fh, '>', "debug.host.$$." . $self->name . '.log') || die;
+    print $fh Dumper($self->snmp);
+    close($fh);
+
+    if($self->entity_tree) {
+      open(my $fh, '>', "debug.entities.$$.log") || die;
+
+      # dump the whole entity tree
+      print $fh "entity index         | if     | class        | pos | model        | name\n";
+      print $fh "---------------------+--------+--------------+-----+--------------+---------------------------\n";
+      $self->entity_tree->traverse(sub {
+        my ($node, $level) = @_;
+        printf $fh "%-20s | %6s | %-12s | %3d | %12s | %s\n",
+          ('  ' x $level) . $node->entPhysicalIndex,
+          $node->ifIndex // '',
+          $node->entPhysicalClass,
+          $node->entPhysicalParentRelPos,
+          $node->entPhysicalModelName,
+          $node->entPhysicalName;
+      });
+
+      # display some derived knowledge
+      my @chassis = $self->entity_tree->chassis;
+      printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
+      for(my $i = 0; $i < @chassis; $i++) {
+        printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
+      }
+
+      my @ps = $self->entity_tree->power_supplies;
+      printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
+      for(my $i = 0; $i < @ps; $i++) {
+        printf $fh "%d. chassis=%d %s\n", $i+1,
+          $ps[$i]->chassis_no,
+          $ps[$i]->disp;
+      }
+
+      my @cards = $self->entity_tree->linecards;
+      printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
+      for(my $i = 0; $i < @cards; $i++) {
+        printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
+          $cards[$i]->chassis_no,
+          $cards[$i]->linecard_no,
+          $cards[$i]->disp;
+      }
+
+      my @fans = $self->entity_tree->fans;
+      printf $fh "\nFANS (%d found)\n", scalar(@fans);
+      for(my $i = 0; $i < @fans; $i++) {
+        printf $fh "%d. chassis=%d %s\n", $i+1,
+          $fans[$i]->chassis_no,
+          $fans[$i]->disp;
+      }
+
+      my $hwinfo = $self->entity_tree->hwinfo;
+      printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
+      print $fh "\n", Dumper($hwinfo), "\n";
+
+      # finish
+      close($fh);
+    }
+  }
 }
 
 #==============================================================================
