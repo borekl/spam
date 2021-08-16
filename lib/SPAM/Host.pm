@@ -66,7 +66,7 @@ has port_stats => ( is => 'ro', default => sub {{
 has mesg => (
   is => 'ro',
   isa => sub { ref $_[0] },
-  default => sub {}
+  default => sub { sub {} }
 );
 
 
