@@ -187,6 +187,14 @@ sub vanished_ports ($self)
   return @vanished;
 }
 
+#------------------------------------------------------------------------------
+# A convenience wrapper for the message display callback 'mesg' that adds
+# hostname
+sub _m ($self, $message, @args)
+{
+  $self->mesg->('[' . $self->name . '] ' . $message, @args);
+}
+
 #==============================================================================
 
 1;

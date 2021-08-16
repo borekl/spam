@@ -14,11 +14,10 @@ has port_to_ifindex => ( is => 'lazy' );
 sub _build_port_to_ifindex ($self)
 {
   my %by_ifindex;
-  my $m = $self->mesg;
   my $cnt_prune = 0;
 
   # feedback message
-  $m->('[%s] Pruning non-ethernet interfaces (started)', $self->name);
+  $self->_m('Pruning non-ethernet interfaces (started)');
 
   # ifTable needs to be loaded, otherwise fail
   croak q{ifTable not loaded, cannot create 'port_to_ifindex' attribute}
@@ -43,9 +42,9 @@ sub _build_port_to_ifindex ($self)
     }
   }
 
-  $m->(
-    '[%s] Pruning non-ethernet interfaces (finished, %d pruned)',
-    $self->name, $cnt_prune
+  $self->_m(
+    'Pruning non-ethernet interfaces (finished, %d pruned)',
+    $cnt_prune
   );
 
   # turn ifindex->portname into portname->ifindex hash
