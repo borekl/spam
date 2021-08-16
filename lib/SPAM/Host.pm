@@ -22,9 +22,7 @@ has name => (
 
 # port list ("dbStatus" in the old structure, in fact a hashref with port names
 # as keys)
-has ports_db => ( is => 'ro', default => sub {{}}, lazy => 1,
-  isa => sub { carp "DEPRECATED ports_db"; 1; }
-);
+has ports_db => ( is => 'lazy' );
 
 has ports_db2 => (
   is => 'ro', lazy => 1,
@@ -199,12 +197,16 @@ sub _m ($self, $message, @args)
 #------------------------------------------------------------------------------
 # TEMPORARY: Legacy database 'status' loading function, superseded by the
 # PortStatus class.
-sub sql_load_status ($self)
+sub _build_ports_db ($self)
 {
   my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
 
+  $self->_m('Load status (started)');
+
   carp 'DEPRECATED sql_load_status';
   die "Database connection failed\n" unless ref $dbh;
+
+  my %ports;
 
   my $qry = 'SELECT %s FROM status WHERE host = ?';
   my @fields = (
@@ -226,13 +228,17 @@ sub sql_load_status ($self)
   );
   $qry = sprintf($qry, join(',', @fields));
   my $sth = $dbh->prepare($qry);
-  my $r = $sth->execute($self->name);
+  $sth->execute($self->name);
 
-  while(my $ra = $sth->fetchrow_arrayref()) {
-    $self->add_port(@$ra);
+  while(my ($portname, @row) = $sth->fetchrow_array) {
+    $row[0] =~ tr/0/2/;  # ifOperStatus
+    $row[10] =~ tr/0/2/; # ifAdminStatus
+    $ports{$portname} = [ @row ];
   }
 
-  return undef;
+  $self->_m('Load status (finished)');
+
+  return \%ports;
 }
 
 #------------------------------------------------------------------------------

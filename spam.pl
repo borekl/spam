@@ -58,16 +58,6 @@ sub poll_host
     my $s = shift; tty_message("$s\n", @_);
   });
 
-  #--- load last status from backend db ------------------------------------
-
-  tty_message("[%s] Load status (started)\n", $host->name);
-  my $r = $host->sql_load_status;
-  if(defined $r) {
-    tty_message("[%s] Load status (status failed, $r)\n", $host->name);
-    die "Failed to load table STATUS\n";
-  }
-  tty_message("[%s] Load status (finished)\n", $host->name);
-
   #--- load supported MIB trees --------------------------------------------
 
   # The first MIB must contain reading sysObjectID, sysLocation and
