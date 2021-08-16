@@ -246,7 +246,7 @@ sub _build_ports_db ($self)
 
 #------------------------------------------------------------------------------
 # poll host for SNMP data
-sub poll ($self, $get_mactable, $hostinfo=undef)
+sub poll ($self, $get_mactable=undef, $hostinfo=undef)
 {
   # load configure MIBs; the first MIB is special and must contain reading
   # sysObjectID, sysLocation and sysUpTime; if these cannot be loaded; the
