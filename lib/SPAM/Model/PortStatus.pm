@@ -64,6 +64,10 @@ sub _build_status ($self)
 sub list_ports ($self) { keys %{$self->status} }
 
 #------------------------------------------------------------------------------
+# return true if given port exists in the database
+sub has_port ($self, $p) { exists $self->status->{$p} }
+
+#------------------------------------------------------------------------------
 # port getter functions
 sub oper_status ($self, $p) { $self->status->{$p}{adminstatus} }
 sub admin_status ($self, $p) { $self->status->{$p}{status} }

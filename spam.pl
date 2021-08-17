@@ -85,7 +85,7 @@ sub find_changes
     my $pi = $host->ifindex_to_portindex->{$if}
       if $host->has_ifindex_to_portindex;
 
-    if($host->get_port($k)) {
+    if($host->ports_db->has_port($k)) {
 
       my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
       my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
@@ -96,27 +96,27 @@ sub find_changes
 
       #--- update: entry is not new, check whether it has changed ---
 
-      my $old = $host->get_port($k);
+      my $old = $host->ports_db;
       my $errdis = 0; # currently unavailable
 
       #--- collect the data to compare
 
       my @data = (
-        [ 'ifOperStatus', 'n', $old->[0],
+        [ 'ifOperStatus', 'n', $old->oper_status($k),
           $ifTable->{'ifOperStatus'}{'value'} ],
-      	[ 'ifInUcastPkts', 'n', $old->[1],
+        [ 'ifInUcastPkts', 'n', $old->packets_in($k),
       	  $ifTable->{'ifInUcastPkts'}{'value'} ],
-      	[ 'ifOutUcastPkts', 'n', $old->[2],
+        [ 'ifOutUcastPkts', 'n', $old->packets_out($k),
       	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
-        [ 'vmVlan', 'n', $old->[5],
+        [ 'vmVlan', 'n', $old->vlan($k),
           $vmMembershipTable->{'vmVlan'}{'value'} ],
-        [ 'vlanTrunkPortVlansEnabled', 's', $old->[13],
+        [ 'vlanTrunkPortVlansEnabled', 's', $old->vlans($k),
           $host->trunk_vlans_bitstring($if) ],
-        [ 'ifAlias', 's', $old->[6],
+        [ 'ifAlias', 's', $old->descr($k),
           $ifXTable->{'ifAlias'}{'value'} ],
-        [ 'portDuplex', 'n', $old->[7],
+        [ 'portDuplex', 'n', $old->duplex($k),
           $portTable->{'portDuplex'}{'value'} ],
-        [ 'ifSpeed', 'n', $old->[8], (
+        [ 'ifSpeed', 'n', $old->speed($k), (
             exists $ifXTable->{'ifHighSpeed'}{'value'}
             ?
             $ifXTable->{'ifHighSpeed'}{'value'}
@@ -124,12 +124,12 @@ sub find_changes
             int($ifTable->{'ifSpeed'}{'value'} / 1000000)
           )
         ],
-        [ 'port_flags', 'n', $old->[9],
+        [ 'port_flags', 'n', $old->flags($k),
           $host->get_port_flags($if) ],
-        [ 'ifAdminStatus', 'n', $old->[10],
+        [ 'ifAdminStatus', 'n', $old->admin_status($k),
           $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
-          $old->[11], $errdis ]
+          $old->errdisable($k), $errdis ]
       );
 
       #--- perform comparison

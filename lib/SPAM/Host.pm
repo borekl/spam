@@ -23,11 +23,8 @@ has name => (
   }
 );
 
-# port list ("dbStatus" in the old structure, in fact a hashref with port names
-# as keys)
-has ports_db => ( is => 'lazy' );
-
-has ports_db2 => (
+# ports loaded from backend database
+has ports_db => (
   is => 'ro', lazy => 1,
   default => sub ($self) {
     SPAM::Model::PortStatus->new(hostname => $self->name)
@@ -72,57 +69,19 @@ has mesg => (
 
 
 #------------------------------------------------------------------------------
-# add one port as pulled from database by sql_load_status(); FIXME: this needs
-# refactoring
-sub add_port ($self, $key, @fields)
-{
-  carp 'DEPRECATED SPAM::Host->add_port()';
-  $fields[0] =~ tr/0/2/;  # ifOperStatus
-  $fields[10] =~ tr/0/2/; # ifAdminStatus
-  $self->ports_db->{$key} = [ @fields ];
-}
-
-#------------------------------------------------------------------------------
-# iterate over ports; semantically same as swdata_status_iter() legacy function
-sub iterate_ports ($self, $cb)
-{
-  carp 'DEPRECATED SPAM::Host->iterate_ports()';
-  foreach my $portname (keys %{$self->ports_db}) {
-    my $r = $cb->($portname, @{$self->ports_db->{$portname}});
-    last if $r;
-  }
-}
-#------------------------------------------------------------------------------
 sub iterate_ports_db ($self, $cb)
 {
-  foreach my $portname ($self->ports_db2->list_ports) {
-    my $r = $cb->($portname, $self->ports_db2->status->{$portname});
+  foreach my $portname ($self->ports_db->list_ports) {
+    my $r = $cb->($portname, $self->ports_db->status->{$portname});
     last if $r;
-  }
-}
-
-#------------------------------------------------------------------------------
-# reimplementation of swdata_status_get() legacy function
-sub get_port ($self, $key, $col=undef)
-{
-  carp 'DEPRECATED SPAM::Host->get_port()';
-  if(exists $self->ports_db->{$key}) {
-    my $row = $self->ports_db->{$key};
-    if(defined $col) {
-      return $row->[$col];
-    } else {
-      return $row;
-    }
-  } else {
-    return undef;
   }
 }
 
 #------------------------------------------------------------------------------
 sub get_port_db ($self, $key, $col=undef)
 {
-  if(exists $self->ports_db2->{$key}) {
-    my $row = $self->ports_db2->{$key};
+  if(exists $self->ports_db->{$key}) {
+    my $row = $self->ports_db->{$key};
     if(defined $col) {
       return $row->{$col};
     } else {
@@ -181,7 +140,7 @@ sub has_iftable ($self)
 sub vanished_ports ($self)
 {
   my @vanished;
-  my @in_db = $self->ports_db2->list_ports;
+  my @in_db = $self->ports_db->list_ports;
 
   $self->iterate_ports_db(sub ($pn, $p) {
     push(@vanished, $pn) if (!grep { $_ eq $pn } @in_db)
@@ -196,53 +155,6 @@ sub vanished_ports ($self)
 sub _m ($self, $message, @args)
 {
   $self->mesg->('[' . $self->name . '] ' . $message, @args);
-}
-
-#------------------------------------------------------------------------------
-# TEMPORARY: Legacy database 'status' loading function, superseded by the
-# PortStatus class.
-sub _build_ports_db ($self)
-{
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
-
-  $self->_m('Load status (started)');
-
-  carp 'DEPRECATED sql_load_status';
-  die "Database connection failed\n" unless ref $dbh;
-
-  my %ports;
-
-  my $qry = 'SELECT %s FROM status WHERE host = ?';
-  my @fields = (
-    'portname',
-    'status',                        # 0
-    'inpkts',                        # 1
-    'outpkts',                       # 2
-    q{date_part('epoch', lastchg)},  # 3
-    q{date_part('epoch', lastchk)},  # 4
-    'vlan',                          # 5
-    'descr',                         # 6
-    'duplex',                        # 7
-    'rate',                          # 8
-    'flags',                         # 9
-    'adminstatus',                   # 10
-    'errdis',                        # 11
-    q{floor(date_part('epoch',current_timestamp) - date_part('epoch',lastchg))},
-    'vlans'                          # 13
-  );
-  $qry = sprintf($qry, join(',', @fields));
-  my $sth = $dbh->prepare($qry);
-  $sth->execute($self->name);
-
-  while(my ($portname, @row) = $sth->fetchrow_array) {
-    $row[0] =~ tr/0/2/;  # ifOperStatus
-    $row[10] =~ tr/0/2/; # ifAdminStatus
-    $ports{$portname} = [ @row ];
-  }
-
-  $self->_m('Load status (finished)');
-
-  return \%ports;
 }
 
 #------------------------------------------------------------------------------
