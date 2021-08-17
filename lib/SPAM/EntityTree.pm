@@ -12,6 +12,7 @@ use v5.16;
 use Moo;
 use Carp;
 use Scalar::Util qw(blessed reftype);
+use Data::Dumper;
 
 use SPAM::Config;
 
@@ -484,5 +485,66 @@ sub hwinfo
   return \@result;
 }
 
+#------------------------------------------------------------------------------
+# Create a debug dump
+sub debug_dump
+{
+  my $self = shift;
+
+  open(my $fh, '>', "debug.entities.$$.log") || die;
+
+  # dump the whole entity tree
+  print $fh "entity index         | if     | class        | pos | model        | name\n";
+  print $fh "---------------------+--------+--------------+-----+--------------+---------------------------\n";
+  $self->traverse(sub {
+    my ($node, $level) = @_;
+    printf $fh "%-20s | %6s | %-12s | %3d | %12s | %s\n",
+      ('  ' x $level) . $node->entPhysicalIndex,
+      $node->ifIndex // '',
+      $node->entPhysicalClass // '',
+      $node->entPhysicalParentRelPos // 0,
+      $node->entPhysicalModelName // '',
+      $node->entPhysicalName // '';
+  });
+
+  # display some derived knowledge
+  my @chassis = $self->chassis;
+  printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
+  for(my $i = 0; $i < @chassis; $i++) {
+    printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
+  }
+
+  my @ps = $self->power_supplies;
+  printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
+  for(my $i = 0; $i < @ps; $i++) {
+    printf $fh "%d. chassis=%d %s\n", $i+1,
+      $ps[$i]->chassis_no,
+      $ps[$i]->disp;
+  }
+
+  my @cards = $self->linecards;
+  printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
+  for(my $i = 0; $i < @cards; $i++) {
+    printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
+      $cards[$i]->chassis_no,
+      $cards[$i]->linecard_no,
+      $cards[$i]->disp;
+  }
+
+  my @fans = $self->fans;
+  printf $fh "\nFANS (%d found)\n", scalar(@fans);
+  for(my $i = 0; $i < @fans; $i++) {
+    printf $fh "%d. chassis=%d %s\n", $i+1,
+      $fans[$i]->chassis_no,
+      $fans[$i]->disp;
+  }
+
+  my $hwinfo = $self->hwinfo;
+  printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
+  print $fh "\n", Dumper($hwinfo), "\n";
+
+  # finish
+  close($fh);
+}
 
 1;

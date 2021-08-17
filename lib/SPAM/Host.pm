@@ -7,6 +7,7 @@ use experimental 'signatures';
 use Carp;
 use Socket;
 use POSIX qw(strftime);
+use Data::Dumper;
 
 use SPAM::Config;
 use SPAM::Model::PortStatus;
@@ -376,68 +377,8 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
 
   # dump swstat and entity table
   if($ENV{'SPAM_DEBUG'}) {
-
-    # dump collected SNMP info
-    open(my $fh, '>', "debug.host.$$." . $self->name . '.log') || die;
-    print $fh Dumper($self->snmp);
-    close($fh);
-
-    if($self->entity_tree) {
-      open(my $fh, '>', "debug.entities.$$.log") || die;
-
-      # dump the whole entity tree
-      print $fh "entity index         | if     | class        | pos | model        | name\n";
-      print $fh "---------------------+--------+--------------+-----+--------------+---------------------------\n";
-      $self->entity_tree->traverse(sub {
-        my ($node, $level) = @_;
-        printf $fh "%-20s | %6s | %-12s | %3d | %12s | %s\n",
-          ('  ' x $level) . $node->entPhysicalIndex,
-          $node->ifIndex // '',
-          $node->entPhysicalClass,
-          $node->entPhysicalParentRelPos,
-          $node->entPhysicalModelName,
-          $node->entPhysicalName;
-      });
-
-      # display some derived knowledge
-      my @chassis = $self->entity_tree->chassis;
-      printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
-      for(my $i = 0; $i < @chassis; $i++) {
-        printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
-      }
-
-      my @ps = $self->entity_tree->power_supplies;
-      printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
-      for(my $i = 0; $i < @ps; $i++) {
-        printf $fh "%d. chassis=%d %s\n", $i+1,
-          $ps[$i]->chassis_no,
-          $ps[$i]->disp;
-      }
-
-      my @cards = $self->entity_tree->linecards;
-      printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
-      for(my $i = 0; $i < @cards; $i++) {
-        printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
-          $cards[$i]->chassis_no,
-          $cards[$i]->linecard_no,
-          $cards[$i]->disp;
-      }
-
-      my @fans = $self->entity_tree->fans;
-      printf $fh "\nFANS (%d found)\n", scalar(@fans);
-      for(my $i = 0; $i < @fans; $i++) {
-        printf $fh "%d. chassis=%d %s\n", $i+1,
-          $fans[$i]->chassis_no,
-          $fans[$i]->disp;
-      }
-
-      my $hwinfo = $self->entity_tree->hwinfo;
-      printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
-      print $fh "\n", Dumper($hwinfo), "\n";
-
-      # finish
-      close($fh);
-    }
+    $self->debug_dump;
+    $self->entity_tree->debug_dump if $self->entity_tree;
   }
 }
 
@@ -466,6 +407,15 @@ sub save_snmp_data ($self)
       }
     });
   });
+}
+
+#------------------------------------------------------------------------------
+# Create a debug dump of SNMP data
+sub debug_dump ($self)
+{
+  open(my $fh, '>', "debug.host.$$." . $self->name . '.log') || die;
+  print $fh Dumper($self->snmp);
+  close($fh);
 }
 
 #==============================================================================
