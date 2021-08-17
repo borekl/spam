@@ -61,9 +61,20 @@ sub _build_status ($self)
 
 #------------------------------------------------------------------------------
 # return list of ports
-sub list_ports ($self)
-{
-  return keys %{$self->status}
-}
+sub list_ports ($self) { keys %{$self->status} }
+
+#------------------------------------------------------------------------------
+# port getter functions
+sub oper_status ($self, $p) { $self->status->{$p}{adminstatus} }
+sub admin_status ($self, $p) { $self->status->{$p}{status} }
+sub packets_in ($self, $p) { $self->status->{$p}{inpkts} }
+sub packets_out ($self, $p) { $self->status->{$p}{outpkts} }
+sub vlan ($self, $p) { $self->status->{$p}{vlan} }
+sub vlans ($self, $p) { $self->status->{$p}{vlans} }
+sub descr ($self, $p) { $self->status->{$p}{descr} }
+sub duplex ($self, $p) { $self->status->{$p}{duplex} }
+sub speed ($self, $p) { $self->status->{$p}{rate} }
+sub flags ($self, $p) { $self->status->{$p}{flags} }
+sub errdisable ($self, $p) { $self->status->{$p}{errdis} }
 
 1;
