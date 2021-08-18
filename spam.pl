@@ -760,7 +760,7 @@ sub sql_switch_info_update
       @vals = ('?') x @fields;
       @args = (
         $host->name,
-        $host->location =~ s/'/''/r,
+        $host->snmp->location =~ s/'/''/r,
         $stat->{p_total},
         $stat->{p_act},
         $stat->{p_patch},
@@ -789,7 +789,7 @@ sub sql_switch_info_update
         'vtp_mode', 'platform'
       );
       @args = (
-        $host->location =~ s/'/''/r,
+        $host->snmp->location =~ s/'/''/r,
         $stat->{p_total},
         $stat->{p_act},
         $stat->{p_patch},
