@@ -21,7 +21,7 @@ sub _build_port_to_ifindex ($self)
   my $cnt_prune = 0;
 
   # feedback message
-  $self->_m('Pruning non-ethernet interfaces (started)');
+  $self->mesg->('Pruning non-ethernet interfaces (started)');
 
   # ifTable needs to be loaded, otherwise fail
   croak q{ifTable not loaded, cannot create 'port_to_ifindex' attribute}
@@ -46,7 +46,7 @@ sub _build_port_to_ifindex ($self)
     }
   }
 
-  $self->_m(
+  $self->mesg->(
     'Pruning non-ethernet interfaces (finished, %d pruned)',
     $cnt_prune
   );
