@@ -1,10 +1,13 @@
-package SPAM::Host::PortToIfIndex;
+package SPAM::Model::SNMP::PortToIfIndex;
+
+# this role implements portname to ifindex hash -- basic index to access SNMP
+# data
 
 use Moo::Role;
 use experimental 'signatures';
 use Carp;
 
-requires qw(snmp has_iftable);
+requires qw(_d has_iftable);
 
 # portname to ifindex hash
 has port_to_ifindex => ( is => 'lazy' );
@@ -13,7 +16,7 @@ has port_to_ifindex => ( is => 'lazy' );
 # create port-to-ifindex hash from SNMP data
 sub _build_port_to_ifindex ($self)
 {
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
   my %by_ifindex;
   my $cnt_prune = 0;
 

@@ -17,4 +17,21 @@ use SPAM::Config;
 # probably be improved upon later.
 has _d => ( is => 'ro', default => sub {{}} );
 
+with 'SPAM::Model::SNMP::PortToIfIndex';
+
+#------------------------------------------------------------------------------
+# return true if ifTable AND ifXTable exist
+sub has_iftable ($self)
+{
+  if(
+    exists $self->_d->{'IF-MIB'} &&
+    exists $self->_d->{'IF-MIB'}{'ifTable'} &&
+    exists $self->_d->{'IF-MIB'}{'ifXTable'}
+  ) {
+    return 1;
+  } else {
+    return undef;
+  }
+}
+
 1;

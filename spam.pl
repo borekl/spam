@@ -57,7 +57,7 @@ my $arptable;        # arptable data (hash reference)
 sub find_changes
 {
   my ($host) = @_;
-  my $idx = $host->port_to_ifindex;
+  my $idx = $host->snmp->port_to_ifindex;
   my @idx_keys = (keys %$idx);
   my @update_plan;
   my @stats = (0) x 4;  # i/d/U/u
@@ -206,7 +206,7 @@ sub find_changes
 sub sql_status_update
 {
   my ($host, $update_plan) = @_;
-  my $idx = $host->port_to_ifindex;
+  my $idx = $host->snmp->port_to_ifindex;
   my ($r, $q, $fields);
   my (@fields, @vals, @bind);
   my $s = $host->snmp->_d;
@@ -618,7 +618,7 @@ sub switch_info
   my ($host) = @_;
   my $stat = $host->port_stats;
   my $knownports = grep { $_ eq $host->name } @{$cfg->knownports};
-  my $idx = $host->port_to_ifindex;
+  my $idx = $host->snmp->port_to_ifindex;
 
   # if 'knowports' is active, initialize the stat field; the rest is
   # initialized automatically

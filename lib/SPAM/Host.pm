@@ -45,7 +45,6 @@ with 'SPAM::Host::Boottime';
 with 'SPAM::Host::EntityTree';
 with 'SPAM::Host::TrunkVlans';
 with 'SPAM::Host::PortFlags';
-with 'SPAM::Host::PortToIfIndex';
 with 'SPAM::Host::IfIndexToPortIndex';
 with 'SPAM::Host::IfIndexToDot1d';
 with 'SPAM::Host::ActiveVlans';
@@ -119,21 +118,6 @@ sub get_snmp_object ($self, $object_name)
   return undef;
 }
 
-
-#------------------------------------------------------------------------------
-# return true if ifTable AND ifXTable exist
-sub has_iftable ($self)
-{
-  if(
-    exists $self->snmp->_d->{'IF-MIB'} &&
-    exists $self->snmp->_d->{'IF-MIB'}{'ifTable'} &&
-    exists $self->snmp->_d->{'IF-MIB'}{'ifXTable'}
-  ) {
-    return 1;
-  } else {
-    return undef;
-  }
-}
 
 #------------------------------------------------------------------------------
 # give list of ports that we have in database, but can no longer see in SNMP
@@ -286,7 +270,7 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
   return undef if $hostinfo;
 
   # make sure ifTable and ifXTable exist
-  die 'ifTable/ifXTable do not exist' unless $self->has_iftable;
+  die 'ifTable/ifXTable do not exist' unless $self->snmp->has_iftable;
 
   # dump swstat and entity table
   if($ENV{'SPAM_DEBUG'}) {
