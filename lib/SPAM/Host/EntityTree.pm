@@ -15,16 +15,17 @@ has entity_tree => ( is => 'lazy' );
 # elements of the three are SPAM::Entity instances
 sub _build_entity_tree ($self)
 {
+  my $s = $self->snmp->_d;
   # ensure the necessary entries exist; if they don't, just bail out
   return undef
   unless
-    exists $self->snmp->{'ENTITY-MIB'}
-    && exists $self->snmp->{'ENTITY-MIB'}{'entPhysicalTable'};
+    exists $s->{'ENTITY-MIB'}
+    && exists $s->{'ENTITY-MIB'}{'entPhysicalTable'};
 
   #--- convert the ENTITY-MIB into an array of SPAM::Entity instances
 
-  my $ePT = $self->snmp->{'ENTITY-MIB'}{'entPhysicalTable'};
-  my $eAMT = $self->snmp->{'ENTITY-MIB'}{'entAliasMappingTable'} // undef;
+  my $ePT = $s->{'ENTITY-MIB'}{'entPhysicalTable'};
+  my $eAMT = $s->{'ENTITY-MIB'}{'entAliasMappingTable'} // undef;
   my @entries = map {
     SPAM::Entity->new(
       %{$ePT->{$_}},

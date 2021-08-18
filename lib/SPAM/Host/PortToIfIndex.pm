@@ -13,6 +13,7 @@ has port_to_ifindex => ( is => 'lazy' );
 # create port-to-ifindex hash from SNMP data
 sub _build_port_to_ifindex ($self)
 {
+  my $s = $self->snmp->_d;
   my %by_ifindex;
   my $cnt_prune = 0;
 
@@ -24,18 +25,18 @@ sub _build_port_to_ifindex ($self)
   unless $self->has_iftable;
 
   # helper for accessing ifIndex
-  my $_if = sub { $self->snmp->{'IF-MIB'}{'ifTable'}{$_[0]} };
-  my $_ifx = sub { $self->snmp->{'IF-MIB'}{'ifXTable'}{$_[0]} };
+  my $_if = sub { $s->{'IF-MIB'}{'ifTable'}{$_[0]} };
+  my $_ifx = sub { $s->{'IF-MIB'}{'ifXTable'}{$_[0]} };
 
   # iterate over entries in the ifIndex table
-  foreach my $if (keys %{$self->snmp->{'IF-MIB'}{'ifTable'}}) {
+  foreach my $if (keys %{$s->{'IF-MIB'}{'ifTable'}}) {
     if(
       $_if->($if)->{'ifType'}{'enum'} ne 'ethernetCsmacd'
       || $_ifx->($if)->{'ifName'}{'value'} =~ /^vl/i
     ) {
       # matching interfaces are deleted, FIXME: this is probably not needed
-      delete $self->snmp->{'IF-MIB'}{'ifTable'}{$if};
-      delete $self->snmp->{'IF-MIB'}{'ifXTable'}{$if};
+      delete $s->{'IF-MIB'}{'ifTable'}{$if};
+      delete $s->{'IF-MIB'}{'ifXTable'}{$if};
       $cnt_prune++;
     } else {
       $by_ifindex{$if} = $_ifx->($if)->{'ifName'}{'value'};

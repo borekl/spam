@@ -11,12 +11,14 @@ has location => ( is => 'lazy' );
 # location builder
 sub _build_location ($self)
 {
+  my $s = $self->snmp->_d;
+
   if(
-    %{$self->snmp}
-    && $self->snmp->{'SNMPv2-MIB'}
-    && $self->snmp->{'SNMPv2-MIB'}{'sysLocation'}
+    %{$s}
+    && $s->{'SNMPv2-MIB'}
+    && $s->{'SNMPv2-MIB'}{'sysLocation'}
   ) {
-    return $self->snmp->{'SNMPv2-MIB'}{'sysLocation'}{0}{value};
+    return $s->{'SNMPv2-MIB'}{'sysLocation'}{0}{value};
   } else {
     return undef;
   }

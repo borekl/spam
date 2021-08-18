@@ -22,12 +22,14 @@ has boottime_prev => (
 # boottime builder
 sub _build_boottime ($self)
 {
+  my $s = $self->snmp->_d;
+
   if(
-    %{$self->snmp}
-    && $self->snmp->{'SNMPv2-MIB'}
-    && $self->snmp->{'SNMPv2-MIB'}{'sysUpTimeInstance'}
+    %{$s}
+    && $s->{'SNMPv2-MIB'}
+    && $s->{'SNMPv2-MIB'}{'sysUpTimeInstance'}
   ) {
-    my $uptime = $self->snmp->{'SNMPv2-MIB'}{'sysUpTimeInstance'}{undef}{'value'};
+    my $uptime = $s->{'SNMPv2-MIB'}{'sysUpTimeInstance'}{undef}{'value'};
     return time() - int($uptime / 100);
   } else {
     return undef;

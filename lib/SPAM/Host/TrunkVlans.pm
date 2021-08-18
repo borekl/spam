@@ -16,7 +16,7 @@ sub trunk_vlans_bitstring ($self, $if)
 
   # return undef if required SNMP data are not present
   return undef
-  unless $e = $self->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
+  unless $e = $self->snmp->_d->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
   return undef
   unless $e->{'vlanTrunkPortVlansEnabled'}{'bitstring'};
 

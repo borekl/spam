@@ -11,12 +11,14 @@ has platform => ( is => 'lazy' );
 # platform builder
 sub _build_platform ($self)
 {
+  my $s = $self->snmp->_d;
+
   if(
-    %{$self->snmp}
-    && $self->snmp->{'SNMPv2-MIB'}
-    && $self->snmp->{'SNMPv2-MIB'}{'sysObjectID'}
+    %{$s}
+    && $s->{'SNMPv2-MIB'}
+    && $s->{'SNMPv2-MIB'}{'sysObjectID'}
   ) {
-    my $platform = $self->snmp->{'SNMPv2-MIB'}{'sysObjectID'}{0}{'value'};
+    my $platform = $s->{'SNMPv2-MIB'}{'sysObjectID'}{0}{'value'};
     $platform =~ s/^.*:://;
     return $platform;
   } else {

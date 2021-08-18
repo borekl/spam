@@ -34,6 +34,7 @@ sub get_port_flags ($self, $if)
 {
   no autovivification;
   use warnings FATAL => 'all';
+  my $s = $self->snmp->_d;
   my @flags;
 
   # use cached value if available
@@ -41,10 +42,10 @@ sub get_port_flags ($self, $if)
   if exists $self->_port_flags->{$if};
 
   # trunking mode
-  if(exists $self->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}) {
+  if(exists $s->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}) {
 
     my $trunk_flag;
-    my $s = $self->snmp->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
+    my $s = $s->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
     my $trunk_dynstat = $s->{'vlanTrunkPortDynamicStatus'}{'enum'};
 
     if($trunk_dynstat && $trunk_dynstat eq 'trunking') {
@@ -56,10 +57,10 @@ sub get_port_flags ($self, $if)
   }
 
   # 802.1x authentication (from dot1xAuthConfigTable)
-  if(exists $self->snmp->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}) {
+  if(exists $s->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}) {
     my %dot1x_flag;
     my $s
-    = $self->snmp->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$if};
+    = $s->{'IEEE8021-PAE-MIB'}{'dot1xAuthConfigTable'}{$if};
 
     $dot1x_flag{'pc'} = $s->{'dot1xAuthAuthControlledPortControl'}{'enum'};
     $dot1x_flag{'st'} = $s->{'dot1xAuthAuthControlledPortStatus'}{'enum'};
@@ -78,9 +79,9 @@ sub get_port_flags ($self, $if)
 
   # MAC bypass
   if(
-    exists $self->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
+    exists $s->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
   ) {
-    my $s = $self->snmp->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$if};
+    my $s = $s->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$if};
     for my $sessid (keys %$s) {
       if(
         exists $s->{$sessid}{'macAuthBypass'}
@@ -95,21 +96,21 @@ sub get_port_flags ($self, $if)
 
   # CDP
 
-  if(exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}) {
+  if(exists $s->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}) {
     push(@flags, 'cdp');
   }
 
   # power over ethernet
   if(
-    exists $self->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}
+    exists $s->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}
     && $self->has_ifindex_to_portindex
   ) {
     my $pi = $self->ifindex_to_portindex->{$if};
     if(
       ref $pi && @$pi
-      && exists $self->snmp->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}{$pi->[0]}{$pi->[1]}{'pethPsePortDetectionStatus'}
+      && exists $s->{'POWER-ETHERNET-MIB'}{'pethPsePortTable'}{$pi->[0]}{$pi->[1]}{'pethPsePortDetectionStatus'}
     ) {
-      my $s = $self->snmp->{'POWER-ETHERNET-MIB'}
+      my $s = $s->{'POWER-ETHERNET-MIB'}
                       {'pethPsePortTable'}
                       {$pi->[0]}{$pi->[1]}
                       {'pethPsePortDetectionStatus'};
@@ -121,15 +122,15 @@ sub get_port_flags ($self, $if)
   }
 
   # STP root
-  if(exists $self->snmp->{'BRIDGE-MIB'}{'dot1dStpRootPort'}) {
-    my $dot1d_stpr = $self->snmp->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
-    for my $vlan (keys %{$self->snmp->{'BRIDGE-MIB'}}) {
+  if(exists $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}) {
+    my $dot1d_stpr = $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
+    for my $vlan (keys %{$s->{'BRIDGE-MIB'}}) {
       # the keys under BRIDGE-MIB are both a) vlans b) object names
       # that are not defined per-vlan (such as dot1dStpRootPort);
       # that's we need to filter non-vlans out here
       next if $vlan !~ /^\d+$/;
       if(
-        exists $self->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
+        exists $s->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
       ) {
         push(@flags, 'stp_root');
         last;
@@ -139,13 +140,13 @@ sub get_port_flags ($self, $if)
 
   # STP fast start
   if(
-    exists $self->snmp->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
+    exists $s->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
     && $self->has_ifindex_to_dot1d
   ) {
     my $port_dot1d = $self->ifindex_to_dot1d->{$if};
     if($port_dot1d) {
       my $portmode
-      = $self->snmp->{'CISCO-STP-EXTENSIONS-MIB'}
+      = $s->{'CISCO-STP-EXTENSIONS-MIB'}
                 {'stpxFastStartPortTable'}{$port_dot1d}{'stpxFastStartPortMode'}
                 {'enum'};
       if($portmode eq 'enable' || $portmode eq 'enableForTrunk') {

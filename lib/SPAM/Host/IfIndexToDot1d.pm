@@ -16,29 +16,30 @@ has ifindex_to_dot1d => ( is => 'lazy', predicate => 1 );
 sub _build_ifindex_to_dot1d ($self)
 {
   my %by_dot1d;
+  my $s = $self->snmp->_d;
 
   if(
-    exists $self->snmp->{'BRIDGE-MIB'}
-    && exists $self->snmp->{'CISCO-VTP-MIB'}
-    && exists $self->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}
-    && exists $self->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
+    exists $s->{'BRIDGE-MIB'}
+    && exists $s->{'CISCO-VTP-MIB'}
+    && exists $s->{'CISCO-VTP-MIB'}{'vtpVlanTable'}
+    && exists $s->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
   ) {
     my @vlans
     = keys %{
-      $self->snmp->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
+      $s->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
     };
     for my $vlan (@vlans) {
       if(
-        exists $self->snmp->{'BRIDGE-MIB'}{$vlan}
-        && exists $self->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+        exists $s->{'BRIDGE-MIB'}{$vlan}
+        && exists $s->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
       ) {
         my @dot1idxs
         = keys %{
-          $self->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
+          $s->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}
         };
         for my $dot1d (@dot1idxs) {
           $by_dot1d{
-            $self->snmp->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
+            $s->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d}{'dot1dBasePortIfIndex'}{'value'}
           } = $dot1d;
         }
       }

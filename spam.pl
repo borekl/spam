@@ -62,6 +62,7 @@ sub find_changes
   my @update_plan;
   my @stats = (0) x 4;  # i/d/U/u
   my $debug_fh;
+  my $s = $host->snmp->_d;
 
   #--- debug init
 
@@ -87,12 +88,12 @@ sub find_changes
 
     if($host->ports_db->has_port($k)) {
 
-      my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
-      my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
+      my $ifTable = $s->{'IF-MIB'}{'ifTable'}{$if};
+      my $ifXTable = $s->{'IF-MIB'}{'ifXTable'}{$if};
       my $portTable
-         = $host->snmp->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
+         = $s->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
-         = $host->snmp->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+         = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
 
       #--- update: entry is not new, check whether it has changed ---
 
@@ -208,6 +209,7 @@ sub sql_status_update
   my $idx = $host->port_to_ifindex;
   my ($r, $q, $fields);
   my (@fields, @vals, @bind);
+  my $s = $host->snmp->_d;
 
   # get new transaction
   my $tx = SPAM::DbTransaction->new;
@@ -219,8 +221,8 @@ sub sql_status_update
 
   my $ifrate = sub {
     my $if = shift;
-    my $ifHighSpeed = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifHighSpeed'}{'value'};
-    my $ifSpeed = $host->snmp->{'IF-MIB'}{'ifTable'}{$if}{'ifSpeed'}{'value'};
+    my $ifHighSpeed = $s->{'IF-MIB'}{'ifXTable'}{$if}{'ifHighSpeed'}{'value'};
+    my $ifSpeed = $s->{'IF-MIB'}{'ifTable'}{$if}{'ifSpeed'}{'value'};
 
     if($ifHighSpeed) {
       return $ifHighSpeed;
@@ -237,12 +239,12 @@ sub sql_status_update
     my $pi = $host->ifindex_to_portindex->{$if}
       if $host->has_ifindex_to_portindex;
     my $current_time = strftime("%c", localtime());
-    my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
-    my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'}{$if};
+    my $ifTable = $s->{'IF-MIB'}{'ifTable'}{$if};
+    my $ifXTable = $s->{'IF-MIB'}{'ifXTable'}{$if};
     my $vmMembershipTable
-       = $host->snmp->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
+       = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
     my $portTable
-       = $host->snmp->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
+       = $s->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
     #--- INSERT
 

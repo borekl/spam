@@ -17,14 +17,15 @@ has ifindex_to_portindex => ( is => 'lazy', predicate => 1 );
 sub _build_ifindex_to_portindex ($self)
 {
   my %by_portindex;
+  my $s = $self->snmp->_d;
 
   # check prerequisites; this is not universally supported, so failure to
   # statisfy should be just silently skipped
   if(
-    exists $self->snmp->{'CISCO-STACK-MIB'}
-    && exists $self->snmp->{'CISCO-STACK-MIB'}{'portTable'}
+    exists $s->{'CISCO-STACK-MIB'}
+    && exists $s->{'CISCO-STACK-MIB'}{'portTable'}
   ) {
-    my $t = $self->snmp->{'CISCO-STACK-MIB'}{'portTable'};
+    my $t = $s->{'CISCO-STACK-MIB'}{'portTable'};
 
     for my $idx_mod (keys %$t) {
       for my $idx_port (keys %{$t->{$idx_mod}}) {

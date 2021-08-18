@@ -10,7 +10,7 @@ has active_vlans => ( is => 'lazy' );
 sub _build_active_vlans ($self)
 {
   my %vlans;
-  my $s = $self->snmp;
+  my $s = $self->snmp->_d;
 
   # dynamic vlan configured by user authentication
   if(
