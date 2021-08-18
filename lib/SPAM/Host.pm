@@ -39,7 +39,6 @@ has ports_db => (
 has snmp => ( is => 'ro', default => sub { SPAM::Model::SNMP->new } );
 
 # roles dependent on 'snmp'
-with 'SPAM::Host::Location';
 with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
 with 'SPAM::Host::EntityTree';
@@ -248,7 +247,7 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
         $self->_m(
           'Booted on: %s', strftime('%Y-%m-%d', localtime($self->boottime))
         ) if $self->boottime;
-        $self->_m('Location: %s', $self->location // '?');
+        $self->_m('Location: %s', $self->snmp->location // '?');
         return 1;
       }
 

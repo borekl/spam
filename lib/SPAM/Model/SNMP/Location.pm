@@ -1,9 +1,9 @@
-package SPAM::Host::Location;
+package SPAM::Model::SNMP::Location;
 
 use Moo::Role;
 use experimental 'signatures';
 
-requires 'snmp';
+requires '_d';
 
 # SNMP sysLocation
 has location => ( is => 'lazy' );
@@ -11,7 +11,7 @@ has location => ( is => 'lazy' );
 # location builder
 sub _build_location ($self)
 {
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
 
   if(
     %{$s}

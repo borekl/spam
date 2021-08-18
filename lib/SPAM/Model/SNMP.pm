@@ -18,6 +18,7 @@ use SPAM::Config;
 has _d => ( is => 'ro', default => sub {{}} );
 
 with 'SPAM::Model::SNMP::PortToIfIndex';
+with 'SPAM::Model::SNMP::Location';
 
 #------------------------------------------------------------------------------
 # return true if ifTable AND ifXTable exist
