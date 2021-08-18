@@ -10,6 +10,7 @@ use POSIX qw(strftime);
 use Data::Dumper;
 
 use SPAM::Config;
+use SPAM::Model::Boottime;
 use SPAM::Model::PortStatus;
 use SPAM::Model::SNMP;
 use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object);
@@ -23,6 +24,15 @@ has name => (
   coerce => sub { lc $_[0] },
   isa => sub ($v) {
     die 'DNS resolution failed' unless inet_aton($v);
+  }
+);
+
+# last boottime (loaded from database)
+has boottime_prev => (
+  is => 'ro',
+  lazy => 1,
+  default => sub ($self) {
+    SPAM::Model::Boottime->new(hostname => $self->name)->boottime_db
   }
 );
 
@@ -44,9 +54,6 @@ has snmp => (
     SPAM::Model::SNMP->new(mesg => sub { $self->_m(@_) } )
   }
 );
-
-# roles dependent on 'snmp'
-with 'SPAM::Host::Boottime';
 
 # port statistics
 has port_stats => ( is => 'ro', default => sub {{
@@ -250,7 +257,8 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
       # display message about platform and boottime
       $self->_m(
         'System info: platform=%s boottime=%s',
-        $self->snmp->platform, strftime('%Y-%m-%d', localtime($self->boottime))
+        $self->snmp->platform,
+        strftime('%Y-%m-%d',localtime($self->snmp->boottime))
       );
     }
 
@@ -304,6 +312,23 @@ sub debug_dump ($self)
   open(my $fh, '>', "debug.host.$$." . $self->name . '.log') || die;
   print $fh Dumper($self->snmp);
   close($fh);
+}
+
+#------------------------------------------------------------------------------
+# return true if the switch seems to have been rebooted since we last checked
+# on it; this is slightly imprecise -- the switch returns its uptime as
+# timeticks from its boot up and we calculate boot time from local system clock;
+# since these two clocks can be misaligned, we're introducing bit of a fudge
+# to reduce false alarms
+sub is_rebooted ($self)
+{
+  if($self->snmp->boottime && $self->boottime_prev) {
+    # 30 is fudge factor to account for imprecise clocks
+    if(abs($self->snmp->boottime - $self->boottime_prev) > 30) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 #==============================================================================
