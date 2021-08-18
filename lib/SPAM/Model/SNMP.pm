@@ -24,6 +24,7 @@ with 'SPAM::Model::SNMP::Location';
 with 'SPAM::Model::SNMP::EntityTree';
 with 'SPAM::Model::SNMP::IfIndexToPortIndex';
 with 'SPAM::Model::SNMP::IfIndexToDot1d';
+with 'SPAM::Model::SNMP::TrunkVlans';
 
 #------------------------------------------------------------------------------
 # return true if ifTable AND ifXTable exist

@@ -48,7 +48,6 @@ has snmp => (
 # roles dependent on 'snmp'
 with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
-with 'SPAM::Host::TrunkVlans';
 with 'SPAM::Host::PortFlags';
 with 'SPAM::Host::ActiveVlans';
 
