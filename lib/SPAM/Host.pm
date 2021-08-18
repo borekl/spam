@@ -47,7 +47,6 @@ has snmp => (
 
 # roles dependent on 'snmp'
 with 'SPAM::Host::Boottime';
-with 'SPAM::Host::PortFlags';
 
 # port statistics
 has port_stats => ( is => 'ro', default => sub {{

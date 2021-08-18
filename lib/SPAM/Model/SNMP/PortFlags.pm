@@ -1,9 +1,9 @@
-package SPAM::Host::PortFlags;
+package SPAM::Model::SNMP::PortFlags;
 
 use Moo::Role;
 use experimental 'signatures';
 
-requires 'snmp';
+requires '_d';
 
 # port flags cache
 has _port_flags => (
@@ -34,7 +34,7 @@ sub get_port_flags ($self, $if)
 {
   no autovivification;
   use warnings FATAL => 'all';
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
   my @flags;
 
   # use cached value if available
@@ -141,9 +141,9 @@ sub get_port_flags ($self, $if)
   # STP fast start
   if(
     exists $s->{'CISCO-STP-EXTENSIONS-MIB'}{'stpxFastStartPortTable'}
-    && $self->snmp->has_ifindex_to_dot1d
+    && $self->has_ifindex_to_dot1d
   ) {
-    my $port_dot1d = $self->snmp->ifindex_to_dot1d->{$if};
+    my $port_dot1d = $self->ifindex_to_dot1d->{$if};
     if($port_dot1d) {
       my $portmode
       = $s->{'CISCO-STP-EXTENSIONS-MIB'}

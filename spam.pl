@@ -126,7 +126,7 @@ sub find_changes
           )
         ],
         [ 'port_flags', 'n', $old->flags($k),
-          $host->get_port_flags($if) ],
+          $host->snmp->get_port_flags($if) ],
         [ 'ifAdminStatus', 'n', $old->admin_status($k),
           $ifTable->{'ifAdminStatus'}{'value'} ],
         [ 'errdisable', 'n',
@@ -270,7 +270,7 @@ sub sql_status_update
         $portTable->{'portDuplex'}{'value'},
         #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
         $ifrate->($if),
-        $host->get_port_flags($if),
+        $host->snmp->get_port_flags($if),
         $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
@@ -306,7 +306,7 @@ sub sql_status_update
           $portTable->{'portDuplex'}{'value'},
           #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
           $ifrate->($if),
-          $host->get_port_flags($if),
+          $host->snmp->get_port_flags($if),
           $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'
