@@ -1,4 +1,4 @@
-package SPAM::Host::EntityTree;
+package SPAM::Model::SNMP::EntityTree;
 
 use Moo::Role;
 use experimental 'signatures';
@@ -6,7 +6,7 @@ use experimental 'signatures';
 use SPAM::Entity;
 use SPAM::EntityTree;
 
-requires 'snmp';
+requires '_d';
 
 # processed ENTITY-MIB information (SPAM::EntityTree instance)
 has entity_tree => ( is => 'lazy' );
@@ -15,7 +15,7 @@ has entity_tree => ( is => 'lazy' );
 # elements of the three are SPAM::Entity instances
 sub _build_entity_tree ($self)
 {
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
   # ensure the necessary entries exist; if they don't, just bail out
   return undef
   unless

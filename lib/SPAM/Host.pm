@@ -41,7 +41,6 @@ has snmp => ( is => 'ro', default => sub { SPAM::Model::SNMP->new } );
 # roles dependent on 'snmp'
 with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
-with 'SPAM::Host::EntityTree';
 with 'SPAM::Host::TrunkVlans';
 with 'SPAM::Host::PortFlags';
 with 'SPAM::Host::IfIndexToPortIndex';
@@ -274,7 +273,7 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
   # dump swstat and entity table
   if($ENV{'SPAM_DEBUG'}) {
     $self->debug_dump;
-    $self->entity_tree->debug_dump if $self->entity_tree;
+    $self->snmp->entity_tree->debug_dump if $self->snmp->entity_tree;
   }
 }
 
