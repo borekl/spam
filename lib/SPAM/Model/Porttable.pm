@@ -1,7 +1,9 @@
 package SPAM::Model::Porttable;
 
-# code for loading 'porttable' for the purposes of the collector script where this
-# information is used for compiling some statistics and for port autoregistration
+# code for loading 'porttable' for the purposes of the collector script where
+# this information is used for compiling some statistics and for port
+# autoregistration; 'porttable' is purely manually maintained mapping between
+# switch ports and network outlets (wall sockets, patch panel sockets etc.)
 
 use Moo;
 use strict;
@@ -25,9 +27,7 @@ sub _build_porttable ($self)
   croak 'Database connection failed (spam)' unless ref $dbh;
 
   # perform database query
-  my $sth = $dbh->prepare(
-    'SELECT host, portname, cp FROM porttable'
-  );
+  my $sth = $dbh->prepare('SELECT host, portname, cp FROM porttable');
   $sth->execute;
 
   # process the result
@@ -40,17 +40,14 @@ sub _build_porttable ($self)
   return \%p;
 }
 
+#------------------------------------------------------------------------------
 # return true if given (host, portname) is in the porttable
+sub exists ($self, $h, $p) { exists $self->porttable->{$h}{$p} }
 
-sub exists ($self, $h, $p)
-{
-  return exists $self->porttable->{$h}{$p};
-}
-
+#------------------------------------------------------------------------------
 # insert new entry into the porttable, this only returns the SQL insert with
 # its bind values (we use sql_transaction() to actually send the insert into
 # the db)
-
 sub insert ($self, %args)
 {
   my $site = substr($args{host}, 0, 3);
