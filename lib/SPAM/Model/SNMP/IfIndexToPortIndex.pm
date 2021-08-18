@@ -1,4 +1,4 @@
-package SPAM::Host::IfIndexToPortIndex;
+package SPAM::Model::SNMP::IfIndexToPortIndex;
 
 # role to build index based on portTable defined in CISCO-STACK-MIB; some (but
 # not all) Cisco devices use this style of indexing; the index we build is
@@ -7,7 +7,7 @@ package SPAM::Host::IfIndexToPortIndex;
 use Moo::Role;
 use experimental 'signatures';
 
-requires 'snmp';
+requires '_d';
 
 # ifIndex to (portModuleIndex, portIndex), some CISCO MIBs use this
 has ifindex_to_portindex => ( is => 'lazy', predicate => 1 );
@@ -17,7 +17,7 @@ has ifindex_to_portindex => ( is => 'lazy', predicate => 1 );
 sub _build_ifindex_to_portindex ($self)
 {
   my %by_portindex;
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
 
   # check prerequisites; this is not universally supported, so failure to
   # statisfy should be just silently skipped

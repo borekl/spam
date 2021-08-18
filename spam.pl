@@ -83,8 +83,8 @@ sub find_changes
     # interface's ifIndex
     my $if = $idx->{$k};
     # interface's [portModuleIndex, portIndex]
-    my $pi = $host->ifindex_to_portindex->{$if}
-      if $host->has_ifindex_to_portindex;
+    my $pi = $host->snmp->ifindex_to_portindex->{$if}
+      if $host->snmp->has_ifindex_to_portindex;
 
     if($host->ports_db->has_port($k)) {
 
@@ -236,8 +236,8 @@ sub sql_status_update
   for my $k (@$update_plan) {
 
     my $if = $idx->{$k->[1]};
-    my $pi = $host->ifindex_to_portindex->{$if}
-      if $host->has_ifindex_to_portindex;
+    my $pi = $host->snmp->ifindex_to_portindex->{$if}
+      if $host->snmp->has_ifindex_to_portindex;
     my $current_time = strftime("%c", localtime());
     my $ifTable = $s->{'IF-MIB'}{'ifTable'}{$if};
     my $ifXTable = $s->{'IF-MIB'}{'ifXTable'}{$if};

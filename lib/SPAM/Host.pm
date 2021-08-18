@@ -43,7 +43,6 @@ with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
 with 'SPAM::Host::TrunkVlans';
 with 'SPAM::Host::PortFlags';
-with 'SPAM::Host::IfIndexToPortIndex';
 with 'SPAM::Host::IfIndexToDot1d';
 with 'SPAM::Host::ActiveVlans';
 
