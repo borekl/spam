@@ -21,6 +21,7 @@ with 'SPAM::Model::SNMP::PortToIfIndex';
 with 'SPAM::Model::SNMP::Location';
 with 'SPAM::Model::SNMP::EntityTree';
 with 'SPAM::Model::SNMP::IfIndexToPortIndex';
+with 'SPAM::Model::SNMP::IfIndexToDot1d';
 
 #------------------------------------------------------------------------------
 # return true if ifTable AND ifXTable exist

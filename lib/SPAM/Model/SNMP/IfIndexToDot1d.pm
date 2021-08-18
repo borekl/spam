@@ -1,4 +1,4 @@
-package SPAM::Host::IfIndexToDot1d;
+package SPAM::Model::SNMP::IfIndexToDot1d;
 
 # role to build an index defined by BRIDGE-MIB's dot1dBasePortTable
 
@@ -6,7 +6,7 @@ use Moo::Role;
 use experimental 'signatures';
 use Carp;
 
-requires 'snmp';
+requires '_d';
 
 # ifIndex to BRIDGE-MIB index
 has ifindex_to_dot1d => ( is => 'lazy', predicate => 1 );
@@ -16,7 +16,7 @@ has ifindex_to_dot1d => ( is => 'lazy', predicate => 1 );
 sub _build_ifindex_to_dot1d ($self)
 {
   my %by_dot1d;
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
 
   if(
     exists $s->{'BRIDGE-MIB'}
