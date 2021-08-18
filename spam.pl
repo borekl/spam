@@ -771,7 +771,7 @@ sub sql_switch_info_update
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
         strftime('%Y-%m-%d %H:%M:%S', localtime($host->boottime)),
-        $host->platform
+        $host->snmp->platform
       );
 
       $q = sprintf($q, join(',', @fields), join(',', @vals));
@@ -800,7 +800,7 @@ sub sql_switch_info_update
         strftime('%Y-%m-%d %H:%M:%S', localtime($host->boottime)),
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
-        $host->platform,
+        $host->snmp->platform,
         $host->name
       );
 

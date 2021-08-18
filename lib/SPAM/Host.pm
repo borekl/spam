@@ -46,10 +46,8 @@ has snmp => (
 );
 
 # roles dependent on 'snmp'
-with 'SPAM::Host::Platform';
 with 'SPAM::Host::Boottime';
 with 'SPAM::Host::PortFlags';
-with 'SPAM::Host::ActiveVlans';
 
 # port statistics
 has port_stats => ( is => 'ro', default => sub {{
@@ -154,8 +152,8 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
       if(!$is_first_mib) {
         my $include_re = $obj->include;
         my $exclude_re = $obj->exclude;
-        next if $include_re && $self->platform !~ /$include_re/;
-        next if $exclude_re && $self->platform =~ /$exclude_re/;
+        next if $include_re && $self->snmp->platform !~ /$include_re/;
+        next if $exclude_re && $self->snmp->platform =~ /$exclude_re/;
       }
 
       # include additional MIBs; this implements the 'addmib' object key; we use
@@ -173,7 +171,7 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
       # known VLANs; this means that vtpVlanName must be already retrieved; this
       # is required for reading MAC addresses from switch via BRIDGE-MIB
       if($obj->has_flag('vlans')) {
-        @vlans = @{$self->active_vlans};
+        @vlans = @{$self->snmp->active_vlans};
         if(!@vlans) { @vlans = ( undef ); }
       }
 
@@ -238,7 +236,7 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
 
       # --hostinfo command-line option in effect
       if($hostinfo) {
-        $self->_m('Platform: %s', $self->platform // '?');
+        $self->_m('Platform: %s', $self->snmp->platform // '?');
         $self->_m(
           'Booted on: %s', strftime('%Y-%m-%d', localtime($self->boottime))
         ) if $self->boottime;
@@ -248,12 +246,12 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
 
       # if platform information is unavailable it means the SNMP communications
       # with the device has failed and we should abort
-      die "Failed to get platform information\n" unless $self->platform;
+      die "Failed to get platform information\n" unless $self->snmp->platform;
 
       # display message about platform and boottime
       $self->_m(
         'System info: platform=%s boottime=%s',
-        $self->platform, strftime('%Y-%m-%d', localtime($self->boottime))
+        $self->snmp->platform, strftime('%Y-%m-%d', localtime($self->boottime))
       );
     }
 

@@ -1,9 +1,9 @@
-package SPAM::Host::Platform;
+package SPAM::Model::SNMP::Platform;
 
 use Moo::Role;
 use experimental 'signatures';
 
-requires 'snmp';
+requires '_d';
 
 # SNMP sysLocation
 has platform => ( is => 'lazy' );
@@ -11,7 +11,7 @@ has platform => ( is => 'lazy' );
 # platform builder
 sub _build_platform ($self)
 {
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
 
   if(
     %{$s}

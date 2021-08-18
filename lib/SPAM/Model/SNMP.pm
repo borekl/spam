@@ -20,11 +20,13 @@ with 'SPAM::MessageCallback';
 has _d => ( is => 'ro', default => sub {{}} );
 
 with 'SPAM::Model::SNMP::PortToIfIndex';
+with 'SPAM::Model::SNMP::Platform';
 with 'SPAM::Model::SNMP::Location';
 with 'SPAM::Model::SNMP::EntityTree';
 with 'SPAM::Model::SNMP::IfIndexToPortIndex';
 with 'SPAM::Model::SNMP::IfIndexToDot1d';
 with 'SPAM::Model::SNMP::TrunkVlans';
+with 'SPAM::Model::SNMP::ActiveVlans';
 
 #------------------------------------------------------------------------------
 # return true if ifTable AND ifXTable exist

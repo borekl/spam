@@ -1,16 +1,16 @@
-package SPAM::Host::ActiveVlans;
+package SPAM::Model::SNMP::ActiveVlans;
 
 use Moo::Role;
 use experimental 'signatures';
 
-requires qw(snmp);
+requires '_d';
 
 has active_vlans => ( is => 'lazy' );
 
 sub _build_active_vlans ($self)
 {
   my %vlans;
-  my $s = $self->snmp->_d;
+  my $s = $self->_d;
 
   # dynamic vlan configured by user authentication
   if(
