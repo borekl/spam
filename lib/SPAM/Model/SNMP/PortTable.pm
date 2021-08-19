@@ -1,11 +1,10 @@
-package SPAM::Model::SNMP::IfIndexToPortIndex;
+package SPAM::Model::SNMP::PortTable;
 
-# role to build index based on portTable defined in CISCO-STACK-MIB; some (but
-# not all) Cisco devices use this style of indexing; the index we build is
-# ifIndex -> (module, port)
+# interface to CISCO-STACK-MIB portTable
 
 use Moo::Role;
 use experimental 'signatures';
+use Carp;
 
 requires '_d';
 
@@ -36,6 +35,24 @@ sub _build_ifindex_to_portindex ($self)
   }
 
   return \%by_portindex;
+}
+
+#------------------------------------------------------------------------------
+# getter for portTable object
+sub porttable ($self, $p, $f)
+{
+  # CISCO-STACK-MIB missing (newer devices no longer support this)
+  return undef unless %{$self->ifindex_to_portindex};
+
+  # get ifIndex
+  my $if = $self->port_to_ifindex->{$p};
+  croak "Port '$p' does not appear to exist" unless defined $if;
+
+  # get portIndex
+  my $pi = $self->ifindex_to_portindex->{$if};
+  croak "Port '$p' does not have associated portIndex" unless $pi;
+
+  return $self->_d->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]}{$f}{'value'};
 }
 
 1;

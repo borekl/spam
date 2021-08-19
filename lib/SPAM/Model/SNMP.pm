@@ -23,7 +23,7 @@ with 'SPAM::Model::SNMP::IfTable';
 with 'SPAM::Model::SNMP::Platform';
 with 'SPAM::Model::SNMP::Location';
 with 'SPAM::Model::SNMP::EntityTree';
-with 'SPAM::Model::SNMP::IfIndexToPortIndex';
+with 'SPAM::Model::SNMP::PortTable';
 with 'SPAM::Model::SNMP::IfIndexToDot1d';
 with 'SPAM::Model::SNMP::TrunkVlans';
 with 'SPAM::Model::SNMP::ActiveVlans';

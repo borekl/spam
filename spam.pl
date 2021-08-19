@@ -82,14 +82,9 @@ sub find_changes
   foreach my $k (@idx_keys) {
     # interface's ifIndex
     my $if = $idx->{$k};
-    # interface's [portModuleIndex, portIndex]
-    my $pi = $host->snmp->ifindex_to_portindex->{$if}
-      if $host->snmp->has_ifindex_to_portindex;
 
     if($host->ports_db->has_port($k)) {
 
-      my $portTable
-         = $s->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
          = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
 
@@ -114,7 +109,7 @@ sub find_changes
         [ 'ifAlias', 's', $old->descr($k),
           $host->snmp->iftable($k, 'ifAlias') ],
         [ 'portDuplex', 'n', $old->duplex($k),
-          $portTable->{'portDuplex'}{'value'} ],
+          $host->snmp->porttable($k, 'portDuplex') ],
         [ 'ifSpeed', 'n', $old->speed($k),
           $host->snmp->iftable($k, 'ifSpeed') ],
         [ 'port_flags', 'n', $old->flags($k),
@@ -129,7 +124,7 @@ sub find_changes
 
       my $cmp_acc;
       printf $debug_fh
-        "--> PORT %s (if=%d, pi=%d/%d)\n", $k, $if, @$pi if $debug_fh;
+        "--> PORT %s (if=%d)\n", $k, $if if $debug_fh;
       for my $d (@data) {
         my $cmp;
         if($d->[1] eq 's') {
@@ -235,8 +230,6 @@ sub sql_status_update
     my $ifXTable = $s->{'IF-MIB'}{'ifXTable'}{$if};
     my $vmMembershipTable
        = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
-    my $portTable
-       = $s->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
 
     #--- INSERT
 
@@ -259,7 +252,7 @@ sub sql_status_update
         $vmMembershipTable->{'vmVlan'}{'value'},
         $host->trunk_vlans_bitstring($if),
         $ifXTable->{'ifAlias'}{'value'},
-        $portTable->{'portDuplex'}{'value'},
+        $host->snmp->porttable($k, 'portDuplex'),
         #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
         $ifrate->($if),
         $host->snmp->get_port_flags($if),
@@ -295,7 +288,7 @@ sub sql_status_update
           $vmMembershipTable->{'vmVlan'}{'value'},
           $host->snmp->trunk_vlans_bitstring($if),
           $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
-          $portTable->{'portDuplex'}{'value'},
+          $host->snmp->porttable($k, 'portDuplex'),
           #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
           $ifrate->($if),
           $host->snmp->get_port_flags($if),
