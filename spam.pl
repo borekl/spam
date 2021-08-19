@@ -88,8 +88,6 @@ sub find_changes
 
     if($host->ports_db->has_port($k)) {
 
-      my $ifTable = $s->{'IF-MIB'}{'ifTable'}{$if};
-      my $ifXTable = $s->{'IF-MIB'}{'ifXTable'}{$if};
       my $portTable
          = $s->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]};
       my $vmMembershipTable
@@ -104,33 +102,27 @@ sub find_changes
 
       my @data = (
         [ 'ifOperStatus', 'n', $old->oper_status($k),
-          $ifTable->{'ifOperStatus'}{'value'} ],
+          $host->snmp->iftable($k, 'ifOperStatus') ],
         [ 'ifInUcastPkts', 'n', $old->packets_in($k),
-      	  $ifTable->{'ifInUcastPkts'}{'value'} ],
+          $host->snmp->iftable($k, 'ifInUcastPkts') ],
         [ 'ifOutUcastPkts', 'n', $old->packets_out($k),
-      	  $ifTable->{'ifOutUcastPkts'}{'value'} ],
+          $host->snmp->iftable($k, 'ifOutUcastPkts') ],
         [ 'vmVlan', 'n', $old->vlan($k),
           $vmMembershipTable->{'vmVlan'}{'value'} ],
         [ 'vlanTrunkPortVlansEnabled', 's', $old->vlans($k),
           $host->snmp->trunk_vlans_bitstring($if) ],
         [ 'ifAlias', 's', $old->descr($k),
-          $ifXTable->{'ifAlias'}{'value'} ],
+          $host->snmp->iftable($k, 'ifAlias') ],
         [ 'portDuplex', 'n', $old->duplex($k),
           $portTable->{'portDuplex'}{'value'} ],
-        [ 'ifSpeed', 'n', $old->speed($k), (
-            exists $ifXTable->{'ifHighSpeed'}{'value'}
-            ?
-            $ifXTable->{'ifHighSpeed'}{'value'}
-            :
-            int($ifTable->{'ifSpeed'}{'value'} / 1000000)
-          )
-        ],
+        [ 'ifSpeed', 'n', $old->speed($k),
+          $host->snmp->iftable($k, 'ifSpeed') ],
         [ 'port_flags', 'n', $old->flags($k),
           $host->snmp->get_port_flags($if) ],
         [ 'ifAdminStatus', 'n', $old->admin_status($k),
-          $ifTable->{'ifAdminStatus'}{'value'} ],
-        [ 'errdisable', 'n',
-          $old->errdisable($k), $errdis ]
+          $host->snmp->iftable($k, 'ifAdminStatus') ],
+        [ 'errdisable', 'n', $old->errdisable($k),
+          $errdis ]
       );
 
       #--- perform comparison

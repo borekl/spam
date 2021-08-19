@@ -19,7 +19,7 @@ with 'SPAM::MessageCallback';
 # probably be improved upon later.
 has _d => ( is => 'ro', default => sub {{}} );
 
-with 'SPAM::Model::SNMP::PortToIfIndex';
+with 'SPAM::Model::SNMP::IfTable';
 with 'SPAM::Model::SNMP::Platform';
 with 'SPAM::Model::SNMP::Location';
 with 'SPAM::Model::SNMP::EntityTree';
@@ -29,20 +29,5 @@ with 'SPAM::Model::SNMP::TrunkVlans';
 with 'SPAM::Model::SNMP::ActiveVlans';
 with 'SPAM::Model::SNMP::PortFlags';
 with 'SPAM::Model::SNMP::Boottime';
-
-#------------------------------------------------------------------------------
-# return true if ifTable AND ifXTable exist
-sub has_iftable ($self)
-{
-  if(
-    exists $self->_d->{'IF-MIB'} &&
-    exists $self->_d->{'IF-MIB'}{'ifTable'} &&
-    exists $self->_d->{'IF-MIB'}{'ifXTable'}
-  ) {
-    return 1;
-  } else {
-    return undef;
-  }
-}
 
 1;
