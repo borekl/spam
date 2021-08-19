@@ -243,20 +243,19 @@ sub sql_status_update
       @bind = (
         $host->name,
         $k->[1],
-        $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
-        $ifTable->{'ifInUcastPkts'}{'value'},
-        $ifTable->{'ifOutUcastPkts'}{'value'},
+        $host->snmp->iftable($k->[1], 'ifOperStatus') == 1 ? 'true' : 'false',
+        $host->snmp->iftable($k->[1], 'ifInUcastPkts'),
+        $host->snmp->iftable($k->[1], 'ifOutUcastPkts'),
         $current_time,
         $current_time,
         $if,
         $vmMembershipTable->{'vmVlan'}{'value'},
         $host->trunk_vlans_bitstring($if),
-        $ifXTable->{'ifAlias'}{'value'},
-        $host->snmp->porttable($k, 'portDuplex'),
-        #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
-        $ifrate->($if),
+        $host->snmp->iftable($k->[1], 'ifAlias'),
+        $host->snmp->porttable($k->[1], 'portDuplex'),
+        $host->snmp->porttable($k->[1], 'ifSpeed'),
         $host->snmp->get_port_flags($if),
-        $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 'true' : 'false',
+        $host->snmp->iftable($k->[1], 'ifAdminStatus') == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
       );
@@ -281,18 +280,17 @@ sub sql_status_update
         );
         @bind = (
           $current_time,
-          $ifTable->{'ifOperStatus'}{'enum'} eq 'up' ? 'true' : 'false',
-          $ifTable->{'ifInUcastPkts'}{'value'},
-          $ifTable->{'ifOutUcastPkts'}{'value'},
+          $host->snmp->iftable($k->[1], 'ifOperStatus') == 1 ? 'true' : 'false',
+          $host->snmp->iftable($k->[1], 'ifInUcastPkts'),
+          $host->snmp->iftable($k->[1], 'ifOutUcastPkts'),
           $if,
           $vmMembershipTable->{'vmVlan'}{'value'},
           $host->snmp->trunk_vlans_bitstring($if),
-          $ifXTable->{'ifAlias'}{'value'} =~ s/'/''/gr,
-          $host->snmp->porttable($k, 'portDuplex'),
-          #($ifTable->{'ifSpeed'}{'value'} / 1000000) =~ s/\..*$//r,
-          $ifrate->($if),
+          $host->snmp->iftable($k->[1], 'ifAlias') =~ s/'/''/gr,
+          $host->snmp->porttable($k->[1], 'portDuplex'),
+          $host->snmp->porttable($k->[1], 'ifSpeed'),
           $host->snmp->get_port_flags($if),
-          $ifTable->{'ifAdminStatus'}{'value'} == 1 ? 't':'f',
+          $host->snmp->iftable($k->[1], 'ifAdminStatus') == 1 ? 'true' : 'false',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'
         );
