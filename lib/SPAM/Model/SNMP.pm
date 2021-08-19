@@ -30,5 +30,6 @@ with 'SPAM::Model::SNMP::ActiveVlans';
 with 'SPAM::Model::SNMP::PortFlags';
 with 'SPAM::Model::SNMP::Boottime';
 with 'SPAM::Model::SNMP::VmMembershipTable';
+with 'SPAM::Model::SNMP::CafSessionTable';
 
 1;

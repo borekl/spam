@@ -110,7 +110,7 @@ sub find_changes
         [ 'ifSpeed', 'n', $old->speed($k),
           $host->snmp->iftable($k, 'ifSpeed') ],
         [ 'port_flags', 'n', $old->flags($k),
-          $host->snmp->get_port_flags($if) ],
+          $host->snmp->get_port_flags($k) ],
         [ 'ifAdminStatus', 'n', $old->admin_status($k),
           $host->snmp->iftable($k, 'ifAdminStatus') ],
         [ 'errdisable', 'n', $old->errdisable($k),
@@ -249,7 +249,7 @@ sub sql_status_update
         $host->snmp->iftable($k->[1], 'ifAlias'),
         $host->snmp->porttable($k->[1], 'portDuplex'),
         $host->snmp->porttable($k->[1], 'ifSpeed'),
-        $host->snmp->get_port_flags($if),
+        $host->snmp->get_port_flags($k->[1]),
         $host->snmp->iftable($k->[1], 'ifAdminStatus') == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
         'false'
@@ -284,7 +284,7 @@ sub sql_status_update
           $host->snmp->iftable($k->[1], 'ifAlias') =~ s/'/''/gr,
           $host->snmp->porttable($k->[1], 'portDuplex'),
           $host->snmp->porttable($k->[1], 'ifSpeed'),
-          $host->snmp->get_port_flags($if),
+          $host->snmp->get_port_flags($k->[1]),
           $host->snmp->iftable($k->[1], 'ifAdminStatus') == 1 ? 'true' : 'false',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
           'false'

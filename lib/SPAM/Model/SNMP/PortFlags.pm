@@ -30,12 +30,16 @@ my %flag_map = (
 );
 
 # extract various flags from information scattered in the host instance
-sub get_port_flags ($self, $if)
+sub get_port_flags ($self, $p)
 {
   no autovivification;
   use warnings FATAL => 'all';
   my $s = $self->_d;
+  my $if = $self->port_to_ifindex->{$p};
   my @flags;
+
+  # check port's existence
+  return undef unless defined $if;
 
   # use cached value if available
   return $self->_port_flags->{$if}
@@ -78,21 +82,7 @@ sub get_port_flags ($self, $if)
   }
 
   # MAC bypass
-  if(
-    exists $s->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}
-  ) {
-    my $s = $s->{'CISCO-AUTH-FRAMEWORK-MIB'}{'cafSessionMethodsInfoTable'}{$if};
-    for my $sessid (keys %$s) {
-      if(
-        exists $s->{$sessid}{'macAuthBypass'}
-        && exists $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}
-        && exists $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'}
-        && $s->{$sessid}{'macAuthBypass'}{'cafSessionMethodState'}{'enum'} eq 'authcSuccess'
-      ) {
-        push(@flags, 'mac_bypass');
-      }
-    }
-  }
+  push(@flags, 'mac_bypass') if $self->has_mac_bypass($p);
 
   # CDP
 
