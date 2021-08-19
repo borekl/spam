@@ -28,21 +28,8 @@ sub _build_active_vlans ($self)
     }
   }
 
-  # static VLANs
-  if(
-    exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}
-    && exists $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}
-  ) {
-    my $vmMembershipTable
-    = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'};
-    for my $if (keys %$vmMembershipTable) {
-      my $v = $vmMembershipTable->{$if}{'vmVlan'}{'value'};
-      $vlans{$v} = undef if $v > 0 && $v < 1000;
-    }
-  }
-
   # sort and finish
-  return [ sort { $a <=> $b } keys %vlans ];
+  return [ sort { $a <=> $b } (keys %vlans, @{$self->static_vlans}) ];
 }
 
 1;

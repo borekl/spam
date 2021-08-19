@@ -29,5 +29,6 @@ with 'SPAM::Model::SNMP::TrunkVlans';
 with 'SPAM::Model::SNMP::ActiveVlans';
 with 'SPAM::Model::SNMP::PortFlags';
 with 'SPAM::Model::SNMP::Boottime';
+with 'SPAM::Model::SNMP::VmMembershipTable';
 
 1;

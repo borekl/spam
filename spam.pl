@@ -85,9 +85,6 @@ sub find_changes
 
     if($host->ports_db->has_port($k)) {
 
-      my $vmMembershipTable
-         = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
-
       #--- update: entry is not new, check whether it has changed ---
 
       my $old = $host->ports_db;
@@ -103,7 +100,7 @@ sub find_changes
         [ 'ifOutUcastPkts', 'n', $old->packets_out($k),
           $host->snmp->iftable($k, 'ifOutUcastPkts') ],
         [ 'vmVlan', 'n', $old->vlan($k),
-          $vmMembershipTable->{'vmVlan'}{'value'} ],
+          $host->snmp->vm_membership_table($k, 'vmVlan') ],
         [ 'vlanTrunkPortVlansEnabled', 's', $old->vlans($k),
           $host->snmp->trunk_vlans_bitstring($if) ],
         [ 'ifAlias', 's', $old->descr($k),
@@ -228,8 +225,6 @@ sub sql_status_update
     my $current_time = strftime("%c", localtime());
     my $ifTable = $s->{'IF-MIB'}{'ifTable'}{$if};
     my $ifXTable = $s->{'IF-MIB'}{'ifXTable'}{$if};
-    my $vmMembershipTable
-       = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'}{$if};
 
     #--- INSERT
 
@@ -249,7 +244,7 @@ sub sql_status_update
         $current_time,
         $current_time,
         $if,
-        $vmMembershipTable->{'vmVlan'}{'value'},
+        $host->snmp->vm_membership_table($k->[1], 'vmVlan'),
         $host->trunk_vlans_bitstring($if),
         $host->snmp->iftable($k->[1], 'ifAlias'),
         $host->snmp->porttable($k->[1], 'portDuplex'),
@@ -284,7 +279,7 @@ sub sql_status_update
           $host->snmp->iftable($k->[1], 'ifInUcastPkts'),
           $host->snmp->iftable($k->[1], 'ifOutUcastPkts'),
           $if,
-          $vmMembershipTable->{'vmVlan'}{'value'},
+          $host->snmp->vm_membership_table($k->[1], 'vmVlan'),
           $host->snmp->trunk_vlans_bitstring($if),
           $host->snmp->iftable($k->[1], 'ifAlias') =~ s/'/''/gr,
           $host->snmp->porttable($k->[1], 'portDuplex'),
