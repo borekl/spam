@@ -175,8 +175,8 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
       if(!$is_first_mib) {
         my $include_re = $obj->include;
         my $exclude_re = $obj->exclude;
-        next if $include_re && $self->platform !~ /$include_re/;
-        next if $exclude_re && $self->platform =~ /$exclude_re/;
+        return undef if $include_re && $self->snmp->platform !~ /$include_re/;
+        return undef if $exclude_re && $self->snmp->platform =~ /$exclude_re/;
       }
 
       # include additional MIBs; this implements the 'addmib' object key; we use
