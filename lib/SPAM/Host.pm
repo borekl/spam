@@ -331,6 +331,113 @@ sub is_rebooted ($self)
   return 0;
 }
 
+#------------------------------------------------------------------------------
+# return true if port state differs between database and SNMP; this function is
+# way more complicated than it would need to be if we only wanted a comparison
+# and nothing else -- but we need debugging output, too
+sub is_port_changed ($self, $p)
+{
+  my $result = 0;
+  my $d = $self->ports_db;
+  my $s = $self->snmp;
+
+  my @data = (
+  [ 'ifOperStatus', 'n', $d->oper_status($p), $s->iftable($p, 'ifOperStatus') ],
+  [ 'ifAdminStatus', 'n', $d->admin_status($p), $s->iftable($p, 'ifAdminStatus') ],
+  [ 'ifInUcastPkts', 'n', $d->packets_in($p), $s->iftable($p, 'ifInUcastPkts') ],
+  [ 'ifOutUcastPkts', 'n', $d->packets_out($p), $s->iftable($p, 'ifOutUcastPkts') ],
+  [ 'vmVlan', 'n', $d->vlan($p), $s->vm_membership_table($p, 'vmVlan') ],
+  [ 'vlanTrunkPortVlansEnabled', 's', $d->vlans($p), $s->trunk_vlans_bitstring($p) ],
+  [ 'ifAlias', 's', $d->descr($p), $s->iftable($p, 'ifAlias') ],
+  [ 'portDuplex', 'n', $d->duplex($p), $s->porttable($p, 'portDuplex') ],
+  [ 'ifSpeed', 'n', $d->speed($p), $s->iftable($p, 'ifSpeed') ],
+  [ 'port_flags', 'n', $d->flags($p), $s->get_port_flags($p) ]
+  );
+
+  my $debug;   # debugging info
+  my $cmp_acc; # compare accumulator
+
+  # debug header
+  $debug = sprintf("---> HOST %s PORT %s\n", $self->name, $p);
+
+  # the ugly code in this loop is there to avoid warnings about uninitialized
+  # variables in comparison and in sprintf
+  foreach my $d (@data) {
+    my $cmp;
+
+    # we need to replace undefined values (which are perfectly possible) with
+    # something well-defined so that we avoid warnings; since we can have either
+    # numerical or string fields, we need to have two different default values
+    # to replace undefs with
+    my $default = $d->[1] eq 's' ? 'undef' : 0;
+
+    # replace undefs with previously defined default value
+    my ($d1, $d2) = map { $_ // $default } @$d[2..3];
+
+    # perform the comparison
+    if($d->[1] eq 's') {
+      $cmp = $d1 ne $d2;
+    } else {
+      $cmp = $d1 != $d2;
+    }
+
+    # some additional mangling for debugging output
+    ($d1, $d2) = map { $_ // '-' } @$d[2..3];
+    ($d1, $d2) = ('-omitted-', '-omitted-')
+    if $d->[0] eq 'vlanTrunkPortVlansEnabled';
+
+    # debug output
+    $debug .= sprintf(
+      "%s: old:%s new:%s -> %s\n", $d->[0], $d1, $d2,
+      $cmp ? 'NO MATCH' : 'MATCH'
+    );
+
+    # add result of comparison to the accumulator
+    $cmp_acc ||= $cmp;
+  }
+
+  # finish
+  return wantarray ? ($cmp_acc, $debug) : $cmp_acc;
+}
+
+#------------------------------------------------------------------------------
+# function to generate update plan, this is a list of ports with action that
+# needs to be done; the action can be: i) insert new port, d) delete no longer
+# detected port, U) fully update port entry, u) update port entry's 'lastchk'
+# field
+sub find_changes ($self)
+{
+  my %update_plan = (
+    plan => \my @u,
+    stats => { i => 0, d => 0, U => 0, u => 0 }
+  );
+
+  # delete: ports that are no longer found by SNMP
+  push(@u, map { [ 'd', $_ ] } $self->vanished_ports);
+  $update_plan{stats}{d} = @u;
+
+  # iterate over ports found via SNMP
+  foreach my $p ($self->snmp->ports) {
+
+    # the port is already known, check it for change
+    if($self->ports_db->has_port($p)) {
+      my $changed = $self->is_port_changed($p);
+      my $mode = $changed ? 'U' : 'u';
+      push(@u, [ $mode, $p ]);
+      $update_plan{stats}{$mode}++;
+    }
+
+    # the port is seen for the first time, insert it
+    else {
+      push(@u, [ 'i', $p ]);
+      $update_plan{stats}{i}++;
+    }
+  }
+
+  # finish
+  return \%update_plan;
+}
+
 #==============================================================================
 
 1;

@@ -42,142 +42,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# This function compares old data (retrieved from backend database into
-# "dbStatus" subtree of swdata) and the new data retrieved via SNMP from
-# given host. It updates in-memory data and prepares plan for database
-# update (in @update_plan array).
-#
-# Arguments: 1. host
-#            2. Name to ifname->ifindex hash
-# Returns:   1. update plan (array reference)
-#            2. update statistics (array reference to number of
-#               inserts/deletes/full updates/partial updates)
-#===========================================================================
-
-sub find_changes
-{
-  my ($host) = @_;
-  my $idx = $host->snmp->port_to_ifindex;
-  my @idx_keys = (keys %$idx);
-  my @update_plan;
-  my @stats = (0) x 4;  # i/d/U/u
-  my $debug_fh;
-  my $s = $host->snmp->_d;
-
-  #--- debug init
-
-  if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>', "debug.find_changes.$$.log");
-    if($debug_fh) {
-      printf $debug_fh "--> find_changes(%s)\n", $host->name
-    }
-  }
-
-  # delete: ports that no longer exist (not found via SNMP)
-  push(@update_plan, map { [ 'd', $_ ] } $host->vanished_ports);
-  $stats[1] = @update_plan;
-
-  #--- now we scan entries found via SNMP ---
-
-  foreach my $k (@idx_keys) {
-    # interface's ifIndex
-    my $if = $idx->{$k};
-
-    if($host->ports_db->has_port($k)) {
-
-      #--- update: entry is not new, check whether it has changed ---
-
-      my $old = $host->ports_db;
-      my $errdis = 0; # currently unavailable
-
-      #--- collect the data to compare
-
-      my @data = (
-        [ 'ifOperStatus', 'n', $old->oper_status($k),
-          $host->snmp->iftable($k, 'ifOperStatus') ],
-        [ 'ifInUcastPkts', 'n', $old->packets_in($k),
-          $host->snmp->iftable($k, 'ifInUcastPkts') ],
-        [ 'ifOutUcastPkts', 'n', $old->packets_out($k),
-          $host->snmp->iftable($k, 'ifOutUcastPkts') ],
-        [ 'vmVlan', 'n', $old->vlan($k),
-          $host->snmp->vm_membership_table($k, 'vmVlan') ],
-        [ 'vlanTrunkPortVlansEnabled', 's', $old->vlans($k),
-          $host->snmp->trunk_vlans_bitstring($k) ],
-        [ 'ifAlias', 's', $old->descr($k),
-          $host->snmp->iftable($k, 'ifAlias') ],
-        [ 'portDuplex', 'n', $old->duplex($k),
-          $host->snmp->porttable($k, 'portDuplex') ],
-        [ 'ifSpeed', 'n', $old->speed($k),
-          $host->snmp->iftable($k, 'ifSpeed') ],
-        [ 'port_flags', 'n', $old->flags($k),
-          $host->snmp->get_port_flags($k) ],
-        [ 'ifAdminStatus', 'n', $old->admin_status($k),
-          $host->snmp->iftable($k, 'ifAdminStatus') ],
-        [ 'errdisable', 'n', $old->errdisable($k),
-          $errdis ]
-      );
-
-      #--- perform comparison
-
-      my $cmp_acc;
-      printf $debug_fh
-        "--> PORT %s (if=%d)\n", $k, $if if $debug_fh;
-      for my $d (@data) {
-        my $cmp;
-        if($d->[1] eq 's') {
-          $cmp = $d->[2] ne $d->[3];
-        } else {
-          $cmp = $d->[2] != $d->[3];
-        }
-        printf $debug_fh  "%s: old:%s new:%s -> %s\n", @$d[0,2,3],
-          $cmp ? 'NO MATCH' : 'MATCH'
-          if $debug_fh;
-        $cmp_acc ||= $cmp;
-      }
-
-      #--- push full or partial update
-
-      if($cmp_acc) {
-        # 'U' as 'full update', ie. update all fields in STATUS table
-        print $debug_fh "result: FULL UPDATE\n" if $debug_fh;
-        push (@update_plan, [ 'U', $k ]);
-        #$swdata{$host}{updated}{$if} = 1;
-        $stats[2]++;
-      } else {
-        # 'u' as 'partial update', ie. update only lastchk field
-        print $debug_fh "result: PARTIAL UPDATE\n" if $debug_fh;
-        push (@update_plan, [ 'u', $k ]);
-        $stats[3]++;
-        #if($h->{ifOperStatus}{$if} == 1) { $swdata{$host}{updated}{$if} = 1; }
-      }
-
-    } else {
-
-      #--- insert: entry is new, insert it into backend database ---
-      push(@update_plan, [ 'i', $k ]);       # 'i' as 'insert'
-      $stats[0]++;
-      #if($h->{ifOperStatus}{$if} == 1) { $swdata{$host}{updated}{$if} = 1; }
-    }
-  }
-
-  #--- some debugging output
-
-  if($debug_fh) {
-    print $debug_fh "---> UPDATE PLAN FOLLOWS\n";
-    for my $k (@update_plan) {
-      printf $debug_fh "%s %s\n", @$k;
-    }
-    print $debug_fh "---> END OF UPDATE PLAN\n";
-  }
-
-  #--- finish
-
-  close($debug_fh) if $debug_fh;
-  return (\@update_plan, \@stats);
-}
-
-
-#===========================================================================
 # This function performs updating of the STATUS table in the backend dbase;
 # by creating entire SQL transaction in memory and then executing it.
 #
@@ -1188,14 +1052,14 @@ try {
 
           # find changes and update status table
           tty_message("[$host] Updating status table (started)\n");
-          my ($update_plan, $update_stats) = find_changes($hi);
+          my $update_plan = $hi->find_changes;
           tty_message(
             sprintf(
               "[%s] Updating status table (i=%d/d=%d/U=%d/u=%d)\n",
-              $host, @$update_stats
+              $host, @{$update_plan->{stats}}{qw(i d U u)}
             )
           );
-          my $e = sql_status_update($hi, $update_plan);
+          my $e = sql_status_update($hi, $update_plan->{plan});
           if($e) {
             tty_message("[$host] Updating status table (failed, $e)\n");
           } else {
