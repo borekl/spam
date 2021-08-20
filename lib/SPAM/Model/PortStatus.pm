@@ -81,4 +81,110 @@ sub speed ($self, $p) { $self->status->{$p}{rate} }
 sub flags ($self, $p) { $self->status->{$p}{flags} }
 sub errdisable ($self, $p) { $self->status->{$p}{errdis} }
 
+#------------------------------------------------------------------------------
+# delete given ports; this is supposed to be wrapped in an transaction
+sub delete_ports ($self, @ports)
+{
+  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+
+  foreach my $p (@ports) {
+    $dbh->do(
+      'DELETE FROM status WHERE host = ? AND portname = ?', undef,
+      $self->hostname, $p
+    );
+  }
+}
+
+#------------------------------------------------------------------------------
+# insert ports with values supplied from SNMP; this is supposed to be wrapped in
+# a transaction
+sub insert_ports ($self, $snmp, @ports)
+{
+  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+
+  my $f = join(',', qw(
+    host portname status inpkts outpkts ifindex vlan descr
+    duplex rate flags adminstatus errdis vlans lastchg lastchk
+  ));
+
+  my $sth = $dbh->prepare(
+    "INSERT INTO status ($f) VALUES " .
+    '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,current_timestamp,current_timestamp)',
+  );
+
+  foreach my $p (@ports) {
+    $sth->execute(
+      $self->hostname,
+      $p,
+      $snmp->iftable($p, 'ifOperStatus') == 1 ? 't' : 'f',
+      $snmp->iftable($p, 'ifInUcastPkts'),
+      $snmp->iftable($p, 'ifOutUcastPkts'),
+      $snmp->port_to_ifindex->{$p},
+      $snmp->vm_membership_table($p, 'vmVlan'),
+      $snmp->iftable($p, 'ifAlias'),
+      $snmp->porttable($p, 'portDuplex'),
+      $snmp->iftable($p, 'ifSpeed'),
+      $snmp->get_port_flags($p),
+      $snmp->iftable($p, 'ifAdminStatus') == 1 ? 't' : 'f',
+      'f',
+      $snmp->trunk_vlans_bitstring($p)
+    );
+  }
+}
+
+#------------------------------------------------------------------------------
+# update ports with values supplied from SNMP; this is supposed to be wrapped in
+# a transaction
+sub update_ports ($self, $snmp, @ports)
+{
+  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+
+  my $f = join(',', map { "$_ = ?" } qw(
+    host portname status inpkts outpkts ifindex vlan descr
+    duplex rate flags adminstatus errdis vlans
+  ));
+
+  my $sth = $dbh->prepare(
+    "UPDATE status SET $f, ".
+    'lastchg = current_timestamp, lastchk = current_timestamp ' .
+    'WHERE host = ? AND portname = ?'
+  );
+
+  foreach my $p (@ports) {
+    $sth->execute(
+      $self->hostname,
+      $p,
+      $snmp->iftable($p, 'ifOperStatus') == 1 ? 't' : 'f',
+      $snmp->iftable($p, 'ifInUcastPkts'),
+      $snmp->iftable($p, 'ifOutUcastPkts'),
+      $snmp->port_to_ifindex->{$p},
+      $snmp->vm_membership_table($p, 'vmVlan'),
+      $snmp->iftable($p, 'ifAlias'),
+      $snmp->porttable($p, 'portDuplex'),
+      $snmp->iftable($p, 'ifSpeed'),
+      $snmp->get_port_flags($p),
+      $snmp->iftable($p, 'ifAdminStatus') == 1 ? 't' : 'f',
+      'f',
+      $snmp->trunk_vlans_bitstring($p),
+      $self->hostname,
+      $p
+    );
+  }
+}
+
+#------------------------------------------------------------------------------
+# update only 'lastchk' field for all supplied ports
+sub touch_ports ($self, @ports)
+{
+  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+
+  foreach my $p (@ports) {
+    $dbh->do(
+      'UPDATE status SET lastchk = current_timestamp ' .
+      'WHERE host = ? AND portname = ?', undef,
+      $self->hostname, $p
+    );
+  }
+}
+
 1;
