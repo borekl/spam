@@ -69,8 +69,8 @@ sub has_port ($self, $p) { exists $self->status->{$p} }
 
 #------------------------------------------------------------------------------
 # port getter functions
-sub oper_status ($self, $p) { $self->status->{$p}{adminstatus} }
-sub admin_status ($self, $p) { $self->status->{$p}{status} }
+sub oper_status ($self, $p) { $self->status->{$p}{status} }
+sub admin_status ($self, $p) { $self->status->{$p}{adminstatus} }
 sub packets_in ($self, $p) { $self->status->{$p}{inpkts} }
 sub packets_out ($self, $p) { $self->status->{$p}{outpkts} }
 sub vlan ($self, $p) { $self->status->{$p}{vlan} }
