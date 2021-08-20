@@ -248,7 +248,7 @@ sub sql_status_update
         $host->trunk_vlans_bitstring($k->[1]),
         $host->snmp->iftable($k->[1], 'ifAlias'),
         $host->snmp->porttable($k->[1], 'portDuplex'),
-        $host->snmp->porttable($k->[1], 'ifSpeed'),
+        $host->snmp->iftable($k->[1], 'ifSpeed'),
         $host->snmp->get_port_flags($k->[1]),
         $host->snmp->iftable($k->[1], 'ifAdminStatus') == 1 ? 'true' : 'false',
         # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
@@ -283,7 +283,7 @@ sub sql_status_update
           $host->snmp->trunk_vlans_bitstring($k->[1]),
           $host->snmp->iftable($k->[1], 'ifAlias') =~ s/'/''/gr,
           $host->snmp->porttable($k->[1], 'portDuplex'),
-          $host->snmp->porttable($k->[1], 'ifSpeed'),
+          $host->snmp->iftable($k->[1], 'ifSpeed'),
           $host->snmp->get_port_flags($k->[1]),
           $host->snmp->iftable($k->[1], 'ifAdminStatus') == 1 ? 'true' : 'false',
           # errdisable used portAdditionalOperStatus; it is no longer supported by Cisco
