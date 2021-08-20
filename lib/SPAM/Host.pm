@@ -438,6 +438,32 @@ sub find_changes ($self)
   return \%update_plan;
 }
 
+#------------------------------------------------------------------------------
+# update all ports
+sub update_db ($self)
+{
+  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $update_plan = $self->find_changes;
+
+  $self->_m(
+    'Updating status table (i=%d/d=%d/U=%d/u=%d)',
+    @{$update_plan->{stats}}{qw(i d U u)}
+  );
+
+  $dbx->txn(fixup => sub {
+    foreach (@{$update_plan->{plan}}) {
+      my ($act, $p) = @$_;
+      if($act eq 'd') { $self->ports_db->delete_ports($p); }
+      elsif($act eq 'i') { $self->ports_db->insert_ports($self->snmp, $p); }
+      elsif($act eq 'U') { $self->ports_db->update_ports($self->snmp, $p); }
+      elsif($act eq 'u') { $self->ports_db->touch_ports($p); }
+      else { croak 'Invalid action in update plan'; }
+    }
+  });
+
+  $self->_m('Updating status table (finished)');
+}
+
 #==============================================================================
 
 1;
