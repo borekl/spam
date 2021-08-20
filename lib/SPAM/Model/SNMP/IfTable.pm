@@ -110,4 +110,8 @@ sub _build_port_to_ifindex ($self)
   return { reverse %by_ifindex };
 }
 
+#------------------------------------------------------------------------------
+# Get a list of ports
+sub ports ($self) { keys %{$self->port_to_ifindex} }
+
 1;
