@@ -8,13 +8,15 @@ requires '_d';
 # Helper function to concatenate the bitstrings that represent enabled VLANs
 # on a trunk (gleaned from vlaTrunkPortVlansEnabled group of columns).
 # Filling in of ommited values is also performed here.
-sub trunk_vlans_bitstring ($self, $if)
+sub trunk_vlans_bitstring ($self, $p)
 {
   no autovivification;
 
   my ($trunk_vlans, $e);
+  my $if = $self->port_to_ifindex->{$p};
 
   # return undef if required SNMP data are not present
+  return undef unless defined $if;
   return undef
   unless $e = $self->_d->{'CISCO-VTP-MIB'}{'vlanTrunkPortTable'}{$if};
   return undef
