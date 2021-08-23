@@ -350,7 +350,10 @@ sub get_snmp_command
   $options =~ s/%X//g unless $ctx;
 
   # finish
-  return $snmp->{$cmd}{exec} . ' ' . $options;
+  return
+    wantarray
+    ? (($snmp->{$cmd}{exec} . ' ' . $options), $snmp->{profile})
+    : ($snmp->{$cmd}{exec} . ' ' . $options)
 }
 
 

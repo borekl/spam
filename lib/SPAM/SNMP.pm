@@ -403,7 +403,7 @@ sub snmp_get_object
 
   #--- read loop ------------------------------------------------------------
 
-    my $cmd = SPAM::Config->instance->get_snmp_command(
+    my ($cmd, $profile) = SPAM::Config->instance->get_snmp_command(
       command   => $cmd,
       host      => $host,
       context   => $context,
@@ -411,7 +411,7 @@ sub snmp_get_object
       oid       => $entry
     );
 
-    printf $fh "--> SNMP COMMAND: %s\n", $cmd if $fh;
+    printf $fh "--> SNMP COMMAND (profile=%s): %s\n", $profile, $cmd if $fh;
 
     my $read_state = 'first';
 
