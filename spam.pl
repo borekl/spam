@@ -313,20 +313,17 @@ sub switch_info
   $stat->{'p_used'} = 0 if $knownports;
 
   # do the counts
-  foreach my $if (keys %{$host->snmp->{'IF-MIB'}{'ifTable'}}) {
-    my $ifTable = $host->snmp->{'IF-MIB'}{'ifTable'};
-    my $ifXTable = $host->snmp->{'IF-MIB'}{'ifXTable'};
-    my $portname = $ifXTable->{$if}{'ifName'}{'value'};
+  foreach my $portname (keys %$idx) {
+    my $if = $idx->{$portname};
     $stat->{p_total}++;
     $stat->{p_patch}++ if $port2cp->exists($host->name, $portname);
-    $stat->{p_act}++
-      if $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up';
+    $stat->{p_act}++ if $host->snmp->iftable($portname, 'ifOperStatus') == 1;
     # p_errdis used to count errordisable ports, but required SNMP variable
     # is no longer available
     #--- unregistered ports
     if(
       $knownports
-      && $ifTable->{$if}{'ifOperStatus'}{'enum'} eq 'up'
+      && $host->snmp->iftable($portname, 'ifOperStatus') == 1
       && !$port2cp->exists($host->name, $portname)
       && !(
         exists $host->snmp->{'CISCO-CDP-MIB'}
