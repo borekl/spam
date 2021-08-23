@@ -333,6 +333,12 @@ sub get_snmp_command
   if($mibs && !ref($mibs)) { $mibs = [ $mibs ]; }
   my $miblist = join(':', @$mibs);
 
+  # context prefix; Cisco uses prefixes their context to access different VLANs
+  # in BRIDGE-MIB with 'vlan-' (ie. 'vlan-1' for VLAN 1), but only in SNMPv3;
+  # this is defined with context.prefix configuration key in snmp profile
+  $ctx = $snmp->{context}{prefix} . $ctx
+  if $ctx ne '' && exists $snmp->{context} && exists $snmp->{context}{prefix};
+
   # perform placeholder replacement
   my $options = $snmp->{$cmd}{options};
   $options =~ s/%c/$cmty/g;
