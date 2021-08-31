@@ -509,13 +509,13 @@ sub debug_dump
 
   # display some derived knowledge
   my @chassis = $self->chassis;
-  printf $fh "\nCHASSIS (%d found)\n", scalar(@chassis);
+  printf $fh "\n===> CHASSIS (%d found)\n", scalar(@chassis);
   for(my $i = 0; $i < @chassis; $i++) {
     printf $fh "%d. %s\n", $i+1, $chassis[$i]->disp;
   }
 
   my @ps = $self->power_supplies;
-  printf $fh "\nPOWER SUPPLIES (%d found)\n", scalar(@ps);
+  printf $fh "\n===> POWER SUPPLIES (%d found)\n", scalar(@ps);
   for(my $i = 0; $i < @ps; $i++) {
     printf $fh "%d. chassis=%d %s\n", $i+1,
       $ps[$i]->chassis_no,
@@ -523,7 +523,7 @@ sub debug_dump
   }
 
   my @cards = $self->linecards;
-  printf $fh "\nLINECARDS (%d found)\n", scalar(@cards);
+  printf $fh "\n===> LINECARDS (%d found)\n", scalar(@cards);
   for(my $i = 0; $i < @cards; $i++) {
     printf $fh "%d. chassis=%d slot=%d %s\n", $i+1,
       $cards[$i]->chassis_no,
@@ -532,7 +532,7 @@ sub debug_dump
   }
 
   my @fans = $self->fans;
-  printf $fh "\nFANS (%d found)\n", scalar(@fans);
+  printf $fh "\n===> FANS (%d found)\n", scalar(@fans);
   for(my $i = 0; $i < @fans; $i++) {
     printf $fh "%d. chassis=%d %s\n", $i+1,
       $fans[$i]->chassis_no,
@@ -540,8 +540,8 @@ sub debug_dump
   }
 
   my $hwinfo = $self->hwinfo;
-  printf $fh "\nHWINFO (%d entries)\n", scalar(@$hwinfo) ;
-  print $fh "\n", Dumper($hwinfo), "\n";
+  printf $fh "\n===> HWINFO (%d entries)\n", scalar(@$hwinfo) ;
+  print $fh Dumper($hwinfo), "\n";
 
   # finish
   close($fh);
