@@ -48,9 +48,9 @@ sub porttable ($self, $p, $f)
   my $if = $self->port_to_ifindex->{$p};
   croak "Port '$p' does not appear to exist" unless defined $if;
 
-  # get portIndex
+  # get portIndex (apparently, ports without entry in portTable can appear)
   my $pi = $self->ifindex_to_portindex->{$if};
-  croak "Port '$p' does not have associated portIndex" unless $pi;
+  return undef unless $pi;
 
   return $self->_d->{'CISCO-STACK-MIB'}{'portTable'}{$pi->[0]}{$pi->[1]}{$f}{'value'};
 }
