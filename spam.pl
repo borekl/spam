@@ -809,7 +809,6 @@ try {
 	#--- create work list of hosts that are to be processed ------------
 
 	my @work_list;
-	my $wl_idx = 0;
 	my $poll_hosts_re = $cmd->hostre();
 	foreach my $host (sort keys %{$cfg->hosts()}) {
     if(
