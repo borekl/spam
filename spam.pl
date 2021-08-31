@@ -455,7 +455,7 @@ sub sql_switch_info_update
         $stat->{p_used},
         $managementDomainTable->{'managementDomainName'}{'value'},
         $managementDomainTable->{'managementDomainLocalMode'}{'value'},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($host->boottime)),
+        strftime('%Y-%m-%d %H:%M:%S', localtime($host->snmp->boottime)),
         $host->snmp->platform
       );
 

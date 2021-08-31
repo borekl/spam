@@ -32,4 +32,19 @@ with 'SPAM::Model::SNMP::Boottime';
 with 'SPAM::Model::SNMP::VmMembershipTable';
 with 'SPAM::Model::SNMP::CafSessionTable';
 
+# return list of MIBs loaded in this instance
+sub mibs ($self) { keys %{$self->_d} }
+
+# return list of loaded objects in a MIB
+sub objects ($self, $mib) { keys %{$self->_d->{$mib}} }
+
+# return object just by its name, without needing to know MIB name
+sub get_object($self, $object_name) {
+  foreach my $mib ($self->mibs) {
+    foreach my $object ($self->objects($mib)) {
+      return $self->_d->{$mib}{$object} if $object_name eq $object;
+    }
+  }
+}
+
 1;

@@ -610,7 +610,7 @@ sub sql_save_snmp_object
       if $debug_fh;
 
     # find the object in the host instance
-    my $object = $host->get_snmp_object($snmp_object->name);
+    my $object = $host->snmp->get_object($snmp_object->name);
     die "Object $snmp_object does not exist" unless $object;
 
     # load the current state to %old

@@ -102,22 +102,6 @@ sub add_snmp_object ($self, $mib, $vlan, $object, $data)
 }
 
 #------------------------------------------------------------------------------
-# find and return reference to a snmp entity; trees with VLANs not supported
-sub get_snmp_object ($self, $object_name)
-{
-  my $mibs = $self->snmp;
-
-  foreach my $mib (keys %$mibs) {
-    foreach my $object (keys %{$mibs->{$mib}}) {
-      return $mibs->{$mib}{$object} if $object_name eq $object;
-    }
-  }
-
-  return undef;
-}
-
-
-#------------------------------------------------------------------------------
 # give list of ports that we have in database, but can no longer see in SNMP
 # data
 sub vanished_ports ($self)
