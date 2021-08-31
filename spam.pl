@@ -891,7 +891,7 @@ try {
           $hi->poll($cmd->mactable, $cmd->hostinfo);
 
           # only hostinfo, no more processing
-          die "\n" if $cmd->hostinfo;
+          die "hostinfo only\n" if $cmd->hostinfo;
 
           # find changes and update status table
           $hi->update_db;
