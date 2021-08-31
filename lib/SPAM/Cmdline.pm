@@ -49,10 +49,13 @@ has hosts => (
 );
 
 # hosts to be polled (by regular expression)
+has hostre => ( is => 'rwp', predicate => 1 );
 
-has hostre => (
-  is => 'rwp',
-);
+# force poll of a host (or multiple hosts) regardless of its registration in the
+# source database, this lets user to quickly probe ad hoc hosts; if this option
+# is used with --host or --hostre options all matching hosts are processed; if
+# neither of these options is specified, only forced hosts are processed
+has forcehost => ( is => 'rwp', predicate => 1 );
 
 # only get hostinfo, display it and quit
 has hostinfo => ( is => 'rwp', default => 0 );
@@ -113,6 +116,10 @@ sub BUILD
   if(!GetOptions(
     'host=s'     => sub { $self->_add_host(split(/,/, $_[1])) },
     'hostre=s'   => sub { $self->_set_hostre($_[1]) },
+    'force-host=s' => sub {
+      $self->_set_forcehost([]) unless $self->has_forcehost;
+      push(@{$self->forcehost}, $_[1]);
+    },
     'arptable!'  => sub { $self->_set_arptable($_[1]) },
     'mactable!'  => sub { $self->_set_mactable($_[1]) },
     'maint'      => sub { $self->_set_maintenance($_[1]) },
@@ -180,6 +187,7 @@ Options that modify standard processing run:
   --hostinfo      only read basic info, show it and quit
   --host=HOST     poll only HOST, can be used multiple times (default all)
   --hostre=RE     poll only hosts matching the regexp
+  --force-host=H  poll host H even if it is not in database
   --tasks=N       number of tasks to be run (N is 1 to 16, default 8)
   --debug         turn on debug mode
 

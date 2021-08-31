@@ -825,6 +825,20 @@ try {
       push(@work_list, [ 'host', $host, undef ]);
     }
 	}
+
+  # --force-host processing
+  if($cmd->has_forcehost) {
+    # if --force-host is in effect and neither --host or --hostre are present
+    # the loaded list of hosts is dropped as only forced host will be processed;
+    # FIXME: in that case loading of the host list is unnecessary
+    @work_list = () unless $cmd->has_hostre || @{$cmd->hosts};
+    # add forced hosts to worklist unless it already is in it
+    foreach my $fhost (@{$cmd->forcehost}) {
+      push(@work_list, [ 'host', $fhost, undef ])
+      unless grep { $_->[0] eq 'host' && $_->[1] eq $fhost } @work_list;
+    }
+  }
+
 	tty_message("[main] %d hosts scheduled to be processed\n", scalar(@work_list));
 
 	#--- add arptable task to the work list
