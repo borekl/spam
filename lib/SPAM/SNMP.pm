@@ -10,7 +10,7 @@
 package SPAM::SNMP;
 require Exporter;
 use lib 'lib';
-use SPAM::Misc qw(file_lineread hash_create_index);
+use SPAM::Misc qw(file_lineread hash_create_index hash_iterator hash_index_access);
 use SPAM::Entity;
 use SPAM::EntityTree;
 use SPAM::Config;
@@ -707,7 +707,7 @@ sub sql_save_snmp_object
 
         else {
           $stats{'insert'}++;
-          $tx-add(
+          $tx->add(
             sprintf(
               'INSERT INTO snmp_%s ( %s ) VALUES ( %s )',
               $snmp_object->name,
