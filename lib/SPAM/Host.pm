@@ -244,8 +244,8 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
       if($hostinfo) {
         $self->_m('Platform: %s', $self->snmp->platform // '?');
         $self->_m(
-          'Booted on: %s', strftime('%Y-%m-%d', localtime($self->boottime))
-        ) if $self->boottime;
+          'Booted on: %s', strftime('%Y-%m-%d', localtime($self->snmp->boottime))
+        ) if $self->snmp->boottime;
         $self->_m('Location: %s', $self->snmp->location // '?');
         return 1;
       }
