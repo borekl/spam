@@ -1,6 +1,6 @@
-package SPAM::Model::SNMP::IfIndexToDot1d;
+package SPAM::Model::SNMP::Bridge;
 
-# role to build an index defined by BRIDGE-MIB's dot1dBasePortTable
+# interface to BRIDGE-MIB
 
 use Moo::Role;
 use experimental 'signatures';
@@ -10,6 +10,9 @@ requires '_d';
 
 # ifIndex to BRIDGE-MIB index
 has ifindex_to_dot1d => ( is => 'lazy', predicate => 1 );
+
+# dot1d to ifIndex
+has dot1d_to_ifindex => ( is => 'lazy', predicate => 1 );
 
 #------------------------------------------------------------------------------
 # builder for ifindex_to_dot1d
@@ -47,6 +50,30 @@ sub _build_ifindex_to_dot1d ($self)
   }
 
   return \%by_dot1d;
+}
+
+#------------------------------------------------------------------------------
+# builder for dot1d_to_ifindex, requires infindex_to_dot1d
+sub _build_dot1d_to_ifindex ($self)
+{
+  my $if2dot1d = $self->ifindex_to_dot1d;
+  return { reverse %$if2dot1d };
+}
+
+#------------------------------------------------------------------------------
+# return port number of spanning tree root port
+sub stp_root_port ($self)
+{
+  my $s = $self->_d;
+  if(
+    exists $s->{'BRIDGE-MIB'}
+    && exists $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}
+    && exists $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'}
+  ) {
+    return $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'}{'value'};
+  } else {
+    return undef;
+  }
 }
 
 1;

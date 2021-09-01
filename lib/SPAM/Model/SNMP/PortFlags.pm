@@ -112,20 +112,10 @@ sub get_port_flags ($self, $p)
   }
 
   # STP root
-  if(exists $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}) {
-    my $dot1d_stpr = $s->{'BRIDGE-MIB'}{'dot1dStpRootPort'}{'0'};
-    for my $vlan (keys %{$s->{'BRIDGE-MIB'}}) {
-      # the keys under BRIDGE-MIB are both a) vlans b) object names
-      # that are not defined per-vlan (such as dot1dStpRootPort);
-      # that's we need to filter non-vlans out here
-      next if $vlan !~ /^\d+$/;
-      if(
-        exists $s->{'BRIDGE-MIB'}{$vlan}{'dot1dBasePortTable'}{$dot1d_stpr}
-      ) {
-        push(@flags, 'stp_root');
-        last;
-      }
-    }
+  my $stp_root = $self->stp_root_port;
+  if(defined $stp_root && exists $self->dot1d_to_ifindex->{$stp_root}) {
+    my $stp_if = $self->dot1d_to_ifindex->{$stp_root};
+    push(@flags, 'stp_root') if $stp_if eq $if;
   }
 
   # STP fast start
@@ -146,9 +136,13 @@ sub get_port_flags ($self, $p)
   }
 
   # finish
-  my $re = 0;
-  foreach my $f (@flags) { $re += $flag_map{$f} }
-  return $self->_port_flags->{$if} = $re;
+  if(wantarray) {
+    return @flags;
+  } else {
+    my $re = 0;
+    foreach my $f (@flags) { $re += $flag_map{$f} }
+    return $self->_port_flags->{$if} = $re;
+  }
 }
 
 

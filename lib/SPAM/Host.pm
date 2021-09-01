@@ -335,7 +335,7 @@ sub is_port_changed ($self, $p)
   [ 'ifAlias', 's', $d->descr($p), $s->iftable($p, 'ifAlias') ],
   [ 'portDuplex', 'n', $d->duplex($p), $s->porttable($p, 'portDuplex') ],
   [ 'ifSpeed', 'n', $d->speed($p), $s->iftable($p, 'ifSpeed') ],
-  [ 'port_flags', 'n', $d->flags($p), $s->get_port_flags($p) ]
+  [ 'port_flags', 'n', $d->flags($p), scalar($s->get_port_flags($p)) ]
   );
 
   my $debug;   # debugging info

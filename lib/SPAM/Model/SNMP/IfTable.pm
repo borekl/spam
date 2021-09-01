@@ -11,6 +11,9 @@ requires '_d';
 # portname to ifindex hash
 has port_to_ifindex => ( is => 'lazy' );
 
+# ifindex to portname
+has ifindex_to_port => ( is => 'lazy' );
+
 # fields that are in ifXTable, not ifTable
 my @ifXTable = qw(ifAlias ifHighSpeed);
 
@@ -65,6 +68,14 @@ sub iftable ($self, $p, $f)
   $v = $self->_d->{'IF-MIB'}{$obj}{$if}{$f}{'value'};
   $v /= $factor if defined $factor;
   return $v;
+}
+
+#------------------------------------------------------------------------------
+# create ifindex to port hash
+sub _build_ifindex_to_port ($self)
+{
+  my $p2i = $self->port_to_ifindex;
+  return { reverse %$p2i };
 }
 
 #------------------------------------------------------------------------------
