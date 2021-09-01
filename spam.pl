@@ -60,12 +60,6 @@ sub sql_mactable_update
   # get new transaction instance
   my $tx = SPAM::DbTransaction->new;
 
-  #--- insta-sub for normalizing MAC values
-
-  my $normalize = sub {
-    join(':', map { length($_) == 2 ? $_ : '0' . $_; } split(/:/, shift));
-  };
-
   #--- ensure database connection ---
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
@@ -115,77 +109,36 @@ sub sql_mactable_update
     printf $debug_fh "--> CREATE UPDATE PLAN\n";
     printf $debug_fh "--> VLANS: %s\n", join(',', @vlans);
   }
-  for my $vlan (@vlans) {
-    printf $debug_fh "--> MACS IN VLAN %d: %d\n",
-      $vlan, scalar(keys %{$h->{$vlan}{'dot1dTpFdbTable'}})
-      if $debug_fh;
-    for my $mac (keys %{$h->{$vlan}{'dot1dTpFdbTable'}}) {
-      my ($q, @fields, @bind);
-      my $dot1dTpFdbTable = $h->{$vlan}{'dot1dTpFdbTable'};
-      my $dot1dBasePortTable = $h->{$vlan}{'dot1dBasePortTable'};
 
-      #--- get ifindex value
+  my $aux = strftime("%c", localtime());
 
-      my $dot1d = $dot1dTpFdbTable->{$mac}{'dot1dTpFdbPort'}{'value'};
-      my $if = $dot1dBasePortTable->{$dot1d}{'dot1dBasePortIfIndex'}{'value'};
-
-      #--- skip uninteresting MACs (note, that we're not filtering 'static'
-      #--- entries: ports with port security seem to report their MACs as
-      #--- static in Cisco IOS)
-
-      next if
-        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'invalid' ||
-        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'self';
-
-      #--- skip MACs on ports we are not tracking (such as port channels etc)
-
-      next if !exists $host->snmp->{'IF-MIB'}{'ifTable'}{$if};
-
-      #--- skip MACs on ports that are receiving CDP
-
-      next if exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
-
-      #--- normalize MAC, get formatted timestamp
-
-      my $mac_n = $normalize->($mac);
-      my $aux = strftime("%c", localtime());
-
-      if(exists $mac_current{$mac_n}) {
-        # update
-        @fields = (
-          'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
-        );
-        @bind = (
-          $host->name,
-          $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
-          $aux, $mac
-        );
-        $q = sprintf(
-          q{UPDATE mactable SET %s WHERE mac = ?},
-          join(',', @fields)
-        );
-        printf $debug_fh "UPDATE %s\n", $mac_n if $debug_fh;
-      } else {
-        # insert
-        @fields = (
-          'mac', 'host', 'portname', 'lastchk', 'active'
-        );
-        @bind = (
-          $mac, $host->name,
-          $host->snmp->{'IF-MIB'}{'ifXTable'}{$if}{'ifName'}{'value'},
-          $aux, 't'
-        );
-        $q = sprintf(
-          q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
-          join(',', @fields)
-        );
-        printf $debug_fh "INSERT %s\n", $mac_n if $debug_fh;
-
-        $mac_current{$mac_n} = 1;
-      }
-      $tx->add($q, @bind) if $q;
+  $host->snmp->iterate_macs(sub (%arg) {
+    my ($q, @bind);
+    if(exists $mac_current{$arg{mac}}) {
+      # update
+      my @fields = (
+        'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
+      );
+      @bind = ( $host->name, $arg{p}, $aux, $arg{mac} );
+      $q = sprintf(
+        q{UPDATE mactable SET %s WHERE mac = ?},
+        join(',', @fields)
+      );
+      printf $debug_fh "UPDATE %s\n", $arg{mac} if $debug_fh;
+    } else {
+      my @fields = (
+        'mac', 'host', 'portname', 'lastchk', 'active'
+      );
+      @bind = ( $arg{mac}, $host->name, $arg{p}, $aux, 't' );
+      $q = sprintf(
+        q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
+        join(',', @fields)
+      );
+      printf $debug_fh "INSERT %s\n", $arg{mac} if $debug_fh;
+      $mac_current{$arg{mac}} = 1;
     }
-  }
+    $tx->add($q, @bind) if $q;
+  });
 
   #--- sent data to db and finish---
 

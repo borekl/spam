@@ -76,4 +76,45 @@ sub stp_root_port ($self)
   }
 }
 
+#------------------------------------------------------------------------------
+sub iterate_macs ($self, $cb)
+{
+  my $s = $self->_d->{'BRIDGE-MIB'};
+  my @vlans = grep(/^\d+$/, keys %$s);
+
+  my $normalize = sub {
+    join(':', map { length($_) == 2 ? $_ : '0' . $_; } split(/:/, shift));
+  };
+
+  for my $vlan (@vlans) {
+    for my $mac (keys %{$s->{$vlan}{'dot1dTpFdbTable'}}) {
+      my $dot1dTpFdbTable = $s->{$vlan}{'dot1dTpFdbTable'};
+      my $dot1dBasePortTable = $s->{$vlan}{'dot1dBasePortTable'};
+
+      # get indices
+      my $dot1d = $dot1dTpFdbTable->{$mac}{'dot1dTpFdbPort'}{'value'};
+      my $if = $dot1dBasePortTable->{$dot1d}{'dot1dBasePortIfIndex'}{'value'};
+      my $p = $self->ifindex_to_port->{$if};
+
+      # skip uninteresting MACs (note, that we're not filtering 'static' entries:
+      # ports with port security seem to report their MACs as static in Cisco IOS)
+      next if
+        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'invalid' ||
+        $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'self';
+
+      # don't consider MAC on ports we are not tracking
+      next unless exists $self->ifindex_to_port->{$if};
+
+      # don't consider MACs on ports that receive CDP
+      next if exists $self->_d->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
+
+      # normalize MAC (FIXME: do we need this?)
+      my $mac_n = $normalize->($mac);
+
+      # invoke callback
+      $cb->(mac => $mac_n, if => $if, dot1d => $dot1d, p => $p);
+    }
+  }
+}
+
 1;
