@@ -64,15 +64,6 @@ sub sql_mactable_update
 
   if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
 
-  #--- open debug file
-
-  if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>', "debug.mactable_update.$$.log");
-    if($debug_fh) {
-      printf $debug_fh "==> sql_mactable_update(%s)\n", $host->name;
-    }
-  }
-
   #--- reset 'active' field to 'false'
 
   $tx->add(
@@ -86,11 +77,6 @@ sub sql_mactable_update
   my @vlans = sort { $a <=> $b } grep(/^\d+$/, keys %$h);
 
   #--- gather update plan ---
-
-  if($debug_fh) {
-    printf $debug_fh "--> CREATE UPDATE PLAN\n";
-    printf $debug_fh "--> VLANS: %s\n", join(',', @vlans);
-  }
 
   my $aux = strftime("%c", localtime());
 
@@ -109,7 +95,6 @@ sub sql_mactable_update
         q{UPDATE mactable SET %s WHERE mac = ?},
         join(',', @fields)
       );
-      printf $debug_fh "UPDATE %s\n", $arg{mac} if $debug_fh;
     } else {
       my @fields = (
         'mac', 'host', 'portname', 'lastchk', 'active'
@@ -119,7 +104,6 @@ sub sql_mactable_update
         q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
         join(',', @fields)
       );
-      printf $debug_fh "INSERT %s\n", $arg{mac} if $debug_fh;
       $mac_current{$arg{mac}} = 1;
     }
     $tx->add($q, @bind) if $q;
@@ -128,7 +112,6 @@ sub sql_mactable_update
   #--- sent data to db and finish---
 
   $ret = $tx->commit;
-  close($debug_fh) if $debug_fh;
   return $ret if defined $ret;
   return undef;
 }
