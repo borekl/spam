@@ -73,24 +73,6 @@ sub sql_mactable_update
     }
   }
 
-  #--- query current state, mactable ---
-
-  my $qry = 'SELECT mac, host, portname, active FROM mactable';
-  if($debug_fh) {
-    printf $debug_fh "--> GET CURRENT MACTABLE CONTENTS\n";
-    printf $debug_fh "--> %s\n", $qry;
-  }
-  my $sth = $dbh->prepare($qry);
-  $sth->execute() || return 'Database query failed (spam,' . $sth->errstr() . ')';
-  while(my ($mac, $mhost, $mportname, $mactive) = $sth->fetchrow_array()) {
-    $mac_current{$mac} = 1;
-    if($debug_fh) {
-      printf $debug_fh
-        "%s = [ %s, %s, %s ]\n",
-        $mac, $mhost, $mportname, $mactive ? 'ACTIVE' : 'NOT ACTIVE';
-    }
-  }
-
   #--- reset 'active' field to 'false'
 
   $tx->add(
@@ -114,7 +96,10 @@ sub sql_mactable_update
 
   $host->snmp->iterate_macs(sub (%arg) {
     my ($q, @bind);
-    if(exists $mac_current{$arg{mac}}) {
+    if(
+      $host->mactable_db->get_mac($arg{mac})
+      || exists $mac_current{$arg{mac}}
+    ) {
       # update
       my @fields = (
         'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},

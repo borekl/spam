@@ -13,6 +13,7 @@ use SPAM::Config;
 use SPAM::Model::Boottime;
 use SPAM::Model::PortStatus;
 use SPAM::Model::SNMP;
+use SPAM::Model::Mactable;
 use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object);
 
 with 'SPAM::MessageCallback';
@@ -41,6 +42,14 @@ has ports_db => (
   is => 'ro', lazy => 1,
   default => sub ($self) {
     SPAM::Model::PortStatus->new(hostname => $self->name)
+  }
+);
+
+# MAC address in backend database
+has mactable_db => (
+  is => 'ro', lazy => 1,
+  default => sub ($self) {
+    SPAM::Model::Mactable->new(hostname => $self->name)
   }
 );
 
