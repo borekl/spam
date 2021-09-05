@@ -193,7 +193,6 @@ sub poll ($self, $get_mactable=undef, $hostinfo=undef)
 
       # iterate over vlans
       for my $vlan (@vlans) {
-        next if $vlan && $vlan > 999;
 
         # retrieve the SNMP object
         my $r = snmp_get_object(

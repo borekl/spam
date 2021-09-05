@@ -41,7 +41,7 @@ sub _build_static_vlans ($self)
     = $s->{'CISCO-VLAN-MEMBERSHIP-MIB'}{'vmMembershipTable'};
     for my $if (keys %$vmMembershipTable) {
       my $v = $vmMembershipTable->{$if}{'vmVlan'}{'value'};
-      $vlans{$v} = undef if $v > 0 && $v < 1000;
+      $vlans{$v} = undef if $v > 0;
     }
   }
 
