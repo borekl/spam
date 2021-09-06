@@ -142,55 +142,6 @@ sub sql_host_remove
 
 
 #===========================================================================
-# Generate some statistics info on server and store it to host instance.
-#===========================================================================
-
-sub switch_info
-{
-  my ($host) = @_;
-  my $stat = $host->port_stats;
-  my $knownports = grep { $_ eq $host->name } @{$cfg->knownports};
-  my $idx = $host->snmp->port_to_ifindex;
-
-  # if 'knowports' is active, initialize the stat field; the rest is
-  # initialized automatically
-  $stat->{'p_used'} = 0 if $knownports;
-
-  # do the counts
-  foreach my $portname (keys %$idx) {
-    my $if = $idx->{$portname};
-    $stat->{p_total}++;
-    $stat->{p_patch}++ if $host->port_to_cp->exists($portname);
-    $stat->{p_act}++ if $host->snmp->iftable($portname, 'ifOperStatus') == 1;
-    # p_errdis used to count errordisable ports, but required SNMP variable
-    # is no longer available
-    #--- unregistered ports
-    if(
-      $knownports
-      && $host->snmp->iftable($portname, 'ifOperStatus') == 1
-      && !$host->port_to_cp->exists($portname)
-      && !(
-        exists $host->snmp->{'CISCO-CDP-MIB'}
-        && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
-        && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
-      )
-    ) {
-      $stat->{p_illact}++;
-    }
-    #--- used ports
-    # ports that were used within period defined by "inactivethreshold2"
-    # configuration parameter
-    if($knownports) {
-      if($host->get_port_db($portname, 'age') < 2592000) {
-        $stat->{p_used}++;
-      }
-    }
-  }
-  return;
-}
-
-
-#===========================================================================
 # This function creates list with one VTP master per VTP domain. All data
 # are retrieved from database, so it should be run after database update
 # has been performed.
@@ -749,7 +700,6 @@ try {
 
           # update swstat table
           tty_message("[$host] Updating swstat table (started)\n");
-          switch_info($hi);
           my $e = sql_switch_info_update($hi);
           if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
           tty_message("[$host] Updating swstat table (finished)\n");

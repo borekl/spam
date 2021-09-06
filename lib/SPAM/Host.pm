@@ -498,4 +498,60 @@ sub update_mactable ($self)
   return undef;
 }
 
+#------------------------------------------------------------------------------
+# Generate switch statistics
+sub _build_port_stats ($self)
+{
+  my %stat = (
+    p_total => 0,
+    p_act => 0,
+    p_patch => 0,
+    p_illact => 0,
+    p_inact => 0,
+    p_errdis => 0,
+    p_used => undef,
+  );
+
+  # if 'knownports' is active, initialize its respective stat field
+  my $knownports = grep {
+    $_ eq $self->name
+  } @{SPAM::Config->instance->knownports};
+  $stat{'p_used'} = 0 if $knownports;
+
+  # do the counts
+  my $idx = $self->snmp->port_to_ifindex;
+  foreach my $portname (keys %$idx) {
+    my $if = $idx->{$portname};
+    $stat{p_total}++;
+    $stat{p_patch}++ if $self->port_to_cp->exists($portname);
+    $stat{p_act}++ if $self->snmp->iftable($portname, 'ifOperStatus') == 1;
+    # p_errdis used to count errordisable ports, but required SNMP variable
+    # is no longer available
+    #--- unregistered ports
+    if(
+      $knownports
+      && $self->snmp->iftable($portname, 'ifOperStatus') == 1
+      && !$self->port_to_cp->exists($portname)
+      && !(
+        exists $self->snmp->{'CISCO-CDP-MIB'}
+        && exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+        && exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
+      )
+    ) {
+      $stat{p_illact}++;
+    }
+    #--- used ports
+    # ports that were used within period defined by "inactivethreshold2"
+    # configuration parameter
+    if($knownports) {
+      if($self->get_port_db($portname, 'age') < 2592000) {
+        $stat{p_used}++;
+      }
+    }
+  }
+
+  # finish
+  return \%stat;
+}
+
 1;
