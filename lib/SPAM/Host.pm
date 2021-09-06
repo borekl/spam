@@ -72,15 +72,7 @@ has port_to_cp => (
 );
 
 # port statistics
-has port_stats => ( is => 'ro', default => sub {{
-  p_total => 0,
-  p_act => 0,
-  p_patch => 0,
-  p_illact => 0,
-  p_inact => 0,
-  p_errdis => 0,
-  p_used => undef,
-}} );
+has port_stats => ( is => 'lazy' );
 
 #------------------------------------------------------------------------------
 sub iterate_ports_db ($self, $cb)

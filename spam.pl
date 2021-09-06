@@ -196,110 +196,6 @@ sub sql_get_vtp_masters_list
 
 
 #===========================================================================
-# Stores switch statistical data to backend database (plus the side-effect
-# of updating vtpdomain, vtpmode in memory)
-#
-# Arguments: 1. host
-# Returns:   1. undef or error message
-#===========================================================================
-
-sub sql_switch_info_update
-{
-  my $host = shift;
-  my $stat = $host->port_stats;
-  my $dbh = $cfg->get_dbi_handle('spam');
-  my ($sth, $qtype, $q);
-  my (@fields, @args, @vals);
-  my $rv;
-
-  # ensure database connection
-  return 'Cannot connect to database (spam)' unless ref $dbh;
-
-  #--- try block begins here -----------------------------------------------
-
-  try {
-
-    # first decide whether we will be updating or inserting ---
-    $sth = $dbh->prepare('SELECT count(*) FROM swstat WHERE host = ?');
-    $sth->execute($host->name) || die "DBERR|" . $sth->errstr() . "\n";
-    my ($count) = $sth->fetchrow_array();
-    $qtype = ($count == 0 ? 'i' : 'u');
-
-    #--- insert ---
-
-    if($qtype eq 'i') {
-
-      $q = q{INSERT INTO swstat ( %s ) VALUES ( %s )};
-      my @fields = qw(
-        host location ports_total ports_active ports_patched ports_illact
-        ports_errdis ports_inact ports_used vtp_domain vtp_mode boot_time
-        platform
-      );
-      @vals = ('?') x @fields;
-      @args = (
-        $host->name,
-        $host->snmp->location =~ s/'/''/r,
-        $stat->{p_total},
-        $stat->{p_act},
-        $stat->{p_patch},
-        $stat->{p_illact},
-        $stat->{p_errdis},
-        $stat->{p_inact},
-        $stat->{p_used},
-        $host->snmp->vtp_stats,
-        strftime('%Y-%m-%d %H:%M:%S', localtime($host->snmp->boottime)),
-        $host->snmp->platform
-      );
-
-      $q = sprintf($q, join(',', @fields), join(',', @vals));
-
-    }
-
-    #--- update ---
-
-    else {
-
-      $q = q{UPDATE swstat SET %s,chg_when = current_timestamp WHERE host = ?};
-      @fields = map { $_ . ' = ?' } (
-        'location', 'ports_total', 'ports_active', 'ports_patched', 'ports_illact',
-        'ports_errdis', 'ports_inact', 'ports_used', 'boot_time', 'vtp_domain',
-        'vtp_mode', 'platform'
-      );
-      @args = (
-        $host->snmp->location =~ s/'/''/r,
-        $stat->{p_total},
-        $stat->{p_act},
-        $stat->{p_patch},
-        $stat->{p_illact},
-        $stat->{p_errdis},
-        $stat->{p_inact},
-        $stat->{p_used},
-        strftime('%Y-%m-%d %H:%M:%S', localtime($host->snmp->boottime)),
-        $host->snmp->vtp_stats,
-        $host->snmp->platform,
-        $host->name
-      );
-
-      $q = sprintf($q, join(',', @fields));
-
-    }
-
-    $sth = $dbh->prepare($q);
-    $sth->execute(@args);
-
-  #--- try block ends here -------------------------------------------------
-
-  } catch ($err) {
-    chomp $err;
-    $rv = "Database update error ($err) on query '$q'";
-  }
-
-  # finish sucessfully
-  return $rv;
-}
-
-
-#===========================================================================
 # This function performs database maintenance.
 #
 # Returns: 1. Error message or undef
@@ -690,8 +586,7 @@ try {
 
           # update swstat table
           tty_message("[$host] Updating swstat table (started)\n");
-          my $e = sql_switch_info_update($hi);
-          if($e) { tty_message("[$host] Updating swstat table ($e)\n"); }
+          $hi->swstat->update($hi->snmp, $hi->port_stats);
           tty_message("[$host] Updating swstat table (finished)\n");
 
           # update mactable
