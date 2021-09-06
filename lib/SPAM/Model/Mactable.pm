@@ -37,6 +37,36 @@ sub _build__macdb ($self)
 sub get_mac ($self, $mac) { $self->_macdb->{$mac} // undef }
 
 #------------------------------------------------------------------------------
+# set the 'active' field to 'false' for all MACs associated with the host
+sub reset_active_mac ($self, $dbh)
+{
+  return $dbh->do(
+    q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'},
+    undef,
+    $self->hostname
+  );
+}
 
+#------------------------------------------------------------------------------
+sub insert_mac ($self, $dbh, %data)
+{
+  my $f = 'mac,host,portname,lastchk,active';
+  return $dbh->do(
+    "INSERT INTO mactable ($f) VALUES ( ?,?,?,current_timestamp,? )",
+    undef,
+    $data{mac}, $self->hostname, $data{p}, 't'
+  );
+}
+
+#------------------------------------------------------------------------------
+sub update_mac ($self, $dbh, %data)
+{
+  my $f = 'host,portname,lastchk,active';
+  return $dbh->do(
+    "UPDATE mactable SET host = ?, portname = ?, lastchk = current_timestamp, active = 't' WHERE mac = ?",
+    undef,
+    $self->hostname, $data{p}, $data{mac}
+  );
+}
 
 1;

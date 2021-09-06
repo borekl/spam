@@ -42,82 +42,6 @@ my $arptable;        # arptable data (hash reference)
 
 
 #===========================================================================
-# This function updates mactable in backend db.
-#
-# Arguments: 1. host instance
-# Returns:   1. error message or undef
-#===========================================================================
-
-sub sql_mactable_update
-{
-  my $host = shift;
-  my $h = $host->snmp->{'BRIDGE-MIB'};
-  my $dbh = $cfg->get_dbi_handle('spam');
-  my $ret;
-  my %mac_current;         # contents of 'mactable'
-  my $debug_fh;
-
-  # get new transaction instance
-  my $tx = SPAM::DbTransaction->new;
-
-  #--- ensure database connection ---
-
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-
-  #--- reset 'active' field to 'false'
-
-  $tx->add(
-    q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'},
-    $host->name
-  );
-
-  #--- get list of VLANs, exclude non-numeric keys (those do not denote VLANs
-  #--- but SNMP objects)
-
-  my @vlans = sort { $a <=> $b } grep(/^\d+$/, keys %$h);
-
-  #--- gather update plan ---
-
-  my $aux = strftime("%c", localtime());
-
-  $host->snmp->iterate_macs(sub (%arg) {
-    my ($q, @bind);
-    if(
-      $host->mactable_db->get_mac($arg{mac})
-      || exists $mac_current{$arg{mac}}
-    ) {
-      # update
-      my @fields = (
-        'host = ?', 'portname = ?', 'lastchk = ?', q{active = 't'},
-      );
-      @bind = ( $host->name, $arg{p}, $aux, $arg{mac} );
-      $q = sprintf(
-        q{UPDATE mactable SET %s WHERE mac = ?},
-        join(',', @fields)
-      );
-    } else {
-      my @fields = (
-        'mac', 'host', 'portname', 'lastchk', 'active'
-      );
-      @bind = ( $arg{mac}, $host->name, $arg{p}, $aux, 't' );
-      $q = sprintf(
-        q{INSERT INTO mactable ( %s ) VALUES ( ?,?,?,?,? )},
-        join(',', @fields)
-      );
-      $mac_current{$arg{mac}} = 1;
-    }
-    $tx->add($q, @bind) if $q;
-  });
-
-  #--- sent data to db and finish---
-
-  $ret = $tx->commit;
-  return $ret if defined $ret;
-  return undef;
-}
-
-
-#===========================================================================
 # This function updates arptable in backend database
 #===========================================================================
 
@@ -840,8 +764,7 @@ try {
           # update mactable
           if($cmd->mactable()) {
             tty_message("[$host] Updating mactable (started)\n");
-            $e = sql_mactable_update($hi);
-            if(defined $e) { print $e, "\n"; }
+            $hi->update_mactable;
             tty_message("[$host] Updating mactable (finished)\n");
           }
 

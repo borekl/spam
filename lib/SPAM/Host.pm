@@ -456,6 +456,39 @@ sub update_db ($self)
   $self->_m('Updating status table (finished)');
 }
 
-#==============================================================================
+#------------------------------------------------------------------------------
+# Update mactable in the backend database according to the new data from SNMP
+sub update_mactable ($self)
+{
+  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+
+  # it is possible that for some reason the same mac will appear twice in the
+  # SNMP data; we keep track of MACs we have already seen so that later we do
+  # not try to INSERT same record twice (which would cause the transaction to
+  # fail)
+  my %mac_current;
+
+  # ensure database connection
+  die 'Cannot connect to database (spam)' unless ref $dbx;
+
+  # start transaction
+  $dbx->txn(fixup => sub ($dbh) {
+    $self->mactable_db->reset_active_mac($dbh);
+    $self->snmp->iterate_macs(sub (%arg) {
+      if(
+        $self->mactable_db->get_mac($arg{mac})
+        || exists $mac_current{$arg{mac}}
+      ) {
+        $self->mactable_db->update_mac($dbh, %arg);
+      } else {
+        $self->mactable_db->insert_mac($dbh, %arg);
+        $mac_current{$arg{mac}} = 1;
+      }
+    });
+  });
+
+  # finish
+  return undef;
+}
 
 1;
