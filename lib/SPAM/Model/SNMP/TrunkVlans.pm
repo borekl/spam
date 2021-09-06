@@ -49,4 +49,22 @@ sub trunk_vlans_bitstring ($self, $p)
   return $trunk_vlans;
 }
 
+#------------------------------------------------------------------------------
+# Return VTP domain name and mode (1 client, 2 server)
+sub vtp_stats ($self)
+{
+  if(
+    exists $self->_d->{'CISCO-VTP-MIB'}
+    && exists $self->_d->{'CISCO-VTP-MIB'}{'managementDomainTable'}
+  ) {
+    my $v = $self->_d->{'CISCO-VTP-MIB'}{'managementDomainTable'};
+    return (
+      $v->{1}{'managementDomainName'}{'value'},
+      $v->{1}{'managementDomainLocalMode'}{'value'}
+    );
+  } else {
+    return (undef, undef);
+  }
+}
+
 1;

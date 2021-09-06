@@ -211,8 +211,6 @@ sub sql_switch_info_update
   my ($sth, $qtype, $q);
   my (@fields, @args, @vals);
   my $rv;
-  my $managementDomainTable
-  = $host->snmp->{'CISCO-VTP-MIB'}{'managementDomainTable'}{1};
 
   # ensure database connection
   return 'Cannot connect to database (spam)' unless ref $dbh;
@@ -248,8 +246,7 @@ sub sql_switch_info_update
         $stat->{p_errdis},
         $stat->{p_inact},
         $stat->{p_used},
-        $managementDomainTable->{'managementDomainName'}{'value'},
-        $managementDomainTable->{'managementDomainLocalMode'}{'value'},
+        $host->snmp->vtp_stats,
         strftime('%Y-%m-%d %H:%M:%S', localtime($host->snmp->boottime)),
         $host->snmp->platform
       );
@@ -278,8 +275,7 @@ sub sql_switch_info_update
         $stat->{p_inact},
         $stat->{p_used},
         strftime('%Y-%m-%d %H:%M:%S', localtime($host->snmp->boottime)),
-        $managementDomainTable->{'managementDomainName'}{'value'},
-        $managementDomainTable->{'managementDomainLocalMode'}{'value'},
+        $host->snmp->vtp_stats,
         $host->snmp->platform,
         $host->name
       );
@@ -297,12 +293,6 @@ sub sql_switch_info_update
     chomp $err;
     $rv = "Database update error ($err) on query '$q'";
   }
-
-  #--- ???: why is this updated HERE? ---
-  # $swdata{HOST}{stats}{vtpdomain,vtpmode} are not used anywhere
-
-  $stat->{vtpdomain} = $managementDomainTable->{'managementDomainName'}{'value'};
-  $stat->{vtpmode} = $managementDomainTable->{'managementDomainLocalMode'}{'value'};
 
   # finish sucessfully
   return $rv;
