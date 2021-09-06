@@ -37,7 +37,6 @@ $| = 1;
 #=== global variables ======================================================
 
 my $cfg;             # SPAM::Config instance
-my $port2cp;         # switchport->CP mapping (from porttable)
 my $arptable;        # arptable data (hash reference)
 
 
@@ -161,7 +160,7 @@ sub switch_info
   foreach my $portname (keys %$idx) {
     my $if = $idx->{$portname};
     $stat->{p_total}++;
-    $stat->{p_patch}++ if $port2cp->exists($host->name, $portname);
+    $stat->{p_patch}++ if $host->port_to_cp->exists($portname);
     $stat->{p_act}++ if $host->snmp->iftable($portname, 'ifOperStatus') == 1;
     # p_errdis used to count errordisable ports, but required SNMP variable
     # is no longer available
@@ -169,7 +168,7 @@ sub switch_info
     if(
       $knownports
       && $host->snmp->iftable($portname, 'ifOperStatus') == 1
-      && !$port2cp->exists($host->name, $portname)
+      && !$host->port_to_cp->exists($portname)
       && !(
         exists $host->snmp->{'CISCO-CDP-MIB'}
         && exists $host->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
@@ -497,8 +496,8 @@ sub sql_autoreg
       next if $cp_descr eq 'x';
       next if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
       $cp_descr = substr($cp_descr, 0, 10);
-      if(!$port2cp->exists($host->name, $portname)) {
-        $tx->add($port2cp->insert(
+      if(!$host->port_to_cp->exists($portname)) {
+        $tx->add($host->port_to_cp->insert(
           host => $host->name,
           port => $portname,
           cp => $cp_descr,
@@ -644,12 +643,6 @@ try {
 
 	tty_message("[main] Closing connection to ondb database\n");
 	$cfg->close_dbi_handle('ondb');
-
-	#--- load port and outlet tables -----------------------------------
-
-	tty_message("[main] Loading port table (started)\n");
-	$port2cp = SPAM::Model::Porttable->new;
-	tty_message("[main] Loading port table (finished)\n");
 
 	#--- create work list of hosts that are to be processed ------------
 

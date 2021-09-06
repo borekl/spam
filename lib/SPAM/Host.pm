@@ -14,6 +14,7 @@ use SPAM::Model::Boottime;
 use SPAM::Model::PortStatus;
 use SPAM::Model::SNMP;
 use SPAM::Model::Mactable;
+use SPAM::Model::Porttable;
 use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object);
 
 with 'SPAM::MessageCallback';
@@ -62,6 +63,12 @@ has snmp => (
   default => sub ($self) {
     SPAM::Model::SNMP->new(mesg => sub { $self->_m(@_) } )
   }
+);
+
+# mapping from ports to cp (CO-side outlets)
+has port_to_cp => (
+  lazy => 1, is => 'ro',
+  default => sub ($s) { SPAM::Model::Porttable->new(hostname => $s->name) }
 );
 
 # port statistics

@@ -13,27 +13,30 @@ use Carp;
 
 use SPAM::Config;
 
-has porttable => (
-  is => 'ro',
-  builder => 1,
-);
+# hostname of the device
+has hostname => ( required => 1, is => 'ro', coerce => sub ($h) { lc $h } );
 
+# contents of portable
+has porttable => ( is => 'ro', builder => 1 );
+
+#------------------------------------------------------------------------------
+# Load porttable from the backend database
 sub _build_porttable ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
   my %p;
 
   # ensure we have database
   croak 'Database connection failed (spam)' unless ref $dbh;
 
   # perform database query
-  my $sth = $dbh->prepare('SELECT host, portname, cp FROM porttable');
-  $sth->execute;
+  my $sth = $dbh->prepare('SELECT portname, cp FROM porttable WHERE host = ?');
+  $sth->execute($self->hostname);
 
   # process the result
-  while(my ($host, $port, $cp) = $sth->fetchrow_array) {
-    my $site = substr($host, 0, 3);
-    $p{$host}{$port} = { cp => $cp, site => $site };
+  while(my ($port, $cp) = $sth->fetchrow_array) {
+    my $site = substr($self->hostname, 0, 3);
+    $p{$port} = { cp => $cp, site => $site };
   }
 
   # finish
@@ -42,7 +45,7 @@ sub _build_porttable ($self)
 
 #------------------------------------------------------------------------------
 # return true if given (host, portname) is in the porttable
-sub exists ($self, $h, $p) { exists $self->porttable->{$h}{$p} }
+sub exists ($self, $p) { exists $self->porttable->{$p} }
 
 #------------------------------------------------------------------------------
 # insert new entry into the porttable, this only returns the SQL insert with
