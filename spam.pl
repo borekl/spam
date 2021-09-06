@@ -142,60 +142,6 @@ sub sql_host_remove
 
 
 #===========================================================================
-# This function creates list with one VTP master per VTP domain. All data
-# are retrieved from database, so it should be run after database update
-# has been performed.
-#
-# Returns:   1. reference to array of [ host, vtp_domain, community ] pairs
-#               or error message
-#===========================================================================
-
-sub sql_get_vtp_masters_list
-{
-  my $dbh = $cfg->get_dbi_handle('spam');
-  my ($r, @list, @list2);
-
-  #--- pull data from database ---
-
-  return "Database connection failed\n" unless ref $dbh;
-
-  try {
-    my $sth = $dbh->prepare('SELECT * FROM vtpmasters');
-    $sth->execute;
-    while(my @a = $sth->fetchrow_array) {
-      $a[2] = $cfg->snmp_community($a[0]);
-      push(@list, \@a);
-    }
-  } catch ($err) {
-    chomp $err;
-    return 'Database query failed (' . $dbh->errstr . ')';
-  }
-
-  #--- for VTP domains with preferred masters, eliminate all other masters;
-  #--- preference is set in configuration file with "VLANServer" statement
-
-  for my $k (keys %{$cfg->vlanservers}) {
-    for(my $i = 0; $i < @list; $i++) {
-      next if $list[$i]->[1] ne $k;
-      if(lc($cfg->vlanservers->{$k}[0]) ne lc($list[$i]->[0])) {
-        splice(@list, $i--, 1);
-      } else {
-        $list[$i]->[2] = $cfg->vlanservers->{$k}[1];   # community string
-      }
-    }
-  }
-
-  #--- remove duplicates from the list
-
-  my %saw;
-  @list2 = grep(!$saw{$_->[1]}++, @list);
-  undef %saw; undef @list;
-
-  return \@list2;
-}
-
-
-#===========================================================================
 # This function performs database maintenance.
 #
 # Returns: 1. Error message or undef
