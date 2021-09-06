@@ -10,7 +10,7 @@ use POSIX qw(strftime);
 use Data::Dumper;
 
 use SPAM::Config;
-use SPAM::Model::Boottime;
+use SPAM::Model::SwStat;
 use SPAM::Model::PortStatus;
 use SPAM::Model::SNMP;
 use SPAM::Model::Mactable;
@@ -29,12 +29,12 @@ has name => (
   }
 );
 
-# last boottime (loaded from database)
-has boottime_prev => (
+# switch statistics
+has swstat => (
   is => 'ro',
   lazy => 1,
   default => sub ($self) {
-    SPAM::Model::Boottime->new(hostname => $self->name)->boottime_db
+    SPAM::Model::SwStat->new(hostname => $self->name)
   }
 );
 
@@ -321,9 +321,9 @@ sub debug_dump ($self)
 # to reduce false alarms
 sub is_rebooted ($self)
 {
-  if($self->snmp->boottime && $self->boottime_prev) {
+  if($self->snmp->boottime && $self->swstat->boottime) {
     # 30 is fudge factor to account for imprecise clocks
-    if(abs($self->snmp->boottime - $self->boottime_prev) > 30) {
+    if(abs($self->snmp->boottime - $self->swstat->boottime) > 30) {
       return 1;
     }
   }

@@ -1,6 +1,6 @@
-package SPAM::Model::Boottime;
+package SPAM::Model::SwStat;
 
-# code for loading device uptime from the database (stored in 'swstat' table)
+# code for interfacing with 'swstat' backend table
 
 use Moo;
 use v5.12;
@@ -16,11 +16,11 @@ has hostname => (
   required => 1,
 );
 
-has boottime_db => (
+has boottime => (
   is => 'lazy',
 );
 
-sub _build_boottime_db ($self)
+sub _build_boottime ($self)
 {
   my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
   croak 'Database connection failed' unless ref $dbh;
