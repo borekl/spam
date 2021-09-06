@@ -19,7 +19,6 @@ use lib 'lib';
 use experimental 'signatures';
 use POSIX qw(strftime);
 use Socket;
-use Data::Dumper;
 use Carp;
 use Feature::Compat::Try;
 
@@ -29,7 +28,6 @@ use SPAM::Cmdline;
 use SPAM::Config;
 use SPAM::Host;
 use SPAM::DbTransaction;
-use SPAM::Model::Porttable;
 
 $| = 1;
 
@@ -112,31 +110,6 @@ sub sql_arptable_update
 
   #--- send update to the database ---
 
-  return $tx->commit;
-}
-
-
-#===========================================================================
-# Function that removes a host from the database. To be used on switches
-# that no longer exist.
-#===========================================================================
-
-sub sql_host_remove
-{
-  #--- arguments
-
-  my ($host) = @_;
-
-  #--- other variables
-
-  my $tx = SPAM::DbTransaction->new;
-  my $r;
-
-  #--- perform removal
-
-  for my $table (qw(status hwinfo swstat badports mactable modwire)) {
-    $tx->add("DELETE FROM $table WHERE host = ?", $host);
-  }
   return $tx->commit;
 }
 
@@ -322,10 +295,7 @@ try {
 
 	if(my $cmd_remove_host = $cmd->remove_host()) {
 	  tty_message("[main] Removing host $cmd_remove_host (started)\n");
-	  my $e = sql_host_remove($cmd_remove_host);
-	  if($e) {
-	    die $e;
-	  }
+    SPAM::Host->new(name => $cmd_remove_host)->drop;
 	  tty_message("[main] Removing host $cmd_remove_host (finished)\n");
 	  die "OK\n";
 	}

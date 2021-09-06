@@ -588,4 +588,18 @@ sub autoregister ($self)
   $self->_m('Registered %d ports', $count);
 }
 
+#------------------------------------------------------------------------------
+# delete all record associated with this host
+sub drop ($self)
+{
+  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my @tables = (qw(status hwinfo swstat badports mactable modwire));
+
+  $dbx->txn(fixup => sub ($dbh) {
+    foreach my $table (@tables) {
+      $dbh->do("DELETE FROM $table WHERE host = ?", undef, $self->name);
+    }
+  });
+}
+
 1;
