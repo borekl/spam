@@ -546,4 +546,46 @@ sub _build_port_stats ($self)
   return \%stat;
 }
 
+#------------------------------------------------------------------------------
+sub autoregister ($self)
+{
+  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $count = 0;
+
+  # get site-code from hostname
+  my $site = SPAM::Config->instance->site_conv($self->name);
+
+  # wrap the update in transaction
+  $dbx->txn(fixup => sub ($dbh) {
+
+    # iterate over all ports; FIXME: this is iterating ports loaded from the
+    # database, not ports actually seen on the host -- this needs to be changed
+    # to be correct; the workaround for now is to not run --autoreg on every
+    # spam run or just hope the races won't occur
+    $self->iterate_ports_db(sub ($portname, $port) {
+      my $descr = $port->{descr};
+      my $cp_descr;
+      if($descr && $descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
+        $cp_descr = $1;
+        return undef if $cp_descr eq 'x';
+        return undef if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
+        $cp_descr = substr($cp_descr, 0, 10);
+        if(!$self->port_to_cp->exists($portname)) {
+          $self->port_to_cp->insert($dbh,
+            host => $self->name,
+            port => $portname,
+            cp => $cp_descr,
+            site => $site
+          );
+          $count++;
+        }
+      }
+      # continue iterating
+      return undef;
+    });
+  });
+
+  $self->_m('Registered %d ports', $count);
+}
+
 1;

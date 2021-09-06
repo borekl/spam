@@ -251,64 +251,6 @@ sub clear_task_by_pid
 }
 
 
-#===========================================================================
-# Auto-register ports that have port description in proper format -- six
-# field divided with semicolon; value of 'x' means empty value; second field
-# is either switch port (ignored by SPAM) or outlet name (processed by SPAM)
-#
-# Argument: 1. host to be processed (SPAM::Host instance)
-#===========================================================================
-
-sub sql_autoreg
-{
-  my $host = shift;
-  my $tx = SPAM::DbTransaction->new;
-
-  # get site-code from hostname
-  my $site = $cfg->site_conv($host->name);
-
-  # iterate over all ports; FIXME: this is iterating ports loaded from the
-  # database, not ports actually seen on the host -- this needs to be changed
-  # to be correct; the workaround for now is to not run --autoreg on every
-  # spam run or just hope the races won't occur
-  $host->iterate_ports_db(sub ($portname, $port) {
-    my $descr = $port->{descr};
-    my $cp_descr;
-    if($descr && $descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
-      $cp_descr = $1;
-      next if $cp_descr eq 'x';
-      next if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
-      $cp_descr = substr($cp_descr, 0, 10);
-      if(!$host->port_to_cp->exists($portname)) {
-        $tx->add($host->port_to_cp->insert(
-          host => $host->name,
-          port => $portname,
-          cp => $cp_descr,
-          site => $site
-        ));
-      }
-    }
-    # continue iterating
-    return undef;
-  });
-
-  # insert data into database
-  my $msg = sprintf(
-    'Found %d entr%s to autoregister',
-    $tx->count, $tx->count == 1 ? 'y' : 'ies'
-  );
-  tty_message("[%s] %s\n", $host->name, $msg);
-  if($tx->count) {
-    my $e = $tx->commit;
-    if(!$e) {
-      tty_message("[%s] Auto-registration successful\n", $host->name);
-    } else {
-      tty_message("[%s] Auto-registration failed ($e)\n", $host->name);
-    }
-  }
-}
-
-
 #================  #  ======================================================
 #===                         ===============================================
 #===  ## #   ###  ##  ####   ===============================================
@@ -548,7 +490,7 @@ try {
           # run autoregistration
           if($cmd->autoreg()) {
             tty_message("[$host] Running auto-registration (started)\n");
-            sql_autoreg($hi);
+            $hi->autoregister;
             tty_message("[$host] Running auto-registration (finished)\n");
           }
         }

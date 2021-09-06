@@ -48,16 +48,15 @@ sub _build_porttable ($self)
 sub exists ($self, $p) { exists $self->porttable->{$p} }
 
 #------------------------------------------------------------------------------
-# insert new entry into the porttable, this only returns the SQL insert with
-# its bind values (we use sql_transaction() to actually send the insert into
-# the db)
-sub insert ($self, %args)
+# insert new entry into the porttable
+sub insert ($self, $dbh, %args)
 {
   my $site = substr($args{host}, 0, 3);
-  (
+  return $dbh->do(
     'INSERT INTO porttable (host,portname,cp,site,chg_who) VALUES (?,?,?,?,?)',
+    undef,
     $args{host}, $args{port}, $args{cp}, $args{site} // $site, 'swcoll'
-  )
+  );
 }
 
 1;
