@@ -115,72 +115,6 @@ sub sql_arptable_update
 
 
 #===========================================================================
-# This function performs database maintenance.
-#
-# Returns: 1. Error message or undef
-#===========================================================================
-
-sub maintenance
-{
-  my $dbh = $cfg->get_dbi_handle('spam');
-  my ($t, $r);
-
-  #--- prepare
-
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-  $t = time();
-
-  #--- arptable purging
-
-  $dbh->do(
-    q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg->arptableage
-  );
-
-  #--- mactable purging
-
-  $dbh->do(
-    q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, $cfg->mactableage
-  );
-
-  #--- status table purging
-
-  $dbh->do(
-    q{DELETE FROM status WHERE (? - date_part('epoch', lastchk)) > ?},
-    undef, $t, 7776000 # 90 days
-  );
-
-  #--- swstat table purging ---
-
-  ### FIXME: SEEMS BROKEN
-  #{
-  #  my (@a, @swstat_hosts, @swstat_dellst);
-  #
-  #  $q = 'SELECT * FROM swstat';
-  #  my $sth = $dbh->prepare($q);
-  #  $sth->execute() || return 'Database query failed (spam)';
-  #  while(@a = $sth->fetchrow_array()) {
-  #    push(@swstat_hosts, $a[0]);
-  #  }
-  #  for my $k (@swstat_hosts) {
-  #    if(!exists $cfg->{host}{lc($k)}) {
-  #      push(@swstat_dellst, $k);
-  #    }
-  #  }
-  #  if(scalar(@swstat_dellst) != 0) {
-  #    for my $k (@swstat_dellst) {
-  #      $q = "DELETE FROM swstat WHERE host = '$k'";
-  #      $dbh->do($q) || return 'Cannot delete from database (spam)';
-  #    }
-  #  }
-  #}
-
-  return undef;
-}
-
-
-#===========================================================================
 # This function finds another task to be scheduled for run
 #
 # Arguments: 1. work list (arrayref)
@@ -282,9 +216,8 @@ try {
 
 	if($cmd->maintenance()) {
 	  tty_message("[main] Maintaining database (started)\n");
-	  my $e = maintenance();
-	  if($e) { die "$e\n"; }
-          tty_message("[main] Maintaining database (finished)\n");
+    maintenance();
+    tty_message("[main] Maintaining database (finished)\n");
 	  die "OK\n";
 	}
 

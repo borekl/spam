@@ -33,6 +33,7 @@ our @EXPORT = qw(
   query_reduce
   decode_age
   vlans_bitstring_to_range_list
+  maintenance
 );
 
 
@@ -557,6 +558,38 @@ sub vlans_bitstring_to_range_list
   #--- finish
 
   return \@vlan_list, \@vlan_list_coalesced;
+}
+
+#------------------------------------------------------------------------------
+# this is just an untested copy of legacy maintenance code; FIXME: this should
+# be in the SPAM::Host class
+sub maintainance
+{
+  my $cfg = SPAM::Config->instance;
+  my $dbx = $cfg->get_dbx_handle('spam');
+  my $t = time();
+
+  $dbx->txn(fixup => sub {
+    my $dbh = shift;
+
+    # arptable purging
+    $dbh->do(
+      q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
+      undef, $t, $cfg->arptableage
+    );
+    # mactable purging
+    $dbh->do(
+      q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
+      undef, $t, $cfg->mactableage
+    );
+
+    # status table purging
+    $dbh->do(
+      q{DELETE FROM status WHERE (? - date_part('epoch', lastchk)) > ?},
+      undef, $t, 7776000 # 90 days
+    );
+
+  });
 }
 
 
