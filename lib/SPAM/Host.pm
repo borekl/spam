@@ -75,30 +75,6 @@ has port_to_cp => (
 has port_stats => ( is => 'lazy' );
 
 #------------------------------------------------------------------------------
-sub iterate_ports_db ($self, $cb)
-{
-  foreach my $portname ($self->ports_db->list_ports) {
-    my $r = $cb->($portname, $self->ports_db->status->{$portname});
-    last if $r;
-  }
-}
-
-#------------------------------------------------------------------------------
-sub get_port_db ($self, $key, $col=undef)
-{
-  if(exists $self->ports_db->{$key}) {
-    my $row = $self->ports_db->{$key};
-    if(defined $col) {
-      return $row->{$col};
-    } else {
-      return $row;
-    }
-  } else {
-    return undef;
-  }
-}
-
-#------------------------------------------------------------------------------
 # add SNMP object
 sub add_snmp_object ($self, $mib, $vlan, $object, $data)
 {
@@ -117,7 +93,7 @@ sub vanished_ports ($self)
   my @vanished;
   my @in_db = $self->ports_db->list_ports;
 
-  $self->iterate_ports_db(sub ($pn, $p) {
+  $self->ports_db->iterate_ports(sub ($pn, $p) {
     push(@vanished, $pn) if (!grep { $_ eq $pn } @in_db)
   });
 
@@ -536,7 +512,7 @@ sub _build_port_stats ($self)
     # ports that were used within period defined by "inactivethreshold2"
     # configuration parameter
     if($knownports) {
-      if($self->get_port_db($portname, 'age') < 2592000) {
+      if($self->ports_db->get_port($portname, 'age') < 2592000) {
         $stat{p_used}++;
       }
     }

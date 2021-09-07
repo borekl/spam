@@ -68,6 +68,30 @@ sub list_ports ($self) { keys %{$self->status} }
 sub has_port ($self, $p) { exists $self->status->{$p} }
 
 #------------------------------------------------------------------------------
+sub iterate_ports ($self, $cb)
+{
+  foreach my $portname ($self->list_ports) {
+    my $r = $cb->($portname, $self->status->{$portname});
+    last if $r;
+  }
+}
+
+#------------------------------------------------------------------------------
+sub get_port ($self, $key, $col=undef)
+{
+  if(exists $self->status->{$key}) {
+    my $row = $self->status->{$key};
+    if(defined $col) {
+      return $row->{$col};
+    } else {
+      return $row;
+    }
+  } else {
+    return undef;
+  }
+}
+
+#------------------------------------------------------------------------------
 # port getter functions
 sub oper_status ($self, $p) { $self->status->{$p}{status} }
 sub admin_status ($self, $p) { $self->status->{$p}{adminstatus} }
