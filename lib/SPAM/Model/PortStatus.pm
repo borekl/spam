@@ -113,7 +113,7 @@ sub insert_ports ($self, $snmp, @ports)
   );
 
   foreach my $p (@ports) {
-    $sth->execute(
+    my @bind = (
       $self->hostname,
       $p,
       $snmp->iftable($p, 'ifOperStatus') == 1 ? 't' : 'f',
@@ -124,11 +124,13 @@ sub insert_ports ($self, $snmp, @ports)
       $snmp->iftable($p, 'ifAlias'),
       $snmp->porttable($p, 'portDuplex'),
       $snmp->iftable($p, 'ifSpeed'),
-      $snmp->get_port_flags($p),
+      scalar($snmp->get_port_flags($p)),
       $snmp->iftable($p, 'ifAdminStatus') == 1 ? 't' : 'f',
       'f',
       $snmp->trunk_vlans_bitstring($p)
     );
+
+    $sth->execute(@bind)
   }
 }
 
@@ -162,7 +164,7 @@ sub update_ports ($self, $snmp, @ports)
       $snmp->iftable($p, 'ifAlias'),
       $snmp->porttable($p, 'portDuplex'),
       $snmp->iftable($p, 'ifSpeed'),
-      $snmp->get_port_flags($p),
+      scalar($snmp->get_port_flags($p)),
       $snmp->iftable($p, 'ifAdminStatus') == 1 ? 't' : 'f',
       'f',
       $snmp->trunk_vlans_bitstring($p),
