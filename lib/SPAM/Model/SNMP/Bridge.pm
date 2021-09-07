@@ -91,8 +91,12 @@ sub iterate_macs ($self, $cb)
       my $dot1dTpFdbTable = $s->{$vlan}{'dot1dTpFdbTable'};
       my $dot1dBasePortTable = $s->{$vlan}{'dot1dBasePortTable'};
 
-      # get indices
+      # get base index, macs with index of 0 are are not interesting (management
+      # macs etc.)
       my $dot1d = $dot1dTpFdbTable->{$mac}{'dot1dTpFdbPort'}{'value'};
+      next if !$dot1d;
+
+      # get port's ifindex and name
       my $if = $dot1dBasePortTable->{$dot1d}{'dot1dBasePortIfIndex'}{'value'};
       my $p = $self->ifindex_to_port->{$if};
 
