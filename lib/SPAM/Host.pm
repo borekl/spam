@@ -538,7 +538,7 @@ sub autoregister ($self)
     # database, not ports actually seen on the host -- this needs to be changed
     # to be correct; the workaround for now is to not run --autoreg on every
     # spam run or just hope the races won't occur
-    $self->iterate_ports_db(sub ($portname, $port) {
+    $self->ports_db->iterate_ports(sub ($portname, $port) {
       my $descr = $port->{descr};
       my $cp_descr;
       if($descr && $descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
