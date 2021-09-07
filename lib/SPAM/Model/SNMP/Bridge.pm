@@ -94,14 +94,17 @@ sub iterate_macs ($self, $cb)
       # get base index, macs with index of 0 are are not interesting (management
       # macs etc.)
       my $dot1d = $dot1dTpFdbTable->{$mac}{'dot1dTpFdbPort'}{'value'};
-      next if !$dot1d;
+      next unless $dot1d;
 
-      # get port's ifindex and name
+      # get port's ifindex and name; NOTE: for some reason sometimes there is no
+      # mapping to ifIndex for a MAC -- such MACs are ignored
       my $if = $dot1dBasePortTable->{$dot1d}{'dot1dBasePortIfIndex'}{'value'};
+      next unless $if;
       my $p = $self->ifindex_to_port->{$if};
 
-      # skip uninteresting MACs (note, that we're not filtering 'static' entries:
-      # ports with port security seem to report their MACs as static in Cisco IOS)
+      # skip uninteresting MACs (note, that we're not filtering 'static'
+      # entries: ports with port security seem to report their MACs as static in
+      # Cisco IOS)
       next if
         $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'invalid' ||
         $dot1dTpFdbTable->{$mac}{'dot1dTpFdbStatus'}{'enum'} eq 'self';
