@@ -91,10 +91,10 @@ sub add_snmp_object ($self, $mib, $vlan, $object, $data)
 sub vanished_ports ($self)
 {
   my @vanished;
-  my @in_db = $self->ports_db->list_ports;
+  my @in_snmp = $self->snmp->ports;
 
   $self->ports_db->iterate_ports(sub ($pn, $p) {
-    push(@vanished, $pn) if (!grep { $_ eq $pn } @in_db)
+    push(@vanished, $pn) if (!grep { $_ eq $pn } @in_snmp)
   });
 
   return @vanished;
