@@ -74,6 +74,10 @@ has port_to_cp => (
 # port statistics
 has port_stats => ( is => 'lazy' );
 
+# SNMP profile, ie. section of the configuration under the 'snmp' key that
+# match the supplied condition
+has snmp_profile => ( is => 'lazy' );
+
 #------------------------------------------------------------------------------
 # add SNMP object
 sub add_snmp_object ($self, $mib, $vlan, $object, $data)
@@ -576,6 +580,15 @@ sub drop ($self)
       $dbh->do("DELETE FROM $table WHERE host = ?", undef, $self->name);
     }
   });
+}
+
+#------------------------------------------------------------------------------
+# find associated SNMP profile name (from config)
+sub _build_snmp_profile ($self)
+{
+  my $cfg = SPAM::Config->instance;
+  my $snmp = $cfg->get_snmp_config($self->name);
+  return $snmp->{profile};
 }
 
 1;

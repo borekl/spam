@@ -366,6 +366,9 @@ try {
             tty_message("$s\n", @arg);
           });
 
+          # display SNMP profile
+          tty_message("[$host] SNMP profile: %s\n", $hi->snmp_profile);
+
           # perform host poll
           $hi->poll($cmd->mactable, $cmd->hostinfo);
 

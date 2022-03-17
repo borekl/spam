@@ -264,7 +264,7 @@ sub _build_arpservers
 # Return SNMP configuration block based on supplied hostname
 #=============================================================================
 
-sub _get_snmp_config
+sub get_snmp_config
 {
   my ($self, $host) = @_;
   my $cfg = $self->config;
@@ -309,7 +309,7 @@ sub get_snmp_command
   my $ctx  = $arg{context} // '';
 
   # get configuration
-  my $snmp = $self->_get_snmp_config($host);
+  my $snmp = $self->get_snmp_config($host);
   die "No valid SNMP configuration for host $host" if !$snmp;
 
   # abort on misconfiguration
