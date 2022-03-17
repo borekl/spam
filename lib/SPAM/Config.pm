@@ -8,6 +8,7 @@ use v5.16;
 use warnings;
 use integer;
 use strict;
+use experimental 'postderef';
 
 use Moo;
 with 'MooX::Singleton';
@@ -276,7 +277,13 @@ sub get_snmp_config
     || !@{$cfg->{snmp}};   # snmp section is empty
 
   # iterate over the snmp config entries
-  foreach my $entry (@{$cfg->{snmp}}) {
+  foreach my $entry ($cfg->{snmp}->@*) {
+
+    # 'excludehost', list of hosts that are specifically excluded
+    next if
+      exists $entry->{excludehost}
+      && ref $entry->{excludehost}
+      && grep { lc $_ eq lc $host } $entry->{excludehost}->@*;
 
     # if the entry has no 'hostre' field, it always matches
     return $entry if !$entry->{hostre};

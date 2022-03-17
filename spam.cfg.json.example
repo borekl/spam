@@ -89,7 +89,9 @@
   "snmp" : [
 
     {
-      "hostre" : [ "^stos75$" ],
+      "profile": "SNMPv3 Profile Base",
+      "hostexclude": [ "stoS76" ],
+      "hostre" : [ "^sto" ],
       "context": { "prefix": "vlan-" },
       "snmpwalk" : {
         "exec" : "/usr/bin/snmpbulkwalk",
@@ -100,6 +102,7 @@
     # default v2 config (this must be the last entry)
 
     {
+      "profile": "Default SNMP profile",
       "snmpwalk" : {
         "exec" : "/usr/bin/snmpbulkwalk",
         "options" : "-Lf /dev/null -Pd -OX -m +%m -c %c%X %h %r",
