@@ -1,21 +1,21 @@
-#=============================================================================
-# Encapsulate handling ENTITY-MIB entPhysicalTable entries.
-#=============================================================================
-
 package SPAM::Entity;
 
+# encapsulate handling ENTITY-MIB entPhysicalTable entries.
+
+use Moo;
 use warnings;
 use integer;
 use strict;
+use experimental 'signatures';
 
-use Moo;
 use Carp;
 use Scalar::Util qw(reftype);
 
 use SPAM::Config;
 
-# parent entry, undef for tree root
+#=== ATTRIBUTES ==============================================================
 
+# parent entry, undef for tree root
 has parent => (
   is => 'rw',
   isa => sub {
@@ -25,14 +25,12 @@ has parent => (
 );
 
 # array of children
-
 has children => (
   is => 'ro',
   default => sub { [] },
 );
 
 # defined in IETF RFC 2737
-
 has entPhysicalIndex        => ( is => 'ro' );
 has entPhysicalDescr        => ( is => 'ro' );
 has entPhysicalVendorType   => ( is => 'ro' );
@@ -53,17 +51,17 @@ has entPhysicalMfgDate      => ( is => 'ro' );
 has entPhysicalUris         => ( is => 'ro' );
 
 # ifIndex, if it is known (through entAliasMappingTable)
-
 has ifIndex                 => ( is => 'ro' );
 
 # cabling side location, if known (through modwire table)
-
 has location                => ( is => 'ro' );
 
+#=== METHODS =================================================================
+
+#------------------------------------------------------------------------------
 # process arguments // if argument value is a hashref, we look if the hash
 # has 'value' or 'enum' keys; if that is the case, we make the argument value
 # that of 'enum' or 'value' (in that order of preference)
-
 around BUILDARGS => sub {
   my $orig = shift;
   my $class = shift;
@@ -85,13 +83,9 @@ around BUILDARGS => sub {
 
 
 #------------------------------------------------------------------------------
-# Add a new child entity
-#------------------------------------------------------------------------------
-
-sub add_child
+# add a new child entity
+sub add_child ($self, @children)
 {
-  my ($self, @children) = @_;
-
   return undef if(!@children);
 
   my $c = $self->children();
@@ -108,12 +102,9 @@ sub add_child
 
 
 #------------------------------------------------------------------------------
-# Traverse the ancestor chain
-#------------------------------------------------------------------------------
-
-sub traverse_parents
+# traverse the ancestor chain
+sub traverse_parents ($self, $cb)
 {
-  my ($self, $cb) = @_;
   my $parent = $self->parent;
 
   while($parent) {
@@ -124,13 +115,10 @@ sub traverse_parents
 
 
 #------------------------------------------------------------------------------
-# Return list of ancestors (from closes to furthest), optionally filtered with
-# a callback.
-#------------------------------------------------------------------------------
-
-sub ancestors
+# return list of ancestors (from closest to furthest), optionally filtered with
+# a callback
+sub ancestors ($self, $cb)
 {
-  my ($self, $cb) = @_;
   my @ancestors;
 
   $self->traverse_parents(sub {
@@ -142,27 +130,19 @@ sub ancestors
 
 
 #------------------------------------------------------------------------------
-# Return list of entities filtered from the chain of ancestors by
-# entPhysicalClass field.
-#------------------------------------------------------------------------------
-
-sub ancestors_by_class
+# return list of entities filtered from the chain of ancestors by
+# entPhysicalClass field
+sub ancestors_by_class ($self, $class)
 {
-  my ($self, $class) = @_;
-
   return $self->ancestors(sub { $_[0]->entPhysicalClass eq $class});
 }
 
 
 #------------------------------------------------------------------------------
-# Return chassis number (or croak if not found)
-#------------------------------------------------------------------------------
-
-sub chassis_no
+# return chassis number (or croak if not found)
+sub chassis_no ($self)
 {
-  my ($self) = @_;
-  my $chassis_no;
-  my $chassis;
+  my ($chassis_no, $chassis);
 
   # this entity is a chassis itself
   if($self->entPhysicalClass eq 'chassis') {
@@ -201,13 +181,10 @@ sub chassis_no
 
 
 #------------------------------------------------------------------------------
-# Return linecard slot number. This currently only works for the card entities
+# return linecard slot number; this currently only works for the card entities
 # itself, not for any descendants.
-#------------------------------------------------------------------------------
-
-sub linecard_no
+sub linecard_no ($self)
 {
-  my ($self) = @_;
   my $linecard_no;
 
   # only modules; everything else croaks
@@ -252,13 +229,9 @@ sub linecard_no
 
 
 #------------------------------------------------------------------------------
-# Return display string for current entry (intended for debugging)
-#------------------------------------------------------------------------------
-
-sub disp
+# return display string for current entry (intended for debugging)
+sub disp ($self)
 {
-  my ($self) = @_;
-
   return sprintf
     'idx=%d pos=%d name="%s" model="%s" sn="%s" hw="%s" fw="%s" sw="%s"',
     $self->entPhysicalIndex,
@@ -271,5 +244,6 @@ sub disp
     $self->entPhysicalSoftwareRev // '';
 }
 
+#------------------------------------------------------------------------------
 
 1;

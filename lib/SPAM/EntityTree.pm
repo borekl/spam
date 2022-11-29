@@ -1,8 +1,6 @@
-#=============================================================================
-# Encapsulate handling ENTITY-MIB entPhysicalTable trees.
-#=============================================================================
-
 package SPAM::EntityTree;
+
+# encapsulate handling ENTITY-MIB entPhysicalTable trees
 
 use warnings;
 use integer;
@@ -17,7 +15,6 @@ use Data::Dumper;
 use SPAM::Config;
 
 # tree root
-
 has root => (
   is => 'rw',
   isa => sub {
@@ -28,24 +25,19 @@ has root => (
 
 # hash that indexes nodes in the tree by their associated ifIndex; note, that
 # only port entries have associated ifIndex
-
 has node_by_ifIndex => (
   is => 'ro',
   default => sub { {} },
 );
 
-
 #------------------------------------------------------------------------------
 # Constructor code, builds the tree from supplied array of individual entries.
 # The individual must be SPAM::Entity instances.
-#------------------------------------------------------------------------------
-
 sub BUILD
 {
   my ($self, $arg) = @_;
 
   # check that we got the required argument
-
   croak 'SPAM::EntityTree requires "entities" argument'
   if !exists $arg->{'entities'};
 
@@ -59,18 +51,16 @@ sub BUILD
   }
 
   # find root element
-
   my (@root) = grep { !$_->entPhysicalContainedIn } @$entities;
 
   if(!@root) {
     croak 'Entity table has no root';
   } elsif(@root > 1) {
 
-  # some devices' entPhysicalTable doesn't comprise one single-rooted tree, but
-  # instead have some entries that are not part of the tree; in that case the
-  # above method doesn't find the actual entity tree root and further
-  # processing is required
-
+    # some devices' entPhysicalTable doesn't comprise one single-rooted tree,
+    # but instead have some entries that are not part of the tree; in that case
+    # the above method doesn't find the actual entity tree root and further
+    # processing is required
     my (@stack) = grep { $_->entPhysicalClass eq 'stack' } @root;
     my (@chassis) = grep { $_->entPhysicalClass eq 'chassis' } @root;
     if(@stack) {
@@ -86,7 +76,6 @@ sub BUILD
   }
 
   # recursively build the tree from the array of elements
-
   my $build = sub {
     my $tree = shift;
     my $entPhysicalIndex = $tree->entPhysicalIndex;
@@ -123,14 +112,11 @@ sub BUILD
 #
 # The callback gets two arguments:  SNMP::Entity instance ref and tree level
 # (root being level 0, root children level 1 etc.).
-#------------------------------------------------------------------------------
-
 sub traverse
 {
   my ($self, @arg) = @_;
 
-  #--- process arguments
-
+  # process arguments
   my $cb = shift @arg if @arg % 2;
   my %arg = @arg;
 
@@ -140,8 +126,7 @@ sub traverse
 
   return if !$cb;
 
-  #--- perform the traversal
-
+  # perform the traversal
   sub {
     my ($node, $level) = @_;
     $cb->($node, $level);
@@ -162,15 +147,12 @@ sub traverse
 # argument can also be given as the first argument, or omitted completely. All
 # arguments that are not callback are passed verbatim to the traverse()
 # function.
-#------------------------------------------------------------------------------
-
 sub query
 {
   my ($self, @args) = @_;
   my @result;
 
-  #--- process arguments
-
+  # process arguments
   my $cb = shift @args if @args % 2;
   my %args = @args;
   if(exists $args{'callback'}) {
@@ -178,8 +160,7 @@ sub query
   }
   delete $args{'callback'} if $cb && exists $args{'callback'};
 
-  #--- perform the query
-
+  # perform the query
   $self->traverse(sub {
     my $entry = shift;
     push(@result, $entry) if !$cb || $cb->($entry);
@@ -192,8 +173,6 @@ sub query
 #------------------------------------------------------------------------------
 # Return a list of chassis entities. We are assuming that chassis is either the
 # root entity or one level below (in case of stacks).
-#------------------------------------------------------------------------------
-
 sub chassis
 {
   my ($self) = @_;
@@ -205,9 +184,7 @@ sub chassis
 
 
 #------------------------------------------------------------------------------
-# Return a list of power supplies' entities.
-#------------------------------------------------------------------------------
-
+# return a list of power supplies' entities
 sub power_supplies
 {
   my ($self) = @_;
@@ -220,8 +197,6 @@ sub power_supplies
 
 #------------------------------------------------------------------------------
 # Return a list of linecards' entities.
-#------------------------------------------------------------------------------
-
 sub linecards
 {
   my ($self) = @_;
@@ -258,8 +233,6 @@ sub linecards
 
 #------------------------------------------------------------------------------
 # Return a list of power supplies' entities.
-#------------------------------------------------------------------------------
-
 sub fans
 {
   my ($self) = @_;
@@ -282,21 +255,16 @@ sub fans
 #      "range": [ 1, 48 ],
 #    }
 #  }
-#
-#------------------------------------------------------------------------------
-
 sub ports
 {
   my ($self, $start) = @_;
   my $filter;
   my @ports;
 
-  #--- default starting node is the root
-
+  # default starting node is the root
   $start = $self unless $start;
 
-  #--- port filtering
-
+  # port filtering
   my ($chassis) = $start->ancestors_by_class('chassis');
   my $swmodel = $chassis->entPhysicalModelName if $chassis;
   my $cfg = SPAM::Config->instance->entity_profile(model => $swmodel);
@@ -312,14 +280,12 @@ sub ports
     }
   }
 
-  #--- get unfiltered port list
-
+  # get unfiltered port list
   @ports = $self->query(start => $start, callback => sub {
     $_[0]->entPhysicalClass eq 'port'
   });
 
-  #--- perform filtering
-
+  # perform filtering
   if($filter) {
     my $field = $filter->{'filter_by'};
     my $re = $filter->{'regex'};
@@ -332,7 +298,7 @@ sub ports
     } @ports;
   }
 
-  #--- finish
+  # finish
 
   return @ports;
 }
@@ -348,10 +314,6 @@ sub ports
 # The 'modwire' argument is a list of hashref loaded from the 'modwire' backend
 # table, which gives identification of where given linecard is cabled to (for
 # linecards that are permanently wired to patchpanels).
-#
-# FIXME
-#------------------------------------------------------------------------------
-
 sub hwinfo
 {
   my ($self, $modwire) = @_;
@@ -364,8 +326,7 @@ sub hwinfo
   my @cards = $self->linecards;
   my @fans = $self->fans;
 
-  #--- get list of chassis entries
-
+  # get list of chassis entries
   foreach my $chassis (@chassis) {
     push(@result, {
       'm' => $chassis->chassis_no,
@@ -376,8 +337,7 @@ sub hwinfo
     })
   }
 
-  #--- get list of power supplies
-
+  # get list of power supplies
   foreach my $ps (@ps) {
     push(@result, {
       'm' => $ps->chassis_no,
@@ -388,8 +348,7 @@ sub hwinfo
     })
   }
 
-  #--- get list of linecards
-
+  # get list of linecards
   my @cards_processed;
   foreach my $card (@cards) {
 
@@ -412,7 +371,6 @@ sub hwinfo
     # "entity-profiles": {
     #   "models": { "C9410R": { "slot_map": { "11": 5 } } }
     # }
-
     if(
       $ent_models
       && $chassis->entPhysicalModelName
@@ -438,7 +396,6 @@ sub hwinfo
     }
 
     # get list of ports in given module
-
     my @ports = $self->ports($card);
 
     push(@cards_processed, {
@@ -454,7 +411,6 @@ sub hwinfo
   }
 
   # sort the linecards by their m/n values (ie. chassis/slot numbers)
-
   push(@result,
     sort {
       if($a->{'m'} == $b->{'m'}) {
@@ -465,8 +421,7 @@ sub hwinfo
     } @cards_processed
   );
 
-  #--- get list of fans
-
+  # get list of fans
   foreach my $fan (@fans) {
     # only list fans with model name, some devices list every fan in the system
     # which is not very useful
@@ -481,7 +436,6 @@ sub hwinfo
   }
 
   # return the resulting hwinfo array
-
   return \@result;
 }
 
