@@ -1,4 +1,5 @@
-#=============================================================================
+package SPAM::Keys;
+
 # Module for handling keys/passwords used in configuration file. The main
 # purpose of this module is to move the security critical data into its own
 # file (or maybe something else later).
@@ -15,11 +16,7 @@
 # In the main config you can then use %0, %1, %2 in any value and it will be
 # replaced with values from this file. Only values 0..9 are currently
 # supported.
-#=============================================================================
 
-package SPAM::Keys;
-
-use v5.10;
 use warnings;
 use integer;
 use strict;
@@ -31,30 +28,24 @@ use Carp;
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
 
-
-#=============================================================================
 #=== ATTRIBUTES ==============================================================
-#=============================================================================
 
 has keys_file => (
   is => 'ro',
   default => 'authkeys.json',
 );
 
-has keys_dir => (
-  is => 'ro'
-);
+has keys_dir => ( is => 'ro' );
 
 has _keys => (
   is => 'lazy',
   predicate => 1,
 );
 
+#=== METHODS =================================================================
 
-#=============================================================================
-#=== BUILDERS ================================================================
-#=============================================================================
-
+#-----------------------------------------------------------------------------
+# read and parse the keys file
 sub _build__keys ($self)
 {
   my $file;
@@ -68,14 +59,10 @@ sub _build__keys ($self)
   return JSON->new->relaxed(1)->decode(path($file)->slurp());
 }
 
-#=============================================================================
-#=== METHODS =================================================================
-#=============================================================================
-
+#-----------------------------------------------------------------------------
 # replace placeholders in passed in string that are in the form %N, where N
 # is a single numeral 0..9; if the placeholder is used but not defined, it
 # is removed from the string
-
 sub fill ($self, $s)
 {
   my $keys = $self->_keys;
@@ -101,6 +88,6 @@ sub fill ($self, $s)
   return $s;
 }
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 
 1;
