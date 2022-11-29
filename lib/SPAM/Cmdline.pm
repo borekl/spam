@@ -10,39 +10,24 @@ with 'MooX::Singleton';
 
 use Getopt::Long;
 
-
-
-#=============================================================================
 #=== ATTRIBUTES ==============================================================
-#=============================================================================
 
 # enable debugging mode
-
-has debug => (
-  is => 'rwp',
-);
+has debug => ( is => 'rwp' );
 
 # turn polling for ARP table on or off
-
-has arptable => (
-  is => 'rwp',
-);
+has arptable => ( is => 'rwp' );
 
 # turn getting bridging table on or off
-
 has mactable => (
   is => 'rwp',
   default => 1,
 );
 
 # turn autoregistration of outlets on or off
-
-has autoreg => (
-  is => 'rwp',
-);
+has autoreg => ( is => 'rwp' );
 
 # hosts to be polled (by enumeration)
-
 has hosts => (
   is => 'rwp',
   default => sub { [] },
@@ -61,54 +46,33 @@ has forcehost => ( is => 'rwp', predicate => 1 );
 has hostinfo => ( is => 'rwp', default => 0 );
 
 # number of concurrent tasks to be run
-
 has tasks => (
   is => 'rwp',
   default => 8,
 );
 
 # remove a host from database
-
-has remove_host => (
-  is => 'rwp',
-);
+has remove_host => ( is => 'rwp' );
 
 # execute maintenance tasks
-
-has maintenance => (
-  is => 'rwp',
-);
+has maintenance => ( is => 'rwp' );
 
 # list known ARP servers and exit
-
-has list_arpservers => (
-  is => 'rwp',
-);
+has list_arpservers => ( is => 'rwp' );
 
 # list switches that would be processed and exit
-
-has list_worklist => (
-  is => 'rwp',
-);
+has list_worklist => ( is => 'rwp' );
 
 # list known hosts and exit
-
-has list_hosts => (
-  is => 'rwp',
-);
+has list_hosts => ( is => 'rwp' );
 
 # no locking needed
+has no_lock => ( is => 'rwp' );
 
-has no_lock => (
-  is => 'rwp',
-);
+#=== METHODS =================================================================
 
-
-
-#=============================================================================
-# Initialize the object according to the command-line options given.
-#=============================================================================
-
+#-----------------------------------------------------------------------------
+# initialize the object according to the command-line options given
 sub BUILD
 {
   my ($self) = @_;
@@ -151,11 +115,8 @@ sub BUILD
 
 }
 
-
-#=============================================================================
-# Add host to be processed, this is helper for the BUILD function.
-#=============================================================================
-
+#-----------------------------------------------------------------------------
+# add host to be processed, this is helper for the BUILD function
 sub _add_host
 {
   my ($self, @host) = @_;
@@ -167,12 +128,8 @@ sub _add_host
   return $self;
 }
 
-
-
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Print help message.
-#=============================================================================
-
 sub help
 {
   print <<EOHD;
@@ -203,8 +160,6 @@ Options that initiate special actions and prevent normal processing:
 EOHD
 }
 
-
-
-#=============================================================================
+#-----------------------------------------------------------------------------
 
 1;

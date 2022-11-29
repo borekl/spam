@@ -22,19 +22,15 @@ use DBIx::Connector;
 use SPAM::MIB;
 use SPAM::Keys;
 
-#=============================================================================
 #=== ATTRIBUTES ==============================================================
-#=============================================================================
 
 # configuration file
-
 has config_file => (
   is => 'ro',
   default => 'spam.cfg.json',
 );
 
 # configuration directory, this is automatically filled in from 'config_file'
-
 has _config_dir => (
   is => 'ro',
   lazy => 1,
@@ -42,12 +38,10 @@ has _config_dir => (
 );
 
 # parsed configuration
-
 has config => ( is => 'lazy', predicate => 1 );
 
 # keys, instance of SPAM::Keys that stores various security-critical tokens
 # such as passwords, secrets, community strings etc
-
 has keys => (
   is => 'ro',
   lazy => 1,
@@ -59,7 +53,6 @@ has keys => (
 # This is used to cache DBI connection handles in a way that makes them
 # available in the whole application. These handles should only be used
 # through the SPAM::Db wrapper class.
-
 has dbconn => (
   is => 'ro',
   default => sub { {} },
@@ -68,45 +61,35 @@ has dbconn => (
 # list of switches
 # this is the list of switches SPAM should talk to, retrieved from backend
 # database
-
 has hosts => ( is => 'lazy' );
 
 # list of arp servers
 # this is the list of routers SPAM should talk to to retrieve ARP information
 # for mapping IPs to MACs
-
 has arpservers => ( is => 'lazy' );
 
 # list of MIBs (SPAM::MIB instances)
-
 has mibs => ( is => 'lazy' );
 
 # known ports, on following switches unpatched ports will be considered
 # different port state separate from up/oper down/admin down.
-
 has knownports => ( is => 'lazy' );
 
 # retention period for MAC and ARP entries
-
 has mactableage => ( is => 'lazy' );
 has arptableage => ( is => 'lazy' );
 
 # vlan servers list; each element is an array of (host, SNMPv2_community,
 # VTP domain)
-
 has vlanservers => (
   is => 'lazy',
   default => sub { [] },
 );
 
-#=============================================================================
 #=== METHODS =================================================================
-#=============================================================================
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Load and parse configuration
-#=============================================================================
-
 sub _build_config
 {
   my ($self) = @_;
@@ -181,33 +164,26 @@ sub get_dbi_handle
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Close a DBI handle previously opened with get_dbi_handle().
-#=============================================================================
-
 sub close_dbi_handle
 {
   my ($self, $dbid) = @_;
 
-  #--- is the handle actually open?
-
+  # is the handle actually open?
   return if !exists $self->dbconn()->{$dbid};
 
-  #--- close the handle
-
+  # close the handle
   $self->dbconn()->{$dbid}->disconnect();
   delete $self->dbconn()->{$dbid};
 
-  #--- finish
-
+  # finish
   return $self;
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Load list of hosts (switches) from backend database.
-#=============================================================================
-
 sub _build_hosts
 {
   my ($self) = @_;
@@ -216,12 +192,10 @@ sub _build_hosts
   if(!ref $dbh) { die 'Database connection failed (ondb)'; }
 
   # the v_switchlist view returns tuples (hostname, community, ip_addr)
-
   my $sth = $dbh->prepare('SELECT * FROM v_switchlist');
   my $r = $sth->execute();
 
   # the way the info is stored is the same as the old $cfg->{'host'} hash
-
   my %hosts;
   while(my $row = $sth->fetchrow_hashref()) {
     my $h = lc $row->{'hostname'};
@@ -233,10 +207,8 @@ sub _build_hosts
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Load list of routers from backend database.
-#=============================================================================
-
 sub _build_arpservers
 {
   my ($self) = @_;
@@ -246,7 +218,6 @@ sub _build_arpservers
   if(!ref $dbh) { die 'Database connection failed (ondb)'; }
 
   # the v_arpservers view returns tuples (hostname, community)
-
   my $sth = $dbh->prepare('SELECT * FROM v_arpservers');
   my $r = $sth->execute();
 
@@ -261,10 +232,8 @@ sub _build_arpservers
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Return SNMP configuration block based on supplied hostname
-#=============================================================================
-
 sub get_snmp_config
 {
   my ($self, $host) = @_;
@@ -298,12 +267,10 @@ sub get_snmp_config
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Return snmp command and option strings for given (host, mib, oid, vlan)
 # Following arguments are accepted: host, command, mibs, oids,
 # context(optional)
-#=============================================================================
-
 sub get_snmp_command
 {
   my ($self, %arg) = @_;
@@ -364,10 +331,8 @@ sub get_snmp_command
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Return configured SNMP v2 community string for a host.
-#=============================================================================
-
 sub snmp_community
 {
   my ($self, $host) = @_;
@@ -380,10 +345,8 @@ sub snmp_community
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Convert hostname (e.g. 'vdcS02c') to site code (e.g. 'vin')
-#=============================================================================
-
 sub site_conv
 {
   my ($self, $host) = @_;
@@ -397,11 +360,9 @@ sub site_conv
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Function to get entity profiles for given entity tree node. The
 # configuration lies under the "entity-profiles" key.
-#=============================================================================
-
 sub entity_profile
 {
   my ($self, %args) = @_;
@@ -427,10 +388,8 @@ sub entity_profile
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Convert MIB configuration into SPAM::MIB instances
-#=============================================================================
-
 sub _build_mibs
 {
   my $self = shift;
@@ -448,10 +407,8 @@ sub _build_mibs
 }
 
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # MIBs iterator, true value from the callback terminates the iteration
-#=============================================================================
-
 sub iter_mibs
 {
   my ($self, $cb) = @_;
@@ -464,12 +421,9 @@ sub iter_mibs
   }
 }
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 # Find MIBobject with requested 'table' attribute value or by evaluating
 # a callback.
-#=============================================================================
-
-
 sub find_object
 {
   my ($self, $cond) = @_;
@@ -492,8 +446,7 @@ sub find_object
   return $result;
 }
 
-#=============================================================================
-
+#-----------------------------------------------------------------------------
 sub _build_knownports
 {
   my $self = shift;
@@ -507,8 +460,7 @@ sub _build_knownports
 }
 
 
-#=============================================================================
-
+#-----------------------------------------------------------------------------
 sub _build_mactableage
 {
   my $self = shift;
@@ -521,6 +473,7 @@ sub _build_mactableage
   return $val;
 }
 
+#-----------------------------------------------------------------------------
 sub _build_arptableage
 {
   my $self = shift;
@@ -533,8 +486,7 @@ sub _build_arptableage
   return $val;
 }
 
-#=============================================================================
-
+#-----------------------------------------------------------------------------
 sub _build_vlanservers
 {
   my $self = shift;
@@ -547,24 +499,14 @@ sub _build_vlanservers
   return $val;
 }
 
-#=============================================================================
+#-----------------------------------------------------------------------------
+sub snmpget ($self) { $self->config->{snmpget} }
+sub snmpwalk ($self) { $self->config->{snmpwalk} }
 
-sub snmpget
-{
-  my $self = shift;
-  return $self->config->{snmpget}
-}
-
-sub snmpwalk
-{
-  my $self = shift;
-  return $self->config->{snmpwalk}
-}
-
+#-----------------------------------------------------------------------------
 # this function walks the parsed configuration, invokes a callback for every
 # value and lets the callback return a new value; if undef is returned, the
 # old value is retained
-
 sub _recurse ($h, $cb)
 {
   if(reftype $h eq 'ARRAY') {
@@ -588,6 +530,6 @@ sub _recurse ($h, $cb)
   }
 }
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 
 1;
