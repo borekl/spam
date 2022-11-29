@@ -1,31 +1,24 @@
-#=============================================================================
-# Encapsulate SNMP MIB configuration
-#=============================================================================
-
 package SPAM::MIB;
 
-use v5.10;
+# encapsulate SNMP MIB configuration
+
+use Moo;
 use warnings;
 use integer;
 use strict;
+use experimental 'signatures';
 
-use Moo;
 use SPAM::MIBobject;
 
-
-#=============================================================================
 #=== ATTRIBUTES ==============================================================
-#=============================================================================
 
 # SNMP MIB name
-
 has name => (
   is => 'ro',
   required => 1
 );
 
 # reference to MIB configuration
-
 has config => (
   is => 'ro',
   required => 1,
@@ -33,28 +26,24 @@ has config => (
 );
 
 # list of managed objects
-
 has objects => (
   is => 'lazy',
   builder => '_load_objects',
 );
 
-#=============================================================================
+#=== METHODS =================================================================
 
-sub iter_objects
+#-----------------------------------------------------------------------------
+sub iter_objects ($self, $cb)
 {
-  my ($self, $cb) = @_;
-
   foreach my $object (@{$self->objects}) {
     last if $cb->($object);
   }
 }
 
-#=============================================================================
-
-sub _load_objects
+#-----------------------------------------------------------------------------
+sub _load_objects ($self)
 {
-  my $self = shift;
   my $mib = $self->config;
   my @objects;
 
@@ -77,6 +66,6 @@ sub _load_objects
   return \@objects;
 }
 
-#=============================================================================
+#-----------------------------------------------------------------------------
 
 1;
