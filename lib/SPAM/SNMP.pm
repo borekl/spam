@@ -1,13 +1,7 @@
-#!/usr/bin/perl
-
-#===========================================================================
-# Switch Ports Activity Monitor -- SNMP support library
-# """""""""""""""""""""""""""""
-# 2000-2021 Borek Lupomesky <Borek.Lupomesky@oskarmobil.cz>
-#===========================================================================
-
-
 package SPAM::SNMP;
+
+# set of functions to perform SNMP access using external utilities from Net-SNMP
+
 require Exporter;
 use lib 'lib';
 use SPAM::Misc qw(file_lineread hash_create_index hash_iterator hash_index_access);
@@ -21,6 +15,7 @@ use Feature::Compat::Try;
 use warnings;
 use strict;
 use integer;
+use experimental 'signatures';
 
 our (@ISA, @EXPORT);
 
@@ -31,27 +26,19 @@ our (@ISA, @EXPORT);
   sql_save_snmp_object
 );
 
-
-#==========================================================================
-# Read SNMP command's output line by line. The primary purpose of this code
-# is to merge multi-line values into single lines for further parsing.
-#==========================================================================
-
-sub snmp_lineread
+#-------------------------------------------------------------------------------
+# read SNMP command's output line by line; the primary purpose of this code is
+# to merge multi-line values into single lines for further parsing
+sub snmp_lineread ($cmd, $cb)
 {
-  #--- arguments
-
-  my ($cmd, $callback) = @_;
-
-  #--- iterate over lines while merging multi-line values into single lines
-
+  # iterate over lines while merging multi-line values into single lines
   my $acc;
 
   my $r = file_lineread($cmd, '-|', sub {
     my $l = shift;
 
     if($l =~ /^\S+::/) {
-      $callback->($acc) if $acc;
+      $cb->($acc) if $acc;
       $acc = $l;
     } else {
       $acc .= $l;
@@ -59,56 +46,37 @@ sub snmp_lineread
     return undef;
   });
 
-  #--- failed read
-
+  # failed read
   return $r if $r;
 
-  #--- successful read
-
-  $callback->($acc) if $acc;
+  # successful read
+  $cb->($acc) if $acc;
   return undef;
 }
 
-
-#===========================================================================
+#-------------------------------------------------------------------------------
 # Retrieve ARP entries from list of routers. It returns mac->ip address hash
-# reference. The optional callback is there to facilitate caller-side
-# progress info display; arguments are: 1. number of arp servers, 2. number
-# of currently processed entry, 3. name of currently processed server.
-#===========================================================================
-
-sub snmp_get_arptable
+# reference. The optional callback is there to facilitate caller-side progress
+# info display; arguments are: 1. number of arp servers, 2. number of currently
+# processed entry, 3. name of currently processed server.
+sub snmp_get_arptable ($arpdef, $def_cmty=undef, $cb=undef)
 {
-  #--- arguments
-
-  my (
-    $arpdef,     # 1. arp servers list in form [ host, community ]
-    $def_cmty,   # 2. default SNMP community
-    $cb          # 3. callback (optional)
-  ) = @_;
-
-  #--- other variables
-
+  # other variables
   my %tree;
   my %arptable;
   my $cfg = SPAM::Config->instance;
 
-  #--- MIB and object to use for arptable processing; note, that only the
-  #--- first MIB object with flag 'arptable' will be used
-
+  # MIB and object to use for arptable processing; note, that only the first MIB
+  # object with flag 'arptable' will be used
   my $object = $cfg->find_object(sub {
     return 1 if $_[0]->has_flag('arptable');
   });
 
-  #-------------------------------------------------------------------------
-  #--- read the relevant MIB sections --------------------------------------
-  #-------------------------------------------------------------------------
-
+  # read the relevant MIB sections
   for my $arp_source (@$arpdef) {
     my $r;
 
-  #--- read the MIB tree
-
+    # read the MIB tree
     $r = snmp_get_object(
       'snmpwalk',
       $arp_source->[0],
@@ -118,8 +86,7 @@ sub snmp_get_arptable
       $object->columns
     );
 
-  #--- handle the result
-
+    # handle the result
     if(!ref($r)) {
       die sprintf("failed to get arptable from %s (%s)", $arp_source->[0], $r);
     } else {
@@ -129,17 +96,11 @@ sub snmp_get_arptable
       %$t = ( %$t, %$r );
     }
 
-  #--- display message through callback
-
-    if($cb) {
-      $cb->($arp_source->[0]);
-    }
+    # display message through callback
+    $cb->($arp_source->[0]) if $cb;
   }
 
-  #-------------------------------------------------------------------------
-  #--- transform the data into the format used by spam.pl
-  #-------------------------------------------------------------------------
-
+  # transform the data into the format used by SPAM
   for my $host (keys %tree) {
     for my $if (keys %{$tree{$host}}) {
       for my $ip (keys %{$tree{$host}{$if}}) {
@@ -156,42 +117,33 @@ sub snmp_get_arptable
     }
   }
 
-  #--- finish
-
+  # finish
   return \%arptable;
 }
 
-
-#==========================================================================
-# Function for parsing SNMP values as returned by snmp-utils.
-#==========================================================================
-
-sub snmp_value_parse
+#-------------------------------------------------------------------------------
+# parse SNMP values as returned by Net-SNMP
+sub snmp_value_parse ($value)
 {
-  my $value = shift;
   my %re;
 
-  #--- remove leading/trailing whitespace
-
+  # remove leading/trailing whitespace
   s/^\s+//, s/\s+$// for $value;
 
-  #--- integer
-
+  # integer
   if($value =~ /^INTEGER:\s+(\d+)$/) {
     $re{'type'} = 'INTEGER';
     $re{'value'} = $1 + 0;
   }
 
-  #--- integer-enum
-
+  # integer-enum
   elsif($value =~ /^INTEGER:\s+(\w+)\((\d+)\)$/) {
     $re{'type'} = 'INTEGER';
     $re{'value'} = $2;
     $re{'enum'} = $1;
   }
 
-  #--- string
-
+  # string
   elsif($value =~ /^STRING:\s+(.*)$/) {
     $re{'type'} = 'STRING';
     $re{'value'} = $1;
@@ -201,32 +153,28 @@ sub snmp_value_parse
     $re{'value'} = undef;
   }
 
-  #--- gauge
-
+  # gauge
   elsif($value =~ /^Gauge(32|64): (\d+)$/) {
     $re{'type'} = 'Gauge';
     $re{'bitsize'} = $1;
     $re{'value'} = $2 + 0;
   }
 
-  #--- counter
-
+  # counter
   elsif($value =~ /^Counter(32|64): (\d+)$/) {
     $re{'type'} = 'Counter';
     $re{'bitsize'} = $1;
     $re{'value'} = $2 + 0;
   }
 
-  #--- timeticks
-
+  # timeticks
   elsif($value =~ /Timeticks:\s+\((\d+)\)\s+(.*)\.\d{2}$/) {
     $re{'type'} = 'Timeticks';
     $re{'value'} = $1;
     $re{'fmt'} = $2;
   }
 
-  #--- hex string
-
+  # hex string
   elsif($value =~ /^Hex-STRING:\s+(.*)$/) {
     $re{'type'} = 'Hex-STRING';
     my @v = split(/\s/, $1);
@@ -238,16 +186,14 @@ sub snmp_value_parse
     $re{'bitstring'} = join('', map { sprintf '%08b', hex $_ } @v);
   }
 
-  #--- MIB reference
-
+  # MIB reference
   elsif($value =~ /^([\w-]+)::(\w+)$/) {
     $re{'type'} = 'Ref';
     $re{'mib'} = $1;
     $re{'value'} = $2;
   }
 
-  #--- OID
-
+  # OID
   elsif($value =~ /
     ^OID:
     \s+
@@ -264,46 +210,31 @@ sub snmp_value_parse
     $re{'value'} = @value == 1 ? $value[0] : \@value;
   }
 
-  #--- generic type:value
-
+  # generic type:value
   elsif($value =~ /^(\w+): (.*)$/) {
     $re{'type'} = 'generic';
     $re{'gentype'} = $1;
     $re{'value'} = $2;
   }
 
-  #--- uncrecognized output
-
+  # uncrecognized output
   else {
     $re{'type'} = 'unknown';
     $re{'value'} = $value;
   }
 
-  #--- finish
-
+  # finish
   return \%re;
 }
 
-
-#==========================================================================
+#-------------------------------------------------------------------------------
 # Function for (optional) mangling of values retrieved from SNMP. This is
-# configured throug a mapping in config under key "mib-types": which is a
-# hash of "MIB object" to "type", where type is what is passed into this
-# function. This allows us to perform additional conversion stop, for
-# example convert Hex-STRING to IP address.
-#==========================================================================
-
-sub snmp_value_transform
+# configured through a mapping in config under key "mib-types": which is a hash
+# of "MIB object" to "type", where type is what is passed into this function.
+# This allows us to perform additional conversion step, for example convert
+# Hex-STRING to IP address.
+sub snmp_value_transform ($rval, $type)
 {
-  #--- arguments
-
-  my (
-    $rval,      # 1. right-value as created by snmp_value_parse)
-    $type       # 2. type tag, configured in config
-  ) = @_;
-
-  #--- inet4
-
   if($type eq 'inet4') {
     $rval->{'value_orig'} = $rval->{'value'};
     if($rval->{'type'} eq 'Hex-STRING') {
@@ -319,31 +250,28 @@ sub snmp_value_transform
   }
 }
 
-
-#==========================================================================
-# Get SNMP object and store it into a hashref. First five arguments are
-# the same as for snmp_lineread(), sixth argument is optional callback
-# that receives line count as argument (for displaying progress indication)
-# The callback can optionally return number of seconds that determine the
-# period it should be called at.
-#==========================================================================
-
+#-------------------------------------------------------------------------------
+# Get SNMP object and store it into a hashref. First five arguments are the same
+# as for snmp_lineread(), sixth argument is optional callback that receives line
+# count as argument (for displaying progress indication) The callback can
+# optionally return number of seconds that determine the period it should be
+# called at.
 sub snmp_get_object
 {
   #--- arguments (same as to snmp_lineread)
 
-  # arguments 0..5 are those of snmp_lineread(); argument 5 is list of
-  # columns to retrieve, this can be undef to get all existing columns; the
-  # last argument is optional and is an callback intended for displaying
-  # progress status that is invoked with (VARIABLE, CNT) where variable is
-  # SNMP variable currently being processed and CNT is entry counter that's
-  # zeroed for each new variable.  This callback is invoked only when: a)
-  # the variable being read is different from previous one (ie.  reading of
-  # one variable finished), or specified amount of time passed between now
-  # and the last time the callback was called.  Default delay is 1 second,
-  # but it can be specified on callback invocation: the returned value will
-  # be used for the rest of the invocations.  Granularity is only 1 second
-  # (the implementation uses time() function).
+  # arguments 0..5 are those of snmp_lineread(); argument 5 is list of columns
+  # to retrieve, this can be undef to get all existing columns; the last
+  # argument is optional and is an callback intended for displaying progress
+  # status that is invoked with (VARIABLE, CNT) where variable is SNMP variable
+  # currently being processed and CNT is entry counter that's zeroed for each
+  # new variable.  This callback is invoked only when: a) the variable being
+  # read is different from previous one (ie.  reading of one variable finished),
+  # or specified amount of time passed between now and the last time the
+  # callback was called.  Default delay is 1 second, but it can be specified on
+  # callback invocation: the returned value will be used for the rest of the
+  # invocations.  Granularity is only 1 second (the implementation uses time()
+  # function).
 
   my (
     $cmd,       # 1 / scal / SNMP command
@@ -355,22 +283,19 @@ sub snmp_get_object
     $cback      # 7 / sub  / callback
   ) = @_;
 
-  #--- other variables
-
+  # other variables
   my $cfg = SPAM::Config->instance->config;
   my $delay = 1;
   my %re;
   my $fh;
   my ($var1, $tm1) = ('', 0);
 
-  #--- make $columns an arrayref
-
+  # make $columns an arrayref
   if($columns && !ref($columns)) {
     $columns = [ $columns ];
   }
 
-  #--- initiate debugging
-
+  # initiate debugging
   if($ENV{'SPAM_DEBUG'}) {
     open($fh, '>>', "debug.snmp_object.$$.log");
     if($fh) {
@@ -383,26 +308,22 @@ sub snmp_get_object
     }
   }
 
-  #--- initial callback call
-
+  # initial callback call
   if($cback) {
     my $rv = $cback->(undef, 0);
     $delay = $rv if ($rv // 0) > 0;
   }
 
-  #--- get set of MIB tree entry points
-
+  # get set of MIB tree entry points
   my @tree_entries = ($object);
   @tree_entries = @$columns if @$columns;
   printf $fh "--> ENTRY POINTS: %s\n", join(',', @tree_entries) if $fh;
 
-  #--- entry points loop ----------------------------------------------------
-
+  # entry points loop
   for my $entry (@tree_entries) {
     my $cnt = 0;
 
-  #--- read loop ------------------------------------------------------------
-
+    # read loop
     my ($cmd, $profile) = SPAM::Config->instance->get_snmp_command(
       command   => $cmd,
       host      => $host,
@@ -419,19 +340,16 @@ sub snmp_get_object
       my $l = shift;
       my $tm2;
 
-  #--- split into variable and value
-
+      # split into variable and value
       my ($var, $val) = split(/ = /, $l);
 
-  #--- parse the right side (value)
-
+      # parse the right side (value)
       my $rval = snmp_value_parse($val);
       if($ENV{'SPAM_DEBUG'}) {
         $rval->{'src'} = $l;
       }
 
-  #--- drop the "No Such Instance/Object" result
-
+      # drop the "No Such Instance/Object" result
       if(
         $rval->{'value'}
         && $rval->{'value'} =~ /^No Such (Instance|Object)/
@@ -439,22 +357,17 @@ sub snmp_get_object
         return;
       }
 
-  #--- parse the left side (variable, indexes)
-
+      # parse the left side (variable, indexes)
       $var =~ s/^.*:://;  # drop the MIB name
 
-
-  #--- get indexes
-
-  # left side as output by SNMP utils with -OX option appears in one of the
-  # three forms (with corresponding sections of code below):
-  #
-  #   1. snmpVariable.0
-  #   2. snmpVariable
-  #   3. snmpVariable[idx1][idx2]...[idxN]
-  #
-  # this code converts these forms into an array of the index values
-
+      # get indexes // left side as output by SNMP utils with -OX option appears
+      # in one of the three forms (with corresponding sections of code below):
+      #
+      #   1. snmpVariable.0
+      #   2. snmpVariable
+      #   3. snmpVariable[idx1][idx2]...[idxN]
+      #
+      # this code converts these forms into an array of the index values
       my @i;
       my $scalar = 0;
 
@@ -482,20 +395,17 @@ sub snmp_get_object
         }
       }
 
-  #--- value transform
-
+      # value transform
       if(exists $cfg->{'mib-types'}{$var}) {
         snmp_value_transform($rval, $cfg->{'mib-types'}{$var});
       }
 
-  #--- store the values
-
-  # following code builds hash that stores the values ($rval in the code);
-  # the structure created is:
-  #
-  # 1. $re -> 0     ->                          value
-  # 2. $re -> undef ->                          value
-  # 3. $re -> idx1  -> ... -> idxN -> column -> value
+      # store the values // following code builds hash that stores the values
+      # ($rval in the code); the structure created is:
+      #
+      # 1. $re -> 0     ->                          value
+      # 2. $re -> undef ->                          value
+      # 3. $re -> idx1  -> ... -> idxN -> column -> value
 
       # SNMP scalar value
       if($scalar) {
@@ -512,19 +422,16 @@ sub snmp_get_object
         hash_create_index(\%re, { $var => $rval }, @i);
       }
 
-  #--- debugging info
-
+      # debugging info
       if($fh) {
         my $rval_txt = join(',', map { $_ // '' } %$rval);
         printf $fh "%s.%s = %s\n", $var, join('.', @i), $rval_txt;
       }
 
-  #--- line counter
-
+      # line counter
       $cnt++;
 
-  #--- callback
-
+      # callback
       $tm2 = time();
       if($var1 ne $var) {
         $cnt = 0;
@@ -536,44 +443,30 @@ sub snmp_get_object
         $tm1 = $tm2;
       }
 
-  #--- finish callback
-
+      # finish callback
       return undef;
     });
 
-  #--- abort on error
-
+    # abort on error
     if($r) {
       close($fh);
       return $r;
     }
 
-  #--- finish looping over the MIB tree entries
-
+  # finish looping over the MIB tree entries
   }
 
-  #--- finish ---------------------------------------------------------------
-
+  # finish
   close($fh) if $fh;
   return scalar(keys %re) ? \%re : 'No instances found';
 }
 
 
-#===========================================================================
-# This function saves SNMP table into database.
-#===========================================================================
-
-sub sql_save_snmp_object
+#-------------------------------------------------------------------------------
+# save SNMP table into database
+sub sql_save_snmp_object ($host, $snmp_object)
 {
-  #--- arguments
-
-  my (
-    $host,         # 1. host instance
-    $snmp_object   # 2. SNMP object to be saved
-  ) = @_;
-
-  #--- other variables
-
+  # other variables
   my $cfg = SPAM::Config->instance;
   my $dbh = $cfg->get_dbi_handle('spam');
   my %stats = ( insert => 0, update => 0, delete => 0 );
@@ -582,8 +475,7 @@ sub sql_save_snmp_object
   my $ref_time = time();   # reference 'now' point of time
   my $tx = SPAM::DbTransaction->new;
 
-  #--- open debug file
-
+  # open debug file
   if($ENV{'SPAM_DEBUG'}) {
     open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
     if($debug_fh) {
@@ -594,9 +486,7 @@ sub sql_save_snmp_object
     }
   }
 
-  #=========================================================================
-  #=== try block start =====================================================
-  #=========================================================================
+  #=== try block start =========================================================
 
   try {
 
@@ -648,13 +538,12 @@ sub sql_save_snmp_object
       print $debug_fh "--> CURRENT ROWS DUMP END\n";
     }
 
-  #--- collect update plan; there are three conceptual steps:
-  #--- 1. entries that do not exist in %old (= loaded from database) will be
-  #---    inserted as new
-  #--- 2. entries that do exist in %old will be updated in place
-  #--- 3. entries that do exist in %old but not in $object (= retrieved via
-  #---    SNMP) will be deleted
-
+    # collect update plan; there are three conceptual steps:
+    # 1. entries that do not exist in %old (= loaded from database) will be
+    #    inserted as new
+    # 2. entries that do exist in %old will be updated in place
+    # 3. entries that do exist in %old but not in $object (= retrieved via
+    #    SNMP) will be deleted
     $tx->add(
       sprintf(
         'UPDATE snmp_%s SET fresh = false WHERE host = ?',
@@ -663,8 +552,7 @@ sub sql_save_snmp_object
       $host->name
     );
 
-  #--- iterate over the SNMP-loaded data
-
+    # iterate over the SNMP-loaded data
     hash_iterator(
       $object,
       scalar(@object_index),
@@ -674,11 +562,9 @@ sub sql_save_snmp_object
         my $val_old = hash_index_access(\%old, @idx);
         my (@fields, @values, $query, @cond);
 
-  #--- UPDATE - note, that we are not actually checking, if the data
-  #--- changed; just existence of the same (host, @index) will cause all
-  #--- columns to be overwritten with new values and 'chg_when' field
-  #--- updated
-
+        # UPDATE - note, that we are not actually checking, if the data changed;
+        # just existence of the same (host, @index) will cause all columns to be
+        # overwritten with new values and 'chg_when' field updated
         if($val_old) {
           $stats{'update'}++;
           $tx->add(
@@ -698,13 +584,11 @@ sub sql_save_snmp_object
             $host->name, @idx,
           );
 
-  #--- set the age of the entry to zero, so it's not selected for deletion
-
+          # set the age of the entry to zero, so it's not selected for deletion
           $val_old->{'chg_age'} = 0;
         }
 
-  #--- INSERT
-
+        # INSERT
         else {
           $stats{'insert'}++;
           $tx->add(
@@ -727,8 +611,7 @@ sub sql_save_snmp_object
       }
     );
 
-  #--- DELETE
-
+    # DELETE
     my $dbmaxage = $snmp_object->dbmaxage // undef;
     if(defined $dbmaxage) {
       hash_iterator(
@@ -753,16 +636,14 @@ sub sql_save_snmp_object
       );
     }
 
-  #--- debug output
-
+    # debug output
     if($debug_fh) {
       printf $debug_fh
         "--> UPDATE PLAN INFO (%d rows, %d inserts, %d updates, %d deletes)\n",
         $tx->count, @stats{'insert','update', 'delete'};
     }
 
-  #--- perform database transaction
-
+    # perform database transaction
     if($tx->count) {
       my $e = $tx->commit;
       die $e if $e;
@@ -770,9 +651,7 @@ sub sql_save_snmp_object
 
   }
 
-  #=========================================================================
-  #=== catch block =========================================================
-  #=========================================================================
+  #=== catch block =============================================================
 
   catch ($err) {
     printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
@@ -783,6 +662,6 @@ sub sql_save_snmp_object
   return $err // \%stats;
 }
 
-
+#-------------------------------------------------------------------------------
 
 1;
