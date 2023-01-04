@@ -448,9 +448,7 @@ try {
     );
     tty_message("[main] $tasks_cur children remaining\n");
   }
-  if($tasks_cur) {
-    die "Assertion failed! \$tasks_cur non-zero.";
-  }
+  die "Assertion failed! \$tasks_cur non-zero." if $tasks_cur;
   tty_message("[main] Concurrent section finished\n");
 
 } catch ($err) {
@@ -460,8 +458,5 @@ try {
   }
 }
 
-#--- release lock file ---
-
-if(!$cmd->no_lock()) {
-  unlink("/tmp/spam.lock");
-}
+# release lock file
+unlink("/tmp/spam.lock") unless $cmd->no_lock();
