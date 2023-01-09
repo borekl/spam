@@ -31,12 +31,8 @@ use SPAM::DbTransaction;
 
 $| = 1;
 
-
-#=== global variables ======================================================
-
-my $cfg;             # SPAM::Config instance
+# global variables
 my $arptable;        # arptable data (hash reference)
-
 
 #===========================================================================
 # This function updates arptable in backend database
@@ -44,6 +40,7 @@ my $arptable;        # arptable data (hash reference)
 
 sub sql_arptable_update
 {
+  my $cfg = SPAM::Config->instance;
   my $dbh = $cfg->get_dbi_handle('spam');
   my %arp_current;
   my ($mac, $ret, $q);
@@ -199,7 +196,7 @@ try {
 	#--- load master configuration file --------------------------------
 
 	tty_message("[main] Loading master config (started)\n");
-	$cfg = SPAM::Config->instance();
+	my $cfg = SPAM::Config->instance();
 	tty_message("[main] Loading master config (finished)\n");
 
 	#--- initialize SPAM_SNMP library
