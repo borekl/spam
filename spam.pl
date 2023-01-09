@@ -31,14 +31,9 @@ use SPAM::DbTransaction;
 
 $| = 1;
 
-# global variables
-my $arptable;        # arptable data (hash reference)
-
-#===========================================================================
+#-------------------------------------------------------------------------------
 # This function updates arptable in backend database
-#===========================================================================
-
-sub sql_arptable_update
+sub sql_arptable_update ($arptable)
 {
   my $cfg = SPAM::Config->instance;
   my $dbh = $cfg->get_dbi_handle('spam');
@@ -48,12 +43,10 @@ sub sql_arptable_update
   # get new transaction instance
   my $tx = SPAM::DbTransaction->new;
 
-  #--- ensure database connection ---
+  # ensure database connection
+  return 'Cannot connect to database (spam)' unless ref $dbh;
 
-  if(!ref($dbh)) { return 'Cannot connect to database (spam)'; }
-
-  #--- query current state ---
-
+  # query current state
   my $sth = $dbh->prepare('SELECT mac FROM arptable');
   $sth->execute()
     || return 'Database query failed (spam,' . $sth->errstr() . ')';
@@ -61,14 +54,12 @@ sub sql_arptable_update
     $arp_current{$mac} = 0;
   }
 
-  #--- gather update plan ---
-
+  # gather update plan
   foreach $mac (keys %$arptable) {
     my $aux = strftime("%c", localtime());
     if(exists $arp_current{lc($mac)}) {
 
-      #--- update ---
-
+      # update
       $tx->add(
         q{UPDATE arptable SET ip = ?, lastchk = ? WHERE mac = ?},
         $arptable->{$mac}, $aux, $mac
@@ -76,8 +67,7 @@ sub sql_arptable_update
 
     } else {
 
-      #--- insert ---
-
+      # insert
       {
         my $iaddr = inet_aton($arptable->{$mac});
         my $dnsname = gethostbyaddr($iaddr, AF_INET);
@@ -105,8 +95,7 @@ sub sql_arptable_update
     }
   }
 
-  #--- send update to the database ---
-
+  # send update to the database
   return $tx->commit;
 }
 
@@ -409,18 +398,17 @@ try {
 
       elsif($task->[0] eq 'arp') {
         tty_message("[arptable] Updating arp table (started)\n");
-        my $r = snmp_get_arptable(
+        my $arptable = snmp_get_arptable(
           $cfg->arpservers(), $cfg->snmp_community,
           sub {
             tty_message("[arptable] Retrieved arp table from $_[0]\n");
           }
         );
-        if(!ref($r)) {
-          tty_message("[arptable] Updating arp table (failed, $r)\n");
+        if(!ref $arptable) {
+          tty_message("[arptable] Updating arp table (failed, $arptable)\n");
         } else {
-          $arptable = $r;
           tty_message("[arptable] Updating arp table (processing)\n");
-          my $e = sql_arptable_update();
+          my $e = sql_arptable_update($arptable);
           if($e) { tty_message("[arptable] Updating arp table (failed, $e)\n"); }
           else { tty_message("[arptable] Updating arp table (finished)\n"); }
         }
