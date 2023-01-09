@@ -16,7 +16,7 @@
 
 use strict;
 use lib 'lib';
-use experimental 'signatures';
+use experimental 'signatures', 'postderef';
 use POSIX qw(strftime);
 use Socket;
 use Carp;
@@ -48,8 +48,8 @@ sub sql_arptable_update ($arptable)
 
   # query current state
   my $sth = $dbh->prepare('SELECT mac FROM arptable');
-  $sth->execute()
-    || return 'Database query failed (spam,' . $sth->errstr() . ')';
+  $sth->execute
+    || return 'Database query failed (spam,' . $sth->errstr . ')';
   while(($mac) = $sth->fetchrow_array) {
     $arp_current{$mac} = 0;
   }
@@ -99,45 +99,23 @@ sub sql_arptable_update ($arptable)
   return $tx->commit;
 }
 
-
-#===========================================================================
-# This function finds another task to be scheduled for run
-#
-# Arguments: 1. work list (arrayref)
-# Returns:   1. work list entry or undef
-#===========================================================================
-
-sub schedule_task
+#-------------------------------------------------------------------------------
+# This function finds another task to be scheduled for run.
+sub schedule_task ($work_list)
 {
-  my $work_list = shift;
-
-  if(!ref($work_list)) { die; }
-  for(my $i = 0; $i < @$work_list; $i++) {
-    if(!defined $work_list->[$i][2]) {
-      return $work_list->[$i];
-    }
-  }
+  die unless ref $work_list;
+  foreach (@$work_list) { return $_ unless defined $_->[2] }
   return undef;
 }
 
-
-#===========================================================================
+#-------------------------------------------------------------------------------
 # This function sets "pid" field in work list to 0, marking it as finished.
-#
-# Argument: 1. work list (arrayref)
-#           2. pid
-# Returns:  1. work list entry or undef
-#===========================================================================
-
-sub clear_task_by_pid
+sub clear_task_by_pid ($work_list, $pid)
 {
-  my $work_list = shift;
-  my $pid = shift;
-
-  for my $k (@$work_list) {
-    if($k->[2] == $pid) {
-      $k->[2] = 0;
-      return $k;
+  foreach (@$work_list) {
+    if($_->[2] == $pid) {
+      $_->[2] = 0;
+      return $_;
     }
   }
   return undef;
@@ -155,8 +133,7 @@ sub clear_task_by_pid
 #===========================================================================
 
 
-#--- title ----------------------------------------------------------------
-
+# display title
 tty_message(<<EOHD);
 
 Switch Ports Activity Monitor
@@ -164,42 +141,36 @@ by Borek.Lupomesky\@vodafone.com
 ---------------------------------
 EOHD
 
-#--- parse command line ----------------------------------------------------
+# parse command line
+my $cmd = SPAM::Cmdline->instance;
 
-my $cmd = SPAM::Cmdline->instance();
-
-#--- ensure single instance via lockfile -----------------------------------
-
-if(!$cmd->no_lock()) {
-  if(-f "/tmp/spam.lock") {
+# ensure single instance via lockfile
+unless($cmd->no_lock) {
+  if(-f '/tmp/spam.lock') {
     print "Another instance running, exiting\n";
-    exit 1;
+    exit(1);
   }
-  open(F, "> /tmp/spam.lock") || die "Cannot open lock file";
+  open(F, '> /tmp/spam.lock') || die 'Cannot open lock file';
   print F $$;
   close(F);
 }
 
 try {
 
-	#--- load master configuration file --------------------------------
-
+	# load master configuration file
 	tty_message("[main] Loading master config (started)\n");
 	my $cfg = SPAM::Config->instance();
 	tty_message("[main] Loading master config (finished)\n");
 
-	#--- initialize SPAM_SNMP library
-
+	# initialize SPAM_SNMP library
 	$SPAM_SNMP::snmpget = $cfg->snmpget;
 	$SPAM_SNMP::snmpwalk = $cfg->snmpwalk;
 
-	#--- bind to native database ---------------------------------------
-
+	# bind to native database
   die "Database binding 'spam' not defined\n"
   unless exists $cfg->config()->{dbconn}{spam};
 
-	#--- run maintenance when user told us to do so --------------------
-
+	# run maintenance when user told us to do so
 	if($cmd->maintenance()) {
 	  tty_message("[main] Maintaining database (started)\n");
     maintenance();
@@ -207,29 +178,24 @@ try {
 	  die "OK\n";
 	}
 
-	#--- host removal --------------------------------------------------
-
-	# Currently only single host removal, the hostname must match
-	# precisely
-
-	if(my $cmd_remove_host = $cmd->remove_host()) {
+  # host removal; currently only single host removal, the hostname must much
+  # exactly
+	if(my $cmd_remove_host = $cmd->remove_host) {
 	  tty_message("[main] Removing host $cmd_remove_host (started)\n");
     SPAM::Host->new(name => $cmd_remove_host)->drop;
 	  tty_message("[main] Removing host $cmd_remove_host (finished)\n");
 	  die "OK\n";
 	}
 
-	#--- bind to ondb database -----------------------------------------
-
+	# bind to ondb database
   die "Database binding 'ondb' not defined\n"
   unless exists $cfg->config()->{dbconn}{ondb};
 
-	#--- retrieve list of switches -------------------------------------
-
-  if($cmd->list_hosts()) {
+	# retrieve list of switches
+  if($cmd->list_hosts) {
     my $n = 0;
     print "\nDumping configured switches:\n\n";
-    for my $k (sort keys %{$cfg->hosts()}) {
+    for my $k (sort keys $cfg->hosts->%*) {
       print $k, "\n";
       $n++;
     }
@@ -237,14 +203,13 @@ try {
     die "OK\n";
   }
 
-	#--- retrieve list of arp servers ----------------------------------
-
-	if($cmd->arptable() || $cmd->list_arpservers()) {
+	# retrieve list of arp servers
+	if($cmd->arptable || $cmd->list_arpservers) {
     tty_message("[main] Loading list of arp servers (started)\n");
-    if($cmd->list_arpservers()) {
+    if($cmd->list_arpservers) {
       my $n = 0;
       print "\nDumping configured ARP servers:\n\n";
-      for my $k (sort { $a->[0] cmp $b->[0] } @{$cfg->arpservers()}) {
+      for my $k (sort { $a->[0] cmp $b->[0] } $cfg->arpservers->@*) {
         print $k->[0], "\n";
         $n++;
       }
@@ -253,25 +218,23 @@ try {
     }
 	}
 
-	#--- close connection to ondb database -----------------------------
-
+	# close connection to ondb database
 	tty_message("[main] Closing connection to ondb database\n");
 	$cfg->close_dbi_handle('ondb');
 
-	#--- create work list of hosts that are to be processed ------------
-
+	# create work list of hosts that are to be processed
 	my @work_list;
 	my $poll_hosts_re = $cmd->hostre();
-	foreach my $host (sort keys %{$cfg->hosts()}) {
+	foreach my $host (sort keys $cfg->hosts->%*) {
     if(
       (
-        @{$cmd->hosts()} &&
-        grep { lc($host) eq lc($_); } @{$cmd->hosts}
+        $cmd->hosts->@* &&
+        grep { lc($host) eq lc($_); } $cmd->hosts->@*
       ) || (
         $poll_hosts_re &&
         $host =~ /$poll_hosts_re/i
       ) || (
-        !@{$cmd->hosts()} && !defined($poll_hosts_re)
+        !$cmd->hosts->@* && !defined($poll_hosts_re)
       )
     ) {
       push(@work_list, [ 'host', $host, undef ]);
@@ -283,9 +246,9 @@ try {
     # if --force-host is in effect and neither --host or --hostre are present
     # the loaded list of hosts is dropped as only forced host will be processed;
     # FIXME: in that case loading of the host list is unnecessary
-    @work_list = () unless $cmd->has_hostre || @{$cmd->hosts};
+    @work_list = () unless $cmd->has_hostre || $cmd->hosts->@*;
     # add forced hosts to worklist unless it already is in it
-    foreach my $fhost (@{$cmd->forcehost}) {
+    foreach my $fhost ($cmd->forcehost->@*) {
       push(@work_list, [ 'host', $fhost, undef ])
       unless grep { $_->[0] eq 'host' && $_->[1] eq $fhost } @work_list;
     }
@@ -293,13 +256,11 @@ try {
 
 	tty_message("[main] %d hosts scheduled to be processed\n", scalar(@work_list));
 
-	#--- add arptable task to the work list
+	# add arptable task to the work list
+  push(@work_list, [ 'arp', undef, undef ]) if $cmd->arptable;
 
-  push(@work_list, [ 'arp', undef, undef ]) if $cmd->arptable();
-
-  #--- --worklist option selected, only print the worklist and finish
-
-  if($cmd->list_worklist()) {
+  # --worklist option selected, only print the worklist and finish
+  if($cmd->list_worklist) {
     printf("\nFollowing host would be scheduled for polling\n");
     printf(  "=============================================\n");
     for my $we (@work_list) {
@@ -309,8 +270,7 @@ try {
     die "OK\n";
   }
 
-	#--- loop through all tasks ----------------------------------------
-
+	# loop through all tasks
 	my $tasks_cur = 0;
 
 	while(defined(my $task = schedule_task(\@work_list))) {
@@ -318,14 +278,14 @@ try {
     my $pid = fork();
 	  if($pid == -1) {
 	    die "Cannot fork() new process";
-	  } elsif($pid > 0) {
+	  }
 
-      #--- parent --------------------------------------------------------
-
+    # parent process
+    elsif($pid > 0) {
       $tasks_cur++;
       $task->[2] = $pid;
       tty_message("[main] Child $host (pid $pid) started\n");
-      if($tasks_cur >= $cmd->tasks()) {
+      if($tasks_cur >= $cmd->tasks) {
         my $cpid;
         if(($cpid = wait()) != -1) {
           $tasks_cur--;
@@ -340,8 +300,7 @@ try {
       }
     }
 
-    #--- child ---------------------------------------------------------
-
+    # child process
     else {
       if($task->[0] eq 'host') {
         tty_message("[$host] Processing started\n");
@@ -394,8 +353,7 @@ try {
 
       } # host processing block ends here
 
-      #--- getting arptable
-
+      # getting arptable
       elsif($task->[0] eq 'arp') {
         tty_message("[arptable] Updating arp table (started)\n");
         my $arptable = snmp_get_arptable(
@@ -414,8 +372,7 @@ try {
         }
       }
 
-	    #--- child finish
-
+	    # child finish
       exit(0);
 	  }
 
@@ -438,10 +395,10 @@ try {
 
 } catch ($err) {
   if($err && $err ne "OK\n") {
-    if (! -t STDOUT) { print "spam: "; }
+    unless(-t STDOUT) { print 'spam: '; }
     print $_;
   }
 }
 
 # release lock file
-unlink("/tmp/spam.lock") unless $cmd->no_lock();
+unlink('/tmp/spam.lock') unless $cmd->no_lock;
