@@ -4,17 +4,6 @@ package SPAM::Model::Arptable;
 # mactable, arptable is not sectioned by source hosts -- it is one undivided
 # entity and it needs to be updated as such
 
-#             Table "public.arptable"
-#  Column  |           Type           | Modifiers
-# ---------+--------------------------+-----------
-#  mac     | macaddr                  | not null
-#  ip      | inet                     | not null
-#  lastchk | timestamp with time zone |
-#  dnsname | character varying(64)    |
-# Indexes:
-#     "arptable_new_pkey" PRIMARY KEY, btree (mac)
-#     "arp_ip" btree (ip)
-
 use Moo;
 use strict;
 use warnings;
@@ -50,9 +39,10 @@ sub get_arp ($self, $ip) { $self->_arpdb->{$ip} // undef }
 sub insert ($self, $dbh, %data)
 {
   return $dbh->do(
-    'INSERT INTO arptable (mac,ip,lastchk,dnsname) VALUES ( ?,?,current_timestamp,?',
+    'INSERT INTO arptable (source,mac,ip,lastchk,dnsname) ' .
+    'VALUES ( ?,?,?,current_timestamp,?',
     undef,
-    $data{mac}, $data{ip}, $data{dnsname}
+    $data{source}, $data{mac}, $data{ip}, $data{dnsname}
   );
 }
 
@@ -61,9 +51,11 @@ sub insert ($self, $dbh, %data)
 sub update ($self, $dbh, %data)
 {
   return $dbh->do(
-    'UPDATE arptable SET ip = ?, lastchk = current_timestamp, dnsname = ? WHERE mac = ?',
+    'UPDATE arptable ' .
+    'SET mac = ?, lastchk = current_timestamp, dnsname = ? ' .
+    'WHERE source = ? AND ip  = ?',
     undef,
-    $data{ip}, $data{dnsname}, $data{mac}
+    $data{mac}, $data{dnsname}, $data{source}, $data{ip}
   )
 }
 
