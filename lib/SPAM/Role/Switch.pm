@@ -9,11 +9,13 @@ use warnings;
 use experimental 'signatures';
 
 use Carp;
+use POSIX qw(strftime);
 
 use SPAM::Model::SwStat;
 use SPAM::Model::PortStatus;
 use SPAM::Model::Mactable;
 use SPAM::Model::Porttable;
+use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object);
 
 # switch statistics
 has swstat => (
@@ -342,6 +344,137 @@ sub drop ($self)
       $dbh->do("DELETE FROM $table WHERE host = ?", undef, $self->name);
     }
   });
+}
+
+#------------------------------------------------------------------------------
+# poll host for SNMP data
+sub poll_switch ($self, $get_mactable=undef, $hostinfo=undef)
+{
+  # load configure MIBs; the first MIB is special and must contain reading
+  # sysObjectID, sysLocation and sysUpTime; if these cannot be loaded; the
+  # whole function fails.
+  SPAM::Config->instance->iter_mibs(sub ($mib, $is_first_mib=undef) {
+    my @mib_list = ( $mib->name );
+    my @vlans = ( undef );
+
+    # iterate over individual objects in a MIB
+    $mib->iter_objects(sub ($obj) {
+
+      # match platform string if defined
+      if(!$is_first_mib) {
+        my $include_re = $obj->include;
+        my $exclude_re = $obj->exclude;
+        return undef if $include_re && $self->snmp->platform !~ /$include_re/;
+        return undef if $exclude_re && $self->snmp->platform =~ /$exclude_re/;
+      }
+
+      # include additional MIBs; this implements the 'addmib' object key; we use
+      # this to load product MIBs that translate sysObjectID into nice textual
+      # platform identifiers; note that the retrieved values will be stored
+      # under the first MIB name in the array @$mib
+      push(@mib_list, @{$obj->addmib});
+
+      # 'arptable' is only relevant for reading arptables from _routers_; here
+      # we just skip it
+      return undef if $obj->has_flag('arptable');
+
+      # 'vlans' flag; this causes to VLAN number to be added to the community
+      # string (as community@vlan) and the tree retrieval is iterated over all
+      # known VLANs; this means that vtpVlanName must be already retrieved; this
+      # is required for reading MAC addresses from switch via BRIDGE-MIB
+      if($obj->has_flag('vlans')) {
+        @vlans = @{$self->snmp->active_vlans};
+        if(!@vlans) { @vlans = ( undef ); }
+      }
+
+      # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
+      # value of 1; these two are mutually exclusive
+      if($obj->has_flag('vlan1')) {
+        @vlans = ( 1 );
+      }
+
+      # 'mactable' MIBs should only be read when --mactable switch is active
+      if($obj->has_flag('mactable')) {
+        if(!$get_mactable) {
+          $self->_m(
+            'Skipping %s::%s, mactable loading not active',
+            $mib->name, $obj->name
+          );
+          return undef;
+        }
+      }
+
+      # iterate over vlans
+      for my $vlan (@vlans) {
+
+        # retrieve the SNMP object
+        my $r = snmp_get_object(
+          'snmpwalk', $self->name, $vlan, \@mib_list,
+          $obj->name,
+          $obj->columns,
+          sub {
+            my ($var, $cnt) = @_;
+            return if !$var;
+            my $msg = sprintf("Loading %s::%s", $mib->name, $var);
+            if($vlan) { $msg .= " $vlan"; }
+            if($cnt) { $msg .= " ($cnt)"; }
+            $self->_m($msg);
+          }
+        );
+
+        # handle error
+        if(!ref $r) {
+          if($vlan) {
+            $self->_m('Processing %s/%d (failed, %s)', $mib->name, $vlan, $r);
+          } else {
+            $self->_m('Processing %s (failed, %s)', $mib->name, $r);
+          }
+        }
+
+        # process result
+        else {
+          $self->add_snmp_object($mib, $vlan, $obj, $r);
+        }
+      }
+
+      # false to continue iterating
+      return undef;
+    });
+
+  #--- first MIB entry is special as it gives us information about the host
+
+    if($is_first_mib) {
+
+      # --hostinfo command-line option in effect
+      if($hostinfo) {
+        $self->_m('Platform: %s', $self->snmp->platform // '?');
+        $self->_m(
+          'Booted on: %s', strftime('%Y-%m-%d', localtime($self->snmp->boottime))
+        ) if $self->snmp->boottime;
+        $self->_m('Location: %s', $self->snmp->location // '?');
+        return 1;
+      }
+
+      # if platform information is unavailable it means the SNMP communications
+      # with the device has failed and we should abort
+      die "Failed to get platform information\n" unless $self->snmp->platform;
+
+      # display message about platform and boottime
+      $self->_m(
+        'System info: platform=%s boottime=%s',
+        $self->snmp->platform,
+        strftime('%Y-%m-%d',localtime($self->snmp->boottime))
+      );
+    }
+
+    # false to continue iterating
+    return undef;
+  });
+
+  return undef if $hostinfo;
+
+  # make sure ifTable and ifXTable exist
+  die 'ifTable/ifXTable do not exist' unless $self->snmp->has_iftable;
 }
 
 1;
