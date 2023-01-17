@@ -1,5 +1,8 @@
 package SPAM::Role::ArpSource;
 
+# code that handles retrieving ARP tables from routers and saving them into
+# backend database (through SPAM::Model::Arptable class)
+
 use Moo::Role;
 use strict;
 use warnings;
@@ -9,6 +12,7 @@ use Socket;
 
 use SPAM::Config;
 use SPAM::SNMP qw(snmp_get_object);
+use SPAM::Model::Arptable;
 
 # SNMP entity that is used for ARP table read-out
 has _arp_snmp_object => ( is => 'lazy' );
@@ -53,8 +57,6 @@ sub iter_arptable ($self, $cb)
   my $table = $self->_arp_snmp_object->name;
   my $t = $self->snmp->_d->{$mib}{$table};
 
-  print $table, "\n";
-
   foreach my $if (keys $t->%*) {
     foreach my $ip (keys $t->{$if}->%*) {
       next unless $t->{$if}{$ip}{'ipNetToMediaType'}{'enum'} eq 'dynamic';
@@ -67,6 +69,19 @@ sub iter_arptable ($self, $cb)
       });
     }
   }
+}
+
+#-------------------------------------------------------------------------------
+sub update_arptable_db ($self)
+{
+  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $atdb = SPAM::Model::Arptable->new;
+
+  $dbx->txn(fixup => sub ($dbh) {
+    $self->iter_arptable(sub ($data) {
+      $atdb->insert_or_update($dbh, %$data);
+    });
+  });
 }
 
 1;
