@@ -88,6 +88,15 @@ sub poll ($self, @args)
 }
 
 #------------------------------------------------------------------------------
+# update the backend database with the data we retrieved from hosts with the
+# 'poll' method
+sub update_db ($self, @args)
+{
+  if($self->has_role('switch')) { $self->update_switch_db(@args) }
+  if($self->has_role('arpsource')) { $self->update_arptable_db(@args) }
+}
+
+#------------------------------------------------------------------------------
 # This saves all MIB objects marked with 'save' flag to the backend database
 # for access from frontend
 sub save_snmp_data ($self)

@@ -175,7 +175,7 @@ sub find_changes ($self)
 
 #------------------------------------------------------------------------------
 # update all ports
-sub update_db ($self)
+sub update_switch_db ($self)
 {
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $update_plan = $self->find_changes;
