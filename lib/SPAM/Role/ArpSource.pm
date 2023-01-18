@@ -82,11 +82,15 @@ sub update_arptable_db ($self)
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $atdb = SPAM::Model::Arptable->new;
 
+  $self->_m('Updating ARP table started');
+
   $dbx->txn(fixup => sub ($dbh) {
     $self->iter_arptable(sub ($data) {
       $atdb->insert_or_update($dbh, %$data);
     });
   });
+
+  $self->_m('Updating ARP table finished');
 }
 
 1;
