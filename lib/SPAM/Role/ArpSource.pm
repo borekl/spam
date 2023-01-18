@@ -31,21 +31,26 @@ sub poll_arpsource ($self)
   my $o = $self->_arp_snmp_object;
 
   # read ARP table via SNMP
-  $self->_m('Loading ARP table');
+  $self->_m('Loading ARP table started');
   my $r = snmp_get_object(
     'snmpwalk',
     $self->name,
     undef,
     $o->mib_name,
     $o->name,
-    $o->columns
+    $o->columns,
+    sub ($v, $c) {
+      $self->_m('%s', $v) if $v && !$c;
+      $self->_m('%s (%d)', $v, $c) if $v && $c;
+    }
   );
 
   # handle result
   if(ref $r) {
     $self->add_snmp_object($o->mib_name, undef, $o, $r);
+    $self->_m('Loading ARP table finished');
   } else {
-    $self->_m('Processing %s (failed, %s)', $o->mib_name, $r);
+    $self->_m('Loading ARP table failed (%s)', $o->mib_name, $r);
   }
 }
 
