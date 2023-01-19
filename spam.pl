@@ -396,7 +396,7 @@ try {
 } catch ($err) {
   if($err && $err ne "OK\n") {
     unless(-t STDOUT) { print 'spam: '; }
-    print $_;
+    print $err;
   }
 }
 
