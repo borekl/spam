@@ -21,7 +21,7 @@ has name => (
   required => 1,
   coerce => sub { lc $_[0] },
   isa => sub ($v) {
-    die 'DNS resolution failed' unless inet_aton($v);
+    croak qq{DNS resolution failed for '$v'} unless inet_aton($v);
   }
 );
 
