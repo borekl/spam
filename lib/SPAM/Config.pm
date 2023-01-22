@@ -8,11 +8,10 @@ use v5.16;
 use warnings;
 use integer;
 use strict;
-use experimental 'postderef';
 
 use Moo;
 with 'MooX::Singleton';
-use experimental 'signatures';
+use experimental 'signatures', 'postderef';
 
 use Carp;
 use Scalar::Util qw(reftype);
@@ -231,6 +230,34 @@ sub _build_arpservers
 
 }
 
+#-----------------------------------------------------------------------------
+# make a list of all hosts (switches and arpservers) with optional filtering
+# through a callback; this is a helper method to create worklist for polling
+sub worklist ($self, $cb=undef)
+{
+  my %hosts;
+
+  # create a hash of all hosts, the values are arrayrefs with the same values
+  # used in Host::poll to determine roles for each host
+  $hosts{$_->[0]} = [ 'arpsource' ] foreach ($self->arpservers->@*);
+  foreach my $h (keys $self->hosts->%*) {
+    $hosts{$h} = [] unless exists $hosts{$h};
+    push($hosts{$h}->@*, 'switch');
+  }
+
+  # host filtering through a callback; the return value from the callback
+  # replaces the current value; if return value is undefined or it is an empty
+  # arrayref, the current entry is completely removed
+  if($cb) {
+    foreach my $h (keys %hosts) {
+      my $rv = $cb->($h, $hosts{$h});
+      if(!defined $rv || !@$rv) { delete $hosts{$h} }
+      else { $hosts{$h} = $rv; }
+    }
+  }
+
+  return \%hosts;
+}
 
 #-----------------------------------------------------------------------------
 # Return SNMP configuration block based on supplied hostname
