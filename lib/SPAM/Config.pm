@@ -223,7 +223,7 @@ sub _build_arpservers
 
   my @arpservers;
   while(my ($s, $cmty) = $sth->fetchrow_array()) {
-    push(@arpservers, [$s, $cmty])
+    push(@arpservers, [lc $s, $cmty])
       unless scalar(grep { $_->[0] eq $s } @arpservers) != 0;
   }
 
