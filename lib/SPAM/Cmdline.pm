@@ -15,14 +15,14 @@ use Getopt::Long;
 # enable debugging mode
 has debug => ( is => 'rwp' );
 
+# turn switch data polling on or off
+has switch => ( is => 'rwp', default => 1 );
+
 # turn polling for ARP table on or off
 has arptable => ( is => 'rwp' );
 
 # turn getting bridging table on or off
-has mactable => (
-  is => 'rwp',
-  default => 1,
-);
+has mactable => ( is => 'rwp', default => 1 );
 
 # turn autoregistration of outlets on or off
 has autoreg => ( is => 'rwp' );
@@ -84,6 +84,7 @@ sub BUILD
       $self->_set_forcehost([]) unless $self->has_forcehost;
       push(@{$self->forcehost}, $_[1]);
     },
+    'switch!'    => sub { $self->_set_switch($_[1]) },
     'arptable!'  => sub { $self->_set_arptable($_[1]) },
     'mactable!'  => sub { $self->_set_mactable($_[1]) },
     'maint'      => sub { $self->_set_maintenance($_[1]) },
@@ -137,6 +138,7 @@ Usage: spam.pl [OPTIONS]
 
 Options that modify standard processing run:
 
+  --[no]switch    turn on polling for switch data on or off (default on)
   --[no]arptable  turn polling for ARP table on or off (default off)
   --[no]mactable  turn getting bridging table on or off (default on)
   --[no]autoreg   turn autoregistration of outlets on or off (default off)

@@ -8,7 +8,7 @@ use SPAM::Misc qw(file_lineread hash_create_index hash_iterator hash_index_acces
 use SPAM::Entity;
 use SPAM::EntityTree;
 use SPAM::Config;
-use Data::Dumper;
+use SPAM::DbTransaction;
 use Carp;
 use Feature::Compat::Try;
 

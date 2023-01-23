@@ -145,6 +145,8 @@ try {
     $rv = undef if $cmd->hosts->@* && !(grep { lc($h) eq lc($_); } $cmd->hosts->@*);
     # filtering by host regular expression
     $rv = undef if $poll_hosts_re && $h !~ /$poll_hosts_re/i;
+    # remove switches
+    $rv = [ grep { $_ ne 'switch' } @$rv ] unless $cmd->switch;
     # remove arptable
     $rv = [ grep { $_ ne 'arpsource' } @$rv ] unless $cmd->arptable;
     # finish
