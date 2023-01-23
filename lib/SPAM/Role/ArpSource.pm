@@ -17,6 +17,9 @@ use SPAM::Model::Arptable;
 # SNMP entity that is used for ARP table read-out
 has _arp_snmp_object => ( is => 'lazy' );
 
+# modified flag
+has _arp_modified => ( is => 'rwp', default => 0 );
+
 #-------------------------------------------------------------------------------
 sub _build__arp_snmp_object
 {
@@ -31,7 +34,7 @@ sub poll_arpsource ($self)
   my $o = $self->_arp_snmp_object;
 
   # read ARP table via SNMP
-  $self->_m('Loading ARP table started');
+  $self->_m('Loading ARP table (started)');
   my $r = snmp_get_object(
     'snmpwalk',
     $self->name,
@@ -48,9 +51,10 @@ sub poll_arpsource ($self)
   # handle result
   if(ref $r) {
     $self->add_snmp_object($o->mib_name, undef, $o, $r);
-    $self->_m('Loading ARP table finished');
+    $self->_set__arp_modified(1);
+    $self->_m('Loading ARP table (finished)');
   } else {
-    $self->_m('Loading ARP table failed (%s)', $o->mib_name, $r);
+    $self->_m('Loading ARP table failed (%s, %s)', $o->name, $r);
   }
 }
 
@@ -82,7 +86,10 @@ sub update_arptable_db ($self)
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $atdb = SPAM::Model::Arptable->new;
 
-  $self->_m('Updating ARP table started');
+  # no new data to be saved
+  return unless $self->_arp_modified;
+
+  $self->_m('Updating ARP table (started)');
 
   $dbx->txn(fixup => sub ($dbh) {
     $self->iter_arptable(sub ($data) {
@@ -90,7 +97,8 @@ sub update_arptable_db ($self)
     });
   });
 
-  $self->_m('Updating ARP table finished');
+  $self->_m('Updating ARP table (finished)');
+  $self->_set__arp_modified(0);
 }
 
 1;
