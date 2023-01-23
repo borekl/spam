@@ -78,7 +78,7 @@ sub _m ($self, $message, @args)
 sub poll ($self, @args)
 {
   if($self->has_role('switch')) { $self->poll_switch(@args) }
-  if($self->has_role('arpsource')) { $self->poll_arpsource(@args) }
+  if($self->has_role('arpsource')) { $self->poll_arpsource }
 
   # dump swstat and entity table
   if($ENV{'SPAM_DEBUG'}) {
