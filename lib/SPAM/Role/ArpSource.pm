@@ -40,8 +40,8 @@ sub poll_arpsource ($self)
     $o->name,
     $o->columns,
     sub ($v, $c) {
-      $self->_m('%s', $v) if $v && !$c;
-      $self->_m('%s (%d)', $v, $c) if $v && $c;
+      $self->_m('Loading %s', $v) if $v && !$c;
+      $self->_m('Loading %s (%d)', $v, $c) if $v && $c;
     }
   );
 
