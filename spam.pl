@@ -246,31 +246,8 @@ try {
         # find changes and update status table
         $hi->update_db;
 
-        if($hi->has_role('switch')) {
-
-          # update swstat table
-          tty_message("[%s] Updating swstat table (started)\n", $hi->name);
-          $hi->swstat->update($hi->snmp, $hi->port_stats);
-          tty_message("[%s] Updating swstat table (finished)\n", $hi->name);
-
-          # update mactable
-          if($cmd->mactable()) {
-            tty_message("[%s] Updating mactable (started)\n", $hi->name);
-            $hi->update_mactable;
-            tty_message("[%s] Updating mactable (finished)\n", $hi->name);
-          }
-
-          # save SNMP data for use by frontend
-          $hi->save_snmp_data;
-
-          # run autoregistration
-          if($cmd->autoreg()) {
-            tty_message("[%s] Running auto-registration (started)\n", $hi->name);
-            $hi->autoregister;
-            tty_message("[%s] Running auto-registration (finished)\n", $hi->name);
-          }
-
-        }
+        # run autoregistration
+        $hi->autoregister if $cmd->autoreg && $hi->has_role('switch');
       }
 
       catch ($err) {

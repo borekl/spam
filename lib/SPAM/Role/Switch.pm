@@ -174,8 +174,25 @@ sub find_changes ($self)
 }
 
 #------------------------------------------------------------------------------
-# update all ports
 sub update_switch_db ($self)
+{
+  $self->update_ports;
+
+  # update swstat table
+  $self->_m("Updating swstat table (started)");
+  $self->swstat->update($self->snmp, $self->port_stats);
+  $self->_m("Updating swstat table (finished)");
+
+  # save SNMP data for use by frontend
+  $self->save_snmp_data;
+
+  # update mactable
+  $self->update_mactable;
+}
+
+#------------------------------------------------------------------------------
+# update all ports
+sub update_ports ($self)
 {
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $update_plan = $self->find_changes;
@@ -203,6 +220,10 @@ sub update_switch_db ($self)
 # Update mactable in the backend database according to the new data from SNMP
 sub update_mactable ($self)
 {
+  # do nothing when MAC table is not loaded
+  return undef unless $self->snmp->has_ifindex_to_dot1d;
+
+  # get database handle
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
 
   # it is possible that for some reason the same mac will appear twice in the
@@ -215,6 +236,7 @@ sub update_mactable ($self)
   die 'Cannot connect to database (spam)' unless ref $dbx;
 
   # start transaction
+  $self->_m("Updating mactable (started)");
   $dbx->txn(fixup => sub ($dbh) {
     $self->mactable_db->reset_active_mac($dbh);
     $self->snmp->iterate_macs(sub (%arg) {
@@ -231,6 +253,7 @@ sub update_mactable ($self)
   });
 
   # finish
+  $self->_m("Updating mactable (finished)");
   return undef;
 }
 
@@ -296,6 +319,8 @@ sub autoregister ($self)
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $count = 0;
 
+  $self->_m('Running auto-registration (started)');
+
   # get site-code from hostname
   my $site = SPAM::Config->instance->site_conv($self->name);
 
@@ -330,6 +355,7 @@ sub autoregister ($self)
   });
 
   $self->_m('Registered %d ports', $count);
+  $self->_m('Running auto-registration (finished)');
 }
 
 #------------------------------------------------------------------------------
