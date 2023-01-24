@@ -13,24 +13,24 @@ CREATE OR REPLACE VIEW v_switch AS
     extract(epoch from (lastchk - lastchg)) AS inact,
     fmt_inactivity(lastchk - lastchg) AS inact_fmt,
     hostname, grpid, prodstat,
-    EXISTS ( 
-      SELECT 1 FROM permout WHERE o.site = site AND o.cp = cp 
+    EXISTS (
+      SELECT 1 FROM permout WHERE o.site = site AND o.cp = cp
     ) AS dont_age,
-    ( SELECT 
-        count(mac) 
-      FROM 
-        mactable 
-      WHERE 
+    ( SELECT
+        count(mac)
+      FROM
+        mactable
+      WHERE
         host = s.host
-        AND portname = s.portname 
+        AND portname = s.portname
         AND active = 't'
     ) AS maccnt
-  FROM 
+  FROM
     status s
     LEFT JOIN porttable p USING (host, portname)
     LEFT JOIN out2cp o USING (site, cp)
     LEFT JOIN hosttab h USING (site, cp)
-  ORDER BY 
+  ORDER BY
     substring(portname from '^[a-zA-Z]+'),
     port_order(portname);
 
@@ -53,24 +53,24 @@ CREATE OR REPLACE VIEW v_switch_mod AS
     extract(epoch from (lastchk - lastchg)) AS inact,
     fmt_inactivity(lastchk - lastchg) AS inact_fmt,
     hostname, grpid, prodstat,
-    EXISTS ( 
-      SELECT 1 FROM permout WHERE o.site = site AND o.cp = cp 
+    EXISTS (
+      SELECT 1 FROM permout WHERE o.site = site AND o.cp = cp
     ) AS dont_age,
-    ( SELECT 
-        count(mac) 
-      FROM 
-        mactable 
-      WHERE 
+    ( SELECT
+        count(mac)
+      FROM
+        mactable
+      WHERE
         host = s.host
-        AND portname = s.portname 
+        AND portname = s.portname
         AND active = 't'
     ) AS maccnt
-  FROM 
+  FROM
     status s
     LEFT JOIN porttable p USING (host, portname)
     LEFT JOIN out2cp o USING (site, cp)
     LEFT JOIN hosttab h USING (site, cp)
-  ORDER BY 
+  ORDER BY
     port_order(portname);
 
 GRANT SELECT ON v_switch_mod TO swcgi;
@@ -116,10 +116,10 @@ CREATE OR REPLACE VIEW v_search_outlet AS
     fmt_inactivity(s.lastchk - s.lastchg) AS inact_fmt,
     mac, ip
   FROM
-    out2cp o FULL JOIN porttable p USING ( cp, site ) 
+    out2cp o FULL JOIN porttable p USING ( cp, site )
     LEFT JOIN status s USING ( host, portname )
     LEFT JOIN mactable m USING (host, portname )
-    LEFT JOIN arptable a USING ( mac );
+    LEFT JOIN arptable2 a USING ( mac );
 
 GRANT SELECT ON v_search_outlet TO swcgi;
 
@@ -146,12 +146,12 @@ CREATE OR REPLACE VIEW v_search_status_raw AS
     extract(epoch from (s.lastchk - s.lastchg))::int AS inact,
     fmt_inactivity(s.lastchk - s.lastchg) AS inact_fmt,
     to_char(s.lastchg, 'FMHH24:MI, FMMonth FMDD, YYYY') AS inact_date,
-    --- port last check 
+    --- port last check
     extract(epoch from (current_timestamp - s.lastchk))::int AS lastchk_age,
     fmt_inactivity(current_timestamp - s.lastchk) AS lastchk_age_fmt,
     to_char(s.lastchk, 'FMHH24:MI, FMMonth FMDD, YYYY') AS lastchk_date
   FROM
-    status s 
+    status s
     LEFT JOIN porttable p USING ( host, portname )
     LEFT JOIN out2cp o USING ( cp, site );
 
@@ -166,18 +166,18 @@ GRANT SELECT ON v_search_status_raw TO swcgi;
 DROP VIEW IF EXISTS v_port_list;
 
 CREATE OR REPLACE VIEW v_port_list AS
-  SELECT 
+  SELECT
     v.*,
     cst.cafsessionauthvlan,
     cst.fresh,
-    ( SELECT count(mac) 
-      FROM mactable 
+    ( SELECT count(mac)
+      FROM mactable
       WHERE v.host = host AND v.portname = portname AND active = 't'
     ) AS maccnt
-  FROM 
+  FROM
     v_search_status_raw v
     LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
-  ORDER BY 
+  ORDER BY
     host,
     substring(portname from '^[a-zA-Z]+'),
     port_order(portname),
@@ -194,18 +194,18 @@ GRANT SELECT ON v_port_list TO swcgi;
 DROP VIEW IF EXISTS v_port_list_mod;
 
 CREATE OR REPLACE VIEW v_port_list_mod AS
-  SELECT 
+  SELECT
     v.*,
     cst.cafsessionauthvlan,
     cst.fresh,
-    ( SELECT count(mac) 
-      FROM mactable 
+    ( SELECT count(mac)
+      FROM mactable
       WHERE v.host = host AND v.portname = portname AND active = 't'
     ) AS maccnt
-  FROM 
+  FROM
     v_search_status_raw v
     LEFT JOIN snmp_cafsessiontable cst USING ( host, ifindex )
-  ORDER BY 
+  ORDER BY
     host,
     port_order(portname),
     cst.chg_when DESC;
@@ -220,7 +220,7 @@ GRANT SELECT ON v_port_list_mod TO swcgi;
 DROP VIEW IF EXISTS v_search_status_full CASCADE;
 
 CREATE OR REPLACE VIEW v_search_status_full AS
-  SELECT 
+  SELECT
     -- part view fields
     v.*,
     -- mac fields
@@ -233,7 +233,7 @@ CREATE OR REPLACE VIEW v_search_status_full AS
     fmt_inactivity(current_timestamp - a.lastchk) AS ip_age_fmt
   FROM v_search_status_raw v
   LEFT JOIN mactable m USING ( host, portname )
-  LEFT JOIN arptable a USING ( mac );
+  LEFT JOIN arptable2 a USING ( mac );
 
 GRANT SELECT ON v_search_status_full TO swcgi;
 
@@ -247,13 +247,13 @@ DROP VIEW IF EXISTS v_search_status;
 CREATE OR REPLACE VIEW v_search_status AS
   SELECT *
   FROM v_search_status_full
-  ORDER BY 
+  ORDER BY
     host,
     substring(portname from '^[a-zA-Z]+'),
     port_order(portname);
 
 GRANT SELECT ON v_search_status TO swcgi;
-  
+
 
 ----------------------------------------------------------------------------
 -- View for Search Tool.
@@ -265,7 +265,7 @@ CREATE OR REPLACE VIEW v_search_status_mod AS
   SELECT *
   FROM v_search_status_full
   ORDER BY
-    host, 
+    host,
     port_order(portname);
 
 GRANT SELECT ON v_search_status_mod TO swcgi;
@@ -304,7 +304,7 @@ CREATE OR REPLACE VIEW v_search_mac AS
     mac, ip
   FROM
     mactable m
-    LEFT JOIN arptable a USING ( mac )
+    LEFT JOIN arptable2 a USING ( mac )
     LEFT JOIN status s USING ( host, portname )
     LEFT JOIN porttable p USING ( host, portname )
     LEFT JOIN out2cp o USING ( cp, site );
