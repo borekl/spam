@@ -63,7 +63,9 @@ module.exports = function(grunt)
          { nonull: true, src: 'spam.pl', dest: '../prod/spam.pl' },
          { nonull: true, src: 'lib/SPAM/Misc.pm', dest: '../prod/lib/SPAM/Misc.pm' },
          { nonull: true, src: 'lib/SPAM/SNMP.pm', dest: '../prod/lib/SPAM/SNMP.pm' },
-         { nonull: true, src: 'lib/SPAM/DbTransaction.pm', dest: '../prod/lib/SPAM/DbTransaction.pm' }
+         { nonull: true, src: 'lib/SPAM/DbTransaction.pm', dest: '../prod/lib/SPAM/DbTransaction.pm' },
+         { nonull: true, src: 'lib/SPAM/Role/Switch.pm', dest: '../prod/lib/SPAM/Role/Switch.pm' },
+         { nonull: true, src: 'lib/SPAM/Role/ArpSource.pm', dest: '../prod/lib/SPAM/Role/ArpSource.pm' }
        ]
      }
    },
