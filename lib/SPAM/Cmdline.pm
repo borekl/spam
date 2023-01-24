@@ -138,7 +138,7 @@ Usage: spam.pl [OPTIONS]
 
 Options that modify standard processing run:
 
-  --[no]switch    turn on polling for switch data on or off (default on)
+  --[no]switch    turn polling for switch data on or off (default on)
   --[no]arptable  turn polling for ARP table on or off (default off)
   --[no]mactable  turn getting bridging table on or off (default on)
   --[no]autoreg   turn autoregistration of outlets on or off (default off)
