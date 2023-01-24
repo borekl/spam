@@ -81,7 +81,7 @@ sub iter_arptable ($self, $cb)
 }
 
 #-------------------------------------------------------------------------------
-sub update_arptable_db ($self)
+sub update_arptable_db ($self, %args)
 {
   my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
   my $atdb = SPAM::Model::Arptable->new;

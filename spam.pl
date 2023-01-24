@@ -238,16 +238,14 @@ try {
         tty_message("[%s] SNMP profile: %s\n", $hi->name, $hi->snmp_profile);
 
         # perform host poll
-        $hi->poll($cmd->mactable, $cmd->hostinfo);
+        $hi->poll(mactable => $cmd->mactable, hostinfo => $cmd->hostinfo);
 
         # only hostinfo, no more processing
         die "hostinfo only\n" if $cmd->hostinfo;
 
         # find changes and update status table
-        $hi->update_db;
+        $hi->update_db(autoreg => $cmd->autoreg);
 
-        # run autoregistration
-        $hi->autoregister if $cmd->autoreg && $hi->has_role('switch');
       }
 
       catch ($err) {

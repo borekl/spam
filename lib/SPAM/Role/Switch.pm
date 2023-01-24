@@ -174,7 +174,7 @@ sub find_changes ($self)
 }
 
 #------------------------------------------------------------------------------
-sub update_switch_db ($self)
+sub update_switch_db ($self, %arg)
 {
   $self->update_ports;
 
@@ -188,6 +188,9 @@ sub update_switch_db ($self)
 
   # update mactable
   $self->update_mactable;
+
+  # run autoregistration
+  $self->autoregister if $arg{autoreg} && $self->has_role('switch');
 }
 
 #------------------------------------------------------------------------------
@@ -374,7 +377,7 @@ sub drop ($self)
 
 #------------------------------------------------------------------------------
 # poll host for SNMP data
-sub poll_switch ($self, $get_mactable=undef, $hostinfo=undef)
+sub poll_switch ($self, %args)
 {
   # load configure MIBs; the first MIB is special and must contain reading
   # sysObjectID, sysLocation and sysUpTime; if these cannot be loaded; the
@@ -421,7 +424,7 @@ sub poll_switch ($self, $get_mactable=undef, $hostinfo=undef)
 
       # 'mactable' MIBs should only be read when --mactable switch is active
       if($obj->has_flag('mactable')) {
-        if(!$get_mactable) {
+        if(!$args{mactable}) {
           $self->_m(
             'Skipping %s::%s, mactable loading not active',
             $mib->name, $obj->name
@@ -472,7 +475,7 @@ sub poll_switch ($self, $get_mactable=undef, $hostinfo=undef)
     if($is_first_mib) {
 
       # --hostinfo command-line option in effect
-      if($hostinfo) {
+      if($args{hostinfo}) {
         $self->_m('Platform: %s', $self->snmp->platform // '?');
         $self->_m(
           'Booted on: %s', strftime('%Y-%m-%d', localtime($self->snmp->boottime))
@@ -497,7 +500,7 @@ sub poll_switch ($self, $get_mactable=undef, $hostinfo=undef)
     return undef;
   });
 
-  return undef if $hostinfo;
+  return undef if $args{hostinfo};
 
   # make sure ifTable and ifXTable exist
   die 'ifTable/ifXTable do not exist' unless $self->snmp->has_iftable;

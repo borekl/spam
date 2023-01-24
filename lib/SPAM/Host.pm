@@ -75,26 +75,26 @@ sub _m ($self, $message, @args)
 #------------------------------------------------------------------------------
 # host polling dispatch function; the actual executive functions are defined in
 # SPAM::Role:: modules
-sub poll ($self, @args)
+sub poll ($self, %args)
 {
   if($self->has_role('switch')) {
-    $self->poll_switch(@args);
+    $self->poll_switch(%args);
     # dump swstat and entity table
     if($ENV{'SPAM_DEBUG'}) {
       $self->debug_dump;
       $self->snmp->entity_tree->debug_dump if $self->snmp->entity_tree;
     }
   }
-  if($self->has_role('arpsource')) { $self->poll_arpsource }
+  if($self->has_role('arpsource')) { $self->poll_arpsource(%args) }
 }
 
 #------------------------------------------------------------------------------
 # update the backend database with the data we retrieved from hosts with the
 # 'poll' method
-sub update_db ($self, @args)
+sub update_db ($self, %args)
 {
-  if($self->has_role('switch')) { $self->update_switch_db(@args) }
-  if($self->has_role('arpsource')) { $self->update_arptable_db(@args) }
+  if($self->has_role('switch')) { $self->update_switch_db(%args) }
+  if($self->has_role('arpsource')) { $self->update_arptable_db(%args) }
 }
 
 #------------------------------------------------------------------------------
