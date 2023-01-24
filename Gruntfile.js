@@ -41,13 +41,14 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/MIBobject.pm', dest: '../prod/lib/SPAM/MIBobject.pm' },
          { nonull: true, src: 'lib/SPAM/Host.pm', dest: '../prod/lib/SPAM/Host.pm' },
          { nonull: true, src: 'lib/SPAM/Keys.pm', dest: '../prod/lib/SPAM/Keys.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/Boottime.pm', dest: '../prod/lib/SPAM/Host/Boottime.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/EntityTree.pm', dest: '../prod/lib/SPAM/Host/EntityTree.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/Location.pm', dest: '../prod/lib/SPAM/Host/Location.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/Platform.pm', dest: '../prod/lib/SPAM/Host/Platform.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/PortFlags.pm', dest: '../prod/lib/SPAM/Host/PortFlags.pm' },
-         { nonull: true, src: 'lib/SPAM/Host/TrunkVlans.pm', dest: '../prod/lib/SPAM/Host/TrunkVlans.pm' },
-         { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' }
+         { nonull: true, src: 'lib/SPAM/Model/SNMP/Boottime.pm', dest: '../prod/lib/SPAM/Model/SNMP/Boottime.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/SNMP/EntityTree.pm', dest: '../prod/lib/SPAM/Model/SNMP/EntityTree.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/SNMP/Location.pm', dest: '../prod/lib/SPAM/Model/SNMP/Location.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/SNMP/Platform.pm', dest: '../prod/lib/SPAM/Model/SNMP/Platform.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/SNMP/PortFlags.pm', dest: '../prod/lib/SPAM/Model/SNMP/PortFlags.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/SNMP/TrunkVlans.pm', dest: '../prod/lib/SPAM/Model/SNMP/TrunkVlans.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/Arptable.pm', dest: '../prod/lib/SPAM/Model/Arptable.pm' }
        ]
      },
      www: {
