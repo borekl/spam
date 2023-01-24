@@ -29,7 +29,7 @@ sub _build__arp_snmp_object
 }
 
 #-------------------------------------------------------------------------------
-sub poll_arpsource ($self)
+sub poll_arpsource ($self, %args)
 {
   my $o = $self->_arp_snmp_object;
 
