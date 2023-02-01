@@ -1,0 +1,14 @@
+[Unit]
+Description=SPAM web backend
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/spam/prod
+User=spam
+Group=spam
+Type=simple
+PidFile=/opt/spam/prod/spam-web.pid
+ExecStart=/opt/spam/prod/spam-web prefork -m production -p -P /opt/spam/prod/spam-web.pid -l http://127.0.0.1:30010/
+
+[Install]
+WantedBy=multi-user.target

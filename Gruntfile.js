@@ -56,12 +56,14 @@ module.exports = function(grunt)
          { nonull: true, src: 'html/bundle.js', dest: '../prod/html/bundle.js' },
          { nonull: true, src: 'html/default.css', dest: '../prod/html/default.css' },
          { nonull: true, src: 'html/index.html', dest: '../prod/html/index.html' },
-         { nonull: true, src: 'html/spam-backend.cgi', dest: '../prod/html/spam-backend.cgi' }
+         { nonull: true, src: 'spam-web', dest: '../prod/spam-web' },
+         { nonull: true, src: 'lib/SPAM/Web.pm', dest: '../prod/lib/SPAM/Web.pm' },
+         { nonull: true, src: 'lib/SPAM/Web/Legacy.pm', dest: '../prod/lib/SPAM/Web/Legacy.pm' },
        ]
      },
      coll: {
        files: [
-         { nonull: true, src: 'spam.pl', dest: '../prod/spam.pl' },
+         { nonull: true, src: 'spam-collector', dest: '../prod/spam-collector' },
          { nonull: true, src: 'lib/SPAM/Misc.pm', dest: '../prod/lib/SPAM/Misc.pm' },
          { nonull: true, src: 'lib/SPAM/SNMP.pm', dest: '../prod/lib/SPAM/SNMP.pm' },
          { nonull: true, src: 'lib/SPAM/DbTransaction.pm', dest: '../prod/lib/SPAM/DbTransaction.pm' },
