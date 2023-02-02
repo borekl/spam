@@ -401,10 +401,12 @@ sub sql_get_hwinfo ($re, $host)
         )
       );
     }
-    my $tree = SPAM::EntityTree->new(entities => \@entities);
+    if(@entities) {
+      my $tree = SPAM::EntityTree->new(entities => \@entities);
 
-    $re->{hwinfo}{result} = $tree->hwinfo($modwire);
-    $re->{hwinfo}{ifmapping} = js_bool(scalar($tree->node_by_ifIndex->%*));
+      $re->{hwinfo}{result} = $tree->hwinfo($modwire);
+      $re->{hwinfo}{ifmapping} = js_bool(scalar($tree->node_by_ifIndex->%*));
+    }
   }
 
   return $local_re;
