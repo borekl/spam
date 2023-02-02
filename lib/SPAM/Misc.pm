@@ -17,7 +17,6 @@ use SPAM::Config;
 our @ISA = qw(Exporter);
 our @EXPORT = qw(
   tty_message
-  sql_find_user_group
   compare_ports
   sql_sites
   sql_site_uses_cp
@@ -49,36 +48,6 @@ sub tty_message ($msg, @args)
 {
   if(!defined $msg) { $msg = "done\n"; }
   printf($msg, @args) if -t STDOUT;
-}
-
-#-------------------------------------------------------------------------------
-# This finds a group associated with current user; this info is retrieved
-# from database "ondb", table "users", field "grpid".
-# Returns: 1. undef on success, error message otherwise; 2. group id
-sub sql_find_user_group ($user)
-{
-  my $c = db('ondb');
-  my ($q, $r, $sth, $group);
-
-  # sanitize arguments
-  if(!$user) { return 'No user name specified'; }
-  $user = lc $user;
-
-  # ensure database connection
-  return 'Database connection failed (ondb)' unless ref $c;
-
-  # perform query
-  try {
-    $sth = $c->prepare('SELECT grpid FROM users WHERE userid = ?');
-    $r = $sth->execute($user);
-    ($group) = $sth->fetchrow_array();
-  } catch ($err) {
-    chomp $err;
-    return 'Database query failed (ondb, ' . $c->errstr . ')';
-  }
-
-  if(!$group) { return 'Cannot find user or no group assigned'; }
-  return (undef, $group);
 }
 
 #-------------------------------------------------------------------------------
