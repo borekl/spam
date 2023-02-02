@@ -76,41 +76,41 @@ unless($cmd->no_lock) {
 
 try {
 
-	# load master configuration file
-	tty_message("[main] Loading master config (started)\n");
-	my $cfg = SPAM::Config->instance();
-	tty_message("[main] Loading master config (finished)\n");
+  # load master configuration file
+  tty_message("[main] Loading master config (started)\n");
+  my $cfg = SPAM::Config->instance();
+  tty_message("[main] Loading master config (finished)\n");
 
-	# initialize SPAM_SNMP library
-	$SPAM_SNMP::snmpget = $cfg->snmpget;
-	$SPAM_SNMP::snmpwalk = $cfg->snmpwalk;
+  # initialize SPAM_SNMP library
+  $SPAM_SNMP::snmpget = $cfg->snmpget;
+  $SPAM_SNMP::snmpwalk = $cfg->snmpwalk;
 
-	# bind to native database
+  # bind to native database
   die "Database binding 'spam' not defined\n"
   unless exists $cfg->config()->{dbconn}{spam};
 
-	# run maintenance when user told us to do so
-	if($cmd->maintenance()) {
-	  tty_message("[main] Maintaining database (started)\n");
+  # run maintenance when user told us to do so
+  if($cmd->maintenance()) {
+    tty_message("[main] Maintaining database (started)\n");
     maintenance();
     tty_message("[main] Maintaining database (finished)\n");
-	  die "OK\n";
-	}
+    die "OK\n";
+  }
 
   # host removal; currently only single host removal, the hostname must much
   # exactly
-	if(my $cmd_remove_host = $cmd->remove_host) {
-	  tty_message("[main] Removing host $cmd_remove_host (started)\n");
+  if(my $cmd_remove_host = $cmd->remove_host) {
+    tty_message("[main] Removing host $cmd_remove_host (started)\n");
     SPAM::Host->new(name => $cmd_remove_host)->drop;
-	  tty_message("[main] Removing host $cmd_remove_host (finished)\n");
-	  die "OK\n";
-	}
+    tty_message("[main] Removing host $cmd_remove_host (finished)\n");
+    die "OK\n";
+  }
 
-	# bind to ondb database
+  # bind to ondb database
   die "Database binding 'ondb' not defined\n"
   unless exists $cfg->config()->{dbconn}{ondb};
 
-	# retrieve list of switches
+  # retrieve list of switches
   if($cmd->list_hosts) {
     my $n = 0;
     print "\nDumping configured switches:\n\n";
@@ -122,8 +122,8 @@ try {
     die "OK\n";
   }
 
-	# retrieve list of arp servers
-	if($cmd->arptable || $cmd->list_arpservers) {
+  # retrieve list of arp servers
+  if($cmd->arptable || $cmd->list_arpservers) {
     tty_message("[main] Loading list of arp servers (started)\n");
     if($cmd->list_arpservers) {
       my $n = 0;
@@ -135,7 +135,7 @@ try {
       print "\n$n ARP servers configured\n\n";
       die "OK\n";
     }
-	}
+  }
 
   # create work list of hosts that are to be polled for data
   my $poll_hosts_re = $cmd->hostre;
@@ -165,7 +165,7 @@ try {
     }
   }
 
-	tty_message(
+  tty_message(
     "[main] %d hosts scheduled to be processed\n", scalar(keys %$hosts)
   );
 
@@ -197,10 +197,10 @@ try {
     push(@work_list, [ $ht->($h, $hosts->{$h}), undef ]);
   }
 
-	# loop through all tasks
-	my $tasks_cur = 0;
+  # loop through all tasks
+  my $tasks_cur = 0;
 
-	while(defined(my $task = schedule_task(\@work_list))) {
+  while(defined(my $task = schedule_task(\@work_list))) {
     my $hi = $task->[0];
     my $pid = fork();
 
@@ -253,11 +253,11 @@ try {
         tty_message("[%s] Host poll failed ($err)\n", $hi->name);
       }
 
-	    # child finish
+      # child finish
       exit(0);
-	  }
+    }
 
-	} # the concurrent section ends here
+  } # the concurrent section ends here
 
   #--- clean-up ------------------------------------------------------
 
