@@ -26,6 +26,14 @@ sub startup ($self)
     return;
   }
 
+  # non-development log goes to a file (development default is stderr)
+  if($self->app->mode ne 'development' && $cfg->logfile('web')) {
+    $self->app->log->path($cfg->logfile('web'));
+    $self->app->log->info(
+      'Application started, log level ' . $self->app->log->level
+    );
+  }
+
   # authorization code // code shared with all requests
   my $r = $self->routes->under('/' => sub ($c) {
 

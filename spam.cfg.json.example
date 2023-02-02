@@ -3,6 +3,10 @@
 
   "htmldir" : "/home/spam/SPAM/html",
 
+  #--- logfiles
+
+  "logfile": { "web": "spam-web.log" },
+
   #--- ports without activity in this amount of seconds will be marked as
   #--- inactive
 

@@ -557,5 +557,21 @@ sub _recurse ($h, $cb)
 }
 
 #-----------------------------------------------------------------------------
+# return filename of a logfile or undef; the argument specifies which logfile
+# is requested: currently only 'web' is supported
+sub logfile ($self, $which)
+{
+  my $cfg = $self->config;
+
+  if(
+    exists $cfg->{logfile}
+    && ref $cfg->{logfile}
+    && exists $cfg->{logfile}{$which}
+  ) {
+    return $cfg->{logfile}{$which};
+  } else {
+    return undef;
+  }
+}
 
 1;
