@@ -37,7 +37,7 @@ sub poll_arpsource ($self, %args)
   $self->_m('Loading ARP table (started)');
   my $r = snmp_get_object(
     'snmpwalk',
-    $self->name,
+    $self->_name_resolved,
     undef,
     $o->mib_name,
     $o->name,

@@ -370,7 +370,9 @@ sub drop ($self)
 
   $dbx->txn(fixup => sub ($dbh) {
     foreach my $table (@tables) {
-      $dbh->do("DELETE FROM $table WHERE host = ?", undef, $self->name);
+      $dbh->do(
+        "DELETE FROM $table WHERE host = ?", undef, $self->_name_resolved
+      );
     }
   });
 }
@@ -438,7 +440,7 @@ sub poll_switch ($self, %args)
 
         # retrieve the SNMP object
         my $r = snmp_get_object(
-          'snmpwalk', $self->name, $vlan, \@mib_list,
+          'snmpwalk', $self->_name_resolved, $vlan, \@mib_list,
           $obj->name,
           $obj->columns,
           sub {

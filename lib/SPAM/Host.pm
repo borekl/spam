@@ -21,9 +21,17 @@ has name => (
   is => 'ro',
   required => 1,
   coerce => sub { lc $_[0] },
+);
+
+# this copies the value of the 'name' attribute but with additional check
+# whether the name resolves via DNS; if it fails to resolve an exception is
+# raised
+has _name_resolved => (
+  is => 'lazy',
+  builder => sub ($self) { $self->name },
   isa => sub ($v) {
     croak qq{DNS resolution failed for '$v'} unless inet_aton($v);
-  }
+  },
 );
 
 # list of roles, currently available roles are 'switch' and 'arpsource'
