@@ -31,6 +31,7 @@ has obj => (
 # data loaded from backend database
 has _db => ( is => 'lazy' );
 
+#-------------------------------------------------------------------------------
 # load data from backend database
 sub _build__db ($self)
 {
@@ -57,6 +58,7 @@ sub _build__db ($self)
   return \%data;
 }
 
+#-------------------------------------------------------------------------------
 # save current SNMP object into database
 sub save ($self)
 {
@@ -81,8 +83,6 @@ sub save ($self)
         "--> REFERENCE TIME: %s\n", scalar(localtime($ref_time));
     }
   }
-
-  #=== try block start =========================================================
 
   try {
 
@@ -219,8 +219,6 @@ sub save ($self)
     }
 
   }
-
-  #=== catch block =============================================================
 
   catch ($err) {
     printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
