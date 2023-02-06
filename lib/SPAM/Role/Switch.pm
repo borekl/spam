@@ -15,7 +15,7 @@ use SPAM::Model::SwStat;
 use SPAM::Model::PortStatus;
 use SPAM::Model::Mactable;
 use SPAM::Model::Porttable;
-use SPAM::SNMP qw(snmp_get_object sql_save_snmp_object);
+use SPAM::SNMP qw(snmp_get_object);
 
 # switch statistics
 has swstat => (

@@ -10,6 +10,7 @@ use Data::Dumper;
 
 use SPAM::Config;
 use SPAM::Model::SNMP;
+use SPAM::Model::SNMPDbTable;
 
 with 'SPAM::Role::Switch';
 with 'SPAM::Role::ArpSource';
@@ -110,7 +111,8 @@ sub save_snmp_data ($self)
         && exists $self->snmp->_d->{$mib->name}{$obj->name}
       ) {
         $self->_m('Saving %s (started)', $obj->name);
-        my $r = sql_save_snmp_object($self, $obj);
+        my $db = SPAM::Model::SNMPDbTable->new(host => $self, obj => $obj);
+        my $r = $db->save;
         if(!ref $r) {
           $self->_m('Saving %s (failed)', $obj->name);
         } else {
