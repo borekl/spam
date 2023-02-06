@@ -25,7 +25,7 @@ has config => (
   isa => sub { die 'SPAM::MIB::config must be a hashref' unless ref $_[0] }
 );
 
-# list of managed objects
+# list of managed objects (SPAM::MIBobject instances)
 has objects => (
   is => 'lazy',
   builder => '_load_objects',
