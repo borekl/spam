@@ -39,7 +39,7 @@ sub startup ($self)
   # parameters are used by the action code
 
   # authorization code // code shared with all requests
-  my $r = $self->routes->under('/api/v0/' => sub ($c) {
+  my $v0 = $self->routes->under('/api/v0/' => sub ($c) {
 
     # default stash content
     $c->stash(
@@ -79,16 +79,16 @@ sub startup ($self)
 
   # legacy endpoints // these use the legacy code from the original backend
   # (spam-backend.cgi) that currently resides in the SPAM::Web::Legacy class
-  $r->post('/')->requires(verb => 'test')->to('legacy#test');
-  $r->post('/')->requires(verb => 'swlist')->to('legacy#swlist');
-  $r->post('/')->requires(verb => 'search')->to('legacy#search');
-  $r->post('/')->requires(verb => 'portinfo')->to('legacy#portinfo');
-  $r->post('/')->requires(verb => 'usecp')->to('legacy#usecp');
-  $r->get('/')->requires(qverb => 'aux')->to('legacy#aux');
-  $r->post('/')->requires(verb => 'addpatch')->to('legacy#addpatch');
-  $r->post('/')->requires(verb => 'delpatch')->to('legacy#delpatch');
-  $r->get('/')->requires(qverb => 'modwire')->to('legacy#modwire');
-  $r->any('/')->to('legacy#default');
+  $v0->post('/')->requires(verb => 'test')->to('legacy#test');
+  $v0->post('/')->requires(verb => 'swlist')->to('legacy#swlist');
+  $v0->post('/')->requires(verb => 'search')->to('legacy#search');
+  $v0->post('/')->requires(verb => 'portinfo')->to('legacy#portinfo');
+  $v0->post('/')->requires(verb => 'usecp')->to('legacy#usecp');
+  $v0->get('/')->requires(qverb => 'aux')->to('legacy#aux');
+  $v0->post('/')->requires(verb => 'addpatch')->to('legacy#addpatch');
+  $v0->post('/')->requires(verb => 'delpatch')->to('legacy#delpatch');
+  $v0->get('/')->requires(qverb => 'modwire')->to('legacy#modwire');
+  $v0->any('/')->to('legacy#default');
 
   # default route serves static index.html
   $self->routes->get('/' => sub ($c) {
