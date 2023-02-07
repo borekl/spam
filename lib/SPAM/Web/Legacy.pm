@@ -754,7 +754,7 @@ sub sql_search ($par)
     # bitstring of 4096 bits that corresponds to vlans 1-4096; 1s represent
     # enabled vlans. For the front-end use, we convert this into list of enabled
     # vlans
-    if($par->{mode} eq 'portlist') {
+    if(exists $par->{mode} && $par->{mode} eq 'portlist') {
         delete $row->{vlans};
     } else {
       my ($vlans_list, $vlans_ranges)
