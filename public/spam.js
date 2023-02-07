@@ -13,7 +13,7 @@ var
   modSearchTool = require('./searchtool.js'),
   modSwitchList = require('./swlist.js'),
   shared = {
-    backend: 'spam-backend.cgi',
+    backend: 'api/v0/',
     site_mode: {}  // cache of site mode values
   };
   selcodes = {

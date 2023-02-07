@@ -2,9 +2,9 @@
 *.log
 *.gif
 jquery*
-html/dust-*.js
-html/templates/templates.js
-html/bundle.js
+public/dust-*.js
+public/templates/templates.js
+public/bundle.js
 spam.cfg
 /spam.cfg.json
 /authkeys.json

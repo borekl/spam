@@ -34,8 +34,12 @@ sub startup ($self)
     );
   }
 
+  # legacy API (v0) -- this uses URL encoded body parameters and URL parameters;
+  # parameter 'r' determines what action is taken (the 'verb') and additional
+  # parameters are used by the action code
+
   # authorization code // code shared with all requests
-  my $r = $self->routes->under('/' => sub ($c) {
+  my $r = $self->routes->under('/api/v0/' => sub ($c) {
 
     # default stash content
     $c->stash(
@@ -86,6 +90,10 @@ sub startup ($self)
   $r->get('/')->requires(qverb => 'modwire')->to('legacy#modwire');
   $r->any('/')->to('legacy#default');
 
+  # default route serves static index.html
+  $self->routes->get('/' => sub ($c) {
+    $c->reply->static('index.html');
+  });
 }
 
 1;

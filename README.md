@@ -11,14 +11,25 @@ library (web application).
 
 # Note
 
-SPAM is in transition from old CGI-based backend to new Mojolicious based one.
-For this to work with the original front-end, following mapping must be set up
-on the web server (assuming application path `/spam` and backend port 3000):
-
-    ProxyPass /spam/spam-backend.cgi "http://127.0.0.1:3000/"
-    ProxyPassReverse /spam/spam-backend.cgi "http://127.0.0.1:3000/"
-
-Also following two headers need to be set in this way:
+Following two headers need to be set in this way, so that the backend knows
+username and client IP (both recorded for each creation/change):
 
     RequestHeader set X-Remote-User expr=%{REMOTE_USER}
     RequestHeader set X-Remote-IPAddr expr=%{REMOTE_ADDR}
+
+Example Apache configuration, that sets up reverse proxy along with required
+request headers and authentication.
+
+    <Location /spam/>
+      Options +Indexes +FollowSymLinks +MultiViews +ExecCGI
+      AddType image/svg+xml svg svgz
+      AddEncoding gzip svgz
+      AuthName "Switch Port Activity Monitor"
+      AuthType Basic
+      AuthBasicProvider msad
+      require valid-user
+      RequestHeader set X-Remote-User expr=%{REMOTE_USER}
+      RequestHeader set X-Remote-IPAddr expr=%{REMOTE_ADDR}
+      ProxyPass "http://127.0.0.1:3000/"
+      ProxyPassReverse "http://127.0.0.1:3000/"
+    </Location>

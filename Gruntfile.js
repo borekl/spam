@@ -7,7 +7,7 @@ module.exports = function(grunt)
    dustjs: {
      main : {
        files: {
-         'html/templates/templates.js': [ 'html/templates/*.dust' ]
+         'public/templates/templates.js': [ 'public/templates/*.dust' ]
        }
      }
    },
@@ -15,12 +15,12 @@ module.exports = function(grunt)
    browserify: {
      main: {
        files: {
-         'html/bundle.js' : [ 'html/spam.js', 'html/templates/templates.js' ]
+         'public/bundle.js' : [ 'public/spam.js', 'public/templates/templates.js' ]
        }
      },
      dev: {
        files: {
-         'html/bundle.js' : [ 'html/spam.js', 'html/templates/templates.js' ]
+         'public/bundle.js' : [ 'public/spam.js', 'public/templates/templates.js' ]
        },
        options: {
          browserifyOptions: {
@@ -53,9 +53,9 @@ module.exports = function(grunt)
      },
      www: {
        files: [
-         { nonull: true, src: 'html/bundle.js', dest: '../prod/html/bundle.js' },
-         { nonull: true, src: 'html/default.css', dest: '../prod/html/default.css' },
-         { nonull: true, src: 'html/index.html', dest: '../prod/html/index.html' },
+         { nonull: true, src: 'public/bundle.js', dest: '../prod/public/bundle.js' },
+         { nonull: true, src: 'public/default.css', dest: '../prod/public/default.css' },
+         { nonull: true, src: 'public/index.html', dest: '../prod/public/index.html' },
          { nonull: true, src: 'spam-web', dest: '../prod/spam-web' },
          { nonull: true, src: 'lib/SPAM/Web.pm', dest: '../prod/lib/SPAM/Web.pm' },
          { nonull: true, src: 'lib/SPAM/Web/Legacy.pm', dest: '../prod/lib/SPAM/Web/Legacy.pm' },
@@ -77,7 +77,7 @@ module.exports = function(grunt)
      www: {
        pattern: 'spam-dev',
        replacement: 'spam',
-       path: '../prod/html/index.html'
+       path: '../prod/public/index.html'
      }
    }
 
