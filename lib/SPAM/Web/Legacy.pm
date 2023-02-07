@@ -12,20 +12,6 @@ use SPAM::EntityTree;
 use SPAM::Config;
 
 #-------------------------------------------------------------------------------
-# Function to remove keys for a hash that have undefined values. This does not
-# iterate over sub-hashes.
-sub remove_undefs ($h)
-{
-  while(my ($key, $value) = each %$h) {
-    delete $h->{$key} if !defined $value;
-  }
-}
-
-#-------------------------------------------------------------------------------
-# Return JSON boolean value of an argument.
-sub js_bool ($v) { $v ? Mojo::JSON->true : Mojo::JSON->false }
-
-#-------------------------------------------------------------------------------
 # Parse PostgreSQL error messages, returning them in structured form,
 # explanation by an example:
 #

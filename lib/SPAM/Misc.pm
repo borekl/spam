@@ -11,6 +11,7 @@ use warnings;
 use strict;
 use experimental 'signatures';
 use Feature::Compat::Try;
+use Mojo::JSON;
 
 use SPAM::Config;
 
@@ -30,6 +31,8 @@ our @EXPORT = qw(
   decode_age
   vlans_bitstring_to_range_list
   maintenance
+  remove_undefs
+  js_bool
 );
 
 #=== VARIABLES =================================================================
@@ -448,5 +451,18 @@ sub maintainance
   });
 }
 
+#-------------------------------------------------------------------------------
+# Function to remove keys for a hash that have undefined values. This does not
+# iterate over sub-hashes.
+sub remove_undefs ($h)
+{
+  while(my ($key, $value) = each %$h) {
+    delete $h->{$key} if !defined $value;
+  }
+}
+
+#-------------------------------------------------------------------------------
+# Return JSON boolean value of an argument.
+sub js_bool ($v) { $v ? Mojo::JSON->true : Mojo::JSON->false }
 
 1;
