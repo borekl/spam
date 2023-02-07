@@ -14,7 +14,7 @@ use SPAM::Model::SNMPDbTable;
 
 with 'SPAM::Role::Switch';
 with 'SPAM::Role::ArpSource';
-with 'SPAM::MessageCallback';
+with 'SPAM::Role::MessageCallback';
 
 # hostname
 has name => (

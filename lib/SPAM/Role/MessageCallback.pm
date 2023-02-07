@@ -1,4 +1,4 @@
-package SPAM::MessageCallback;
+package SPAM::Role::MessageCallback;
 
 use Moo::Role;
 
