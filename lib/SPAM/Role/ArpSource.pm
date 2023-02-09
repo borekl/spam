@@ -93,7 +93,7 @@ sub update_arptable_db ($self, %args)
 
   $db->txn(sub ($tx) {
     $self->iter_arptable(sub ($data) {
-      $atdb->insert_or_update($tx->dbh, %$data);
+      $atdb->insert_or_update($tx, %$data);
     });
   });
 

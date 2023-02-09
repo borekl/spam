@@ -21,12 +21,11 @@ has _macdb => ( is => 'lazy' );
 #------------------------------------------------------------------------------
 sub _build__macdb ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my %mactable;
 
-  my $sth = $dbh->prepare('SELECT mac, host, portname, active FROM mactable');
-  $sth->execute;
-  while(my $row = $sth->fetchrow_hashref) {
+  my $r = $db->select('mactable', [ qw(mac host portname active) ]);
+  while(my $row = $r->hash) {
     $mactable{$row->{mac}} = $row;
   }
 
@@ -34,38 +33,28 @@ sub _build__macdb ($self)
 }
 
 #------------------------------------------------------------------------------
-sub get_mac ($self, $mac) { $self->_macdb->{$mac} // undef }
-
-#------------------------------------------------------------------------------
 # set the 'active' field to 'false' for all MACs associated with the host
-sub reset_active_mac ($self, $dbh)
+sub reset_active_mac ($self, $db)
 {
-  return $dbh->do(
-    q{UPDATE mactable SET active = 'f' WHERE host = ? and active = 't'},
-    undef,
-    $self->hostname
-  );
+  $db->update(
+    mactable => { active => 0 }, { host => $self->hostname, active => 1 }
+  )
 }
 
 #------------------------------------------------------------------------------
-sub insert_mac ($self, $dbh, %data)
+sub insert_or_update ($self, $db, %data)
 {
-  my $f = 'mac,host,portname,lastchk,active';
-  return $dbh->do(
-    "INSERT INTO mactable ($f) VALUES ( ?,?,?,current_timestamp,? )",
-    undef,
-    $data{mac}, $self->hostname, $data{p}, 't'
+  my %update = (
+    host     => $self->hostname,
+    portname => $data{p},
+    lastchk  => \'current_timestamp',
+    active   => 1,
   );
-}
 
-#------------------------------------------------------------------------------
-sub update_mac ($self, $dbh, %data)
-{
-  my $f = 'host,portname,lastchk,active';
-  return $dbh->do(
-    "UPDATE mactable SET host = ?, portname = ?, lastchk = current_timestamp, active = 't' WHERE mac = ?",
-    undef,
-    $self->hostname, $data{p}, $data{mac}
+  $db->insert(
+    'mactable',
+    { mac => $data{mac}, %update },
+    { on_conflict => [ mac => \%update ] }
   );
 }
 

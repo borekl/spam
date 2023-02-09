@@ -241,17 +241,9 @@ sub update_mactable ($self)
   # start transaction
   $self->_m("Updating mactable (started)");
   $db->txn(sub ($tx) {
-    $self->mactable_db->reset_active_mac($tx->dbh);
+    $self->mactable_db->reset_active_mac($tx);
     $self->snmp->iterate_macs(sub (%arg) {
-      if(
-        $self->mactable_db->get_mac($arg{mac})
-        || exists $mac_current{$arg{mac}}
-      ) {
-        $self->mactable_db->update_mac($tx->dbh, %arg);
-      } else {
-        $self->mactable_db->insert_mac($tx->dbh, %arg);
-        $mac_current{$arg{mac}} = 1;
-      }
+      $self->mactable_db->insert_or_update($tx, %arg);
     });
   });
 

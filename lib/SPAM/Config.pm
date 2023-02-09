@@ -21,8 +21,6 @@ use Mojo::Pg;
 use SPAM::MIB;
 use SPAM::Keys;
 
-#=== ATTRIBUTES ==============================================================
-
 # configuration file
 has config_file => (
   is => 'ro',
@@ -84,8 +82,6 @@ has vlanservers => (
   default => sub { [] },
 );
 
-#=== METHODS =================================================================
-
 #-----------------------------------------------------------------------------
 # Load and parse configuration
 sub _build_config
@@ -145,50 +141,38 @@ sub get_dbi_handle
   $self->get_mojopg_handle($dbid)->db->dbh;
 }
 
-
 #-----------------------------------------------------------------------------
-# Load list of hosts (switches) from backend database.
-sub _build_hosts
+# load list of hosts (switches) from backend database
+sub _build_hosts ($self)
 {
-  my ($self) = @_;
-  my $dbh = $self->get_dbi_handle('ondb');
+  my $db = $self->get_mojopg_handle('ondb')->db;
+  die 'Database connection failed (ondb)' unless ref $db;
 
-  if(!ref $dbh) { die 'Database connection failed (ondb)'; }
-
-  # the v_switchlist view returns tuples (hostname, community, ip_addr)
-  my $sth = $dbh->prepare('SELECT * FROM v_switchlist');
-  my $r = $sth->execute();
-
-  # the way the info is stored is the same as the old $cfg->{'host'} hash
   my %hosts;
-  while(my $row = $sth->fetchrow_hashref()) {
-    my $h = lc $row->{'hostname'};
-    $hosts{$h}{'community'} = $row->{'community'};
-    $hosts{$h}{'ip'} = $row->{'ip_addr'};
+  my $r = $db->select('v_switchlist');
+  while (my $row = $r->hash) {
+    my $h = lc $row->{hostname};
+    $hosts{$h}{community} = $row->{community};
+    $hosts{$h}{ip} = $row->{ip_addr};
   }
 
   return \%hosts;
 }
 
-
 #-----------------------------------------------------------------------------
-# Load list of routers from backend database.
-sub _build_arpservers
+# load list of routers from backend database
+sub _build_arpservers ($self)
 {
-  my ($self) = @_;
-
-  my $dbh = $self->get_dbi_handle('ondb');
-
-  if(!ref $dbh) { die 'Database connection failed (ondb)'; }
+  my $db = $self->get_mojopg_handle('ondb')->db;
+  die 'Database connection failed (ondb)' unless ref $db;
 
   # the v_arpservers view returns tuples (hostname, community)
-  my $sth = $dbh->prepare('SELECT * FROM v_arpservers');
-  my $r = $sth->execute();
-
   my @arpservers;
-  while(my ($s, $cmty) = $sth->fetchrow_array()) {
+  my $r = $db->select('v_arpservers');
+  while(my $row = $r->array) {
+    my ($s, $cmty) = @$row;
     push(@arpservers, [lc $s, $cmty])
-      unless scalar(grep { $_->[0] eq $s } @arpservers) != 0;
+      unless scalar(grep { $_->[0] eq $s } @arpservers);
   }
 
   return \@arpservers;
@@ -257,7 +241,6 @@ sub get_snmp_config
   die "Failed to find matching SNMP configuration for $host";
 }
 
-
 #-----------------------------------------------------------------------------
 # Return snmp command and option strings for given (host, mib, oid, vlan)
 # Following arguments are accepted: host, command, mibs, oids,
@@ -321,7 +304,6 @@ sub get_snmp_command
     : ($snmp->{$cmd}{exec} . ' ' . $options)
 }
 
-
 #-----------------------------------------------------------------------------
 # Return configured SNMP v2 community string for a host.
 sub snmp_community
@@ -334,7 +316,6 @@ sub snmp_community
 
   return $cfg->{'community'};
 }
-
 
 #-----------------------------------------------------------------------------
 # Convert hostname (e.g. 'vdcS02c') to site code (e.g. 'vin')
@@ -349,7 +330,6 @@ sub site_conv
   if(!$site) { $site = $hc; }
   return $site;
 }
-
 
 #-----------------------------------------------------------------------------
 # Function to get entity profiles for given entity tree node. The
@@ -378,7 +358,6 @@ sub entity_profile
   return $cfg->{'entity-profiles'};
 }
 
-
 #-----------------------------------------------------------------------------
 # Convert MIB configuration into SPAM::MIB instances
 sub _build_mibs
@@ -396,7 +375,6 @@ sub _build_mibs
 
   return \@result;
 }
-
 
 #-----------------------------------------------------------------------------
 # MIBs iterator, true value from the callback terminates the iteration
@@ -449,7 +427,6 @@ sub _build_knownports
 
   return \@knownports;
 }
-
 
 #-----------------------------------------------------------------------------
 sub _build_mactableage

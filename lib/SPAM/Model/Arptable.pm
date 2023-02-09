@@ -18,12 +18,11 @@ has _arpdb => ( is => 'lazy' );
 #-------------------------------------------------------------------------------
 sub _build__arpdb ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my %arptable;
 
-  my $sth = $dbh->prepare('SELECT * FROM arptable');
-  $sth->execute;
-  while(my $row = $sth->fetchrow_hashref) {
+  my $r = $db->select('arptable');
+  while(my $row = $r->hash) {
     $arptable{$row->{ip}} = $row;
   }
 
@@ -36,16 +35,22 @@ sub get_arp ($self, $ip) { $self->_arpdb->{$ip} // undef }
 
 #-------------------------------------------------------------------------------
 # insert or update single ARP entry in backend database depending on the state
-# of the instance
-sub insert_or_update($self, $dbh, %data)
+# of the instance; Mojo::Pg::Database instance must be explicitly passed in
+sub insert_or_update($self, $db, %data)
 {
-  return $dbh->do(
-    'INSERT INTO arptable2 (source,mac,ip,lastchk,dnsname) ' .
-    'VALUES ( ?,?,?,current_timestamp,? ) ' .
-    'ON CONFLICT (source, ip) DO ' .
-    'UPDATE SET lastchk = current_timestamp, mac = ?',
-    undef,
-    $data{source}, $data{mac}, $data{ip}, $data{dnsname}, $data{mac}
+  $db->insert(
+    'arptable2',
+    {
+      source  => $data{source},
+      mac     => $data{mac},
+      ip      => $data{ip},
+      lastchk => \'current_timestamp',
+      dnsname => $data{dnsname},
+    },
+    { on_conflict => [ [ 'source', 'ip' ] => {
+      lastchk => \'current_timestamp',
+      mac => $data{mac}
+    }]}
   );
 }
 
