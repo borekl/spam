@@ -197,7 +197,7 @@ sub update_switch_db ($self, %arg)
 # update all ports
 sub update_ports ($self)
 {
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my $update_plan = $self->find_changes;
 
   $self->_m(
@@ -205,7 +205,7 @@ sub update_ports ($self)
     @{$update_plan->{stats}}{qw(i d U u)}
   );
 
-  $dbx->txn(fixup => sub {
+  $db->txn(sub ($tx) {
     foreach (@{$update_plan->{plan}}) {
       my ($act, $p) = @$_;
       if($act eq 'd') { $self->ports_db->delete_ports($p); }
@@ -227,7 +227,7 @@ sub update_mactable ($self)
   return undef unless $self->snmp->has_ifindex_to_dot1d;
 
   # get database handle
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
 
   # it is possible that for some reason the same mac will appear twice in the
   # SNMP data; we keep track of MACs we have already seen so that later we do
@@ -236,20 +236,20 @@ sub update_mactable ($self)
   my %mac_current;
 
   # ensure database connection
-  die 'Cannot connect to database (spam)' unless ref $dbx;
+  die 'Cannot connect to database (spam)' unless ref $db;
 
   # start transaction
   $self->_m("Updating mactable (started)");
-  $dbx->txn(fixup => sub ($dbh) {
-    $self->mactable_db->reset_active_mac($dbh);
+  $db->txn(sub ($tx) {
+    $self->mactable_db->reset_active_mac($tx->dbh);
     $self->snmp->iterate_macs(sub (%arg) {
       if(
         $self->mactable_db->get_mac($arg{mac})
         || exists $mac_current{$arg{mac}}
       ) {
-        $self->mactable_db->update_mac($dbh, %arg);
+        $self->mactable_db->update_mac($tx->dbh, %arg);
       } else {
-        $self->mactable_db->insert_mac($dbh, %arg);
+        $self->mactable_db->insert_mac($tx->dbh, %arg);
         $mac_current{$arg{mac}} = 1;
       }
     });
@@ -319,7 +319,7 @@ sub _build_port_stats ($self)
 #------------------------------------------------------------------------------
 sub autoregister ($self)
 {
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my $count = 0;
 
   $self->_m('Running auto-registration (started)');
@@ -328,7 +328,7 @@ sub autoregister ($self)
   my $site = SPAM::Config->instance->site_conv($self->name);
 
   # wrap the update in transaction
-  $dbx->txn(fixup => sub ($dbh) {
+  $db->txn(sub ($tx) {
 
     # iterate over all ports; FIXME: this is iterating ports loaded from the
     # database, not ports actually seen on the host -- this needs to be changed
@@ -343,7 +343,7 @@ sub autoregister ($self)
         return undef if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
         $cp_descr = substr($cp_descr, 0, 10);
         if(!$self->port_to_cp->exists($portname)) {
-          $self->port_to_cp->insert($dbh,
+          $self->port_to_cp->insert($tx,
             host => $self->name,
             port => $portname,
             cp => $cp_descr,
@@ -365,13 +365,13 @@ sub autoregister ($self)
 # delete all record associated with this host
 sub drop ($self)
 {
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my @tables = (qw(status hwinfo swstat badports mactable modwire));
 
-  $dbx->txn(fixup => sub ($dbh) {
+  $db->txn(sub ($tx) {
     foreach my $table (@tables) {
-      $dbh->do(
-        "DELETE FROM $table WHERE host = ?", undef, $self->_name_resolved
+      $tx->query(
+        "DELETE FROM $table WHERE host = ?", $self->_name_resolved
       );
     }
   });

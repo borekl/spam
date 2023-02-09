@@ -46,28 +46,20 @@
 
   "dbconn" : {
     "spam" : {
-      "dbuser" : "swcoll",
-      "dbpass" : "***",
-      "dbname" : "spam",
-      "dbhost" : "172.16.213.8"
+      "dburl":   "postgres://swcoll@172.16.213.8/spam",
+      "dbpass" : "%5",
     },
     "ondb" : {
-      "dbuser" : "swcoll",
-      "dbpass" : "***",
-      "dbname" : "ondb",
-      "dbhost" : "172.16.213.8"
+      "dburl":   "postgres://swcoll@172.16.213.8/ondb",
+      "dbpass" : "%5",
     },
     "spamui" : {
-      "dbuser" : "swcgi",
-      "dbpass" : "***",
-      "dbname" : "spam",
-      "dbhost" : "172.16.213.8"
+      "dburl":   "postgres://swcgi@172.16.213.8/spam",
+      "dbpass" : "%6",
     },
     "ondbui" : {
-      "dbuser" : "swcgi",
-      "dbpass" : "***",
-      "dbname" : "ondb",
-      "dbhost" : "172.16.213.8"
+      "dburl":   "postgres://swcgi@172.16.213.8/ondb",
+      "dbpass" : "%6",
     }
   },
 

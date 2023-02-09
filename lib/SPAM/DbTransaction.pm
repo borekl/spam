@@ -60,10 +60,10 @@ sub count($self) { scalar @{$self->_tx_buffer} }
 # commit transaction
 sub commit ($self)
 {
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my $rv;
   my $line = 1;
-  
+
   # do a debug dump
   if($ENV{SPAM_DEBUG}) {
     my $line = 1;
@@ -74,17 +74,16 @@ sub commit ($self)
 
   # send the transaction off to the database
   try {
-    $dbx->txn(fix_up => sub {
+    $db->txn(sub ($tx) {
       foreach my $row (@{$self->_tx_buffer}) {
         my $qry = shift @$row;
-        my $sth = $_->prepare($qry);
-        my $r = $sth->execute(@$row);
+        my $r = $tx->query(@$row);
         $line++;
       }
     });
   } catch ($err) {
     chomp $err;
-    $self->_debug('---> TRANSACTION FAILED (%s)', $rv = $_);
+    $self->_debug('---> TRANSACTION FAILED (%s)', $rv = $err);
   }
 
   # finish

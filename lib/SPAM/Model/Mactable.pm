@@ -21,7 +21,7 @@ has _macdb => ( is => 'lazy' );
 #------------------------------------------------------------------------------
 sub _build__macdb ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
   my %mactable;
 
   my $sth = $dbh->prepare('SELECT mac, host, portname, active FROM mactable');

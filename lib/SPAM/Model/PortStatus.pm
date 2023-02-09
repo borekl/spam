@@ -38,23 +38,21 @@ my @fields = (
 # builder for status
 sub _build_status ($self)
 {
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
-  croak 'Database connection failed' unless $dbx;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  croak 'Database connection failed' unless $dbh;
   my %status;
 
-  $dbx->run(fixup => sub ($dbh) {
-    my $sth = $dbh->prepare(
-      sprintf('SELECT %s FROM status WHERE host = ?', join(',', @fields))
-    );
-    $sth->execute($self->hostname);
-    while(my $row = $sth->fetchrow_hashref) {
-      # mangle values from ifOperStatus and ifAdminStatus; FIXME: is this
-      # needed?
-      $row->{status} =~ tr/0/2/;
-      $row->{adminstatus} =~ tr/0/2/;
-      $status{$row->{portname}} = $row;
-    }
-  });
+  my $sth = $dbh->prepare(
+    sprintf('SELECT %s FROM status WHERE host = ?', join(',', @fields))
+  );
+  $sth->execute($self->hostname);
+  while(my $row = $sth->fetchrow_hashref) {
+    # mangle values from ifOperStatus and ifAdminStatus; FIXME: is this
+    # needed?
+    $row->{status} =~ tr/0/2/;
+    $row->{adminstatus} =~ tr/0/2/;
+    $status{$row->{portname}} = $row;
+  }
 
   return \%status;
 }
@@ -109,7 +107,7 @@ sub errdisable ($self, $p) { $self->status->{$p}{errdis} }
 # delete given ports; this is supposed to be wrapped in an transaction
 sub delete_ports ($self, @ports)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
 
   foreach my $p (@ports) {
     $dbh->do(
@@ -124,7 +122,7 @@ sub delete_ports ($self, @ports)
 # a transaction
 sub insert_ports ($self, $snmp, @ports)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
 
   my $f = join(',', qw(
     host portname status inpkts outpkts ifindex vlan descr
@@ -163,7 +161,7 @@ sub insert_ports ($self, $snmp, @ports)
 # a transaction
 sub update_ports ($self, $snmp, @ports)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
 
   my $f = join(',', map { "$_ = ?" } qw(
     host portname status inpkts outpkts ifindex vlan descr
@@ -202,7 +200,7 @@ sub update_ports ($self, $snmp, @ports)
 # update only 'lastchk' field for all supplied ports
 sub touch_ports ($self, @ports)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
 
   foreach my $p (@ports) {
     $dbh->do(

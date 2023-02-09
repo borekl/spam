@@ -83,7 +83,7 @@ sub iter_arptable ($self, $cb)
 #-------------------------------------------------------------------------------
 sub update_arptable_db ($self, %args)
 {
-  my $dbx = SPAM::Config->instance->get_dbx_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my $atdb = SPAM::Model::Arptable->new;
 
   # no new data to be saved
@@ -91,9 +91,9 @@ sub update_arptable_db ($self, %args)
 
   $self->_m('Updating ARP table (started)');
 
-  $dbx->txn(fixup => sub ($dbh) {
+  $db->txn(sub ($tx) {
     $self->iter_arptable(sub ($data) {
-      $atdb->insert_or_update($dbh, %$data);
+      $atdb->insert_or_update($tx->dbh, %$data);
     });
   });
 

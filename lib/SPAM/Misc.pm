@@ -425,27 +425,25 @@ sub vlans_bitstring_to_range_list ($vlans)
 sub maintainance
 {
   my $cfg = SPAM::Config->instance;
-  my $dbx = $cfg->get_dbx_handle('spam');
+  my $db = $cfg->get_mojopg_handle('spam')->db;
   my $t = time();
 
-  $dbx->txn(fixup => sub {
-    my $dbh = shift;
-
+  $db->txn(sub ($tx) {
     # arptable purging
-    $dbh->do(
+    $tx->query(
       q{DELETE FROM arptable WHERE (? - date_part('epoch', lastchk)) > ?},
-      undef, $t, $cfg->arptableage
+      $t, $cfg->arptableage
     );
     # mactable purging
-    $dbh->do(
+    $tx->query(
       q{DELETE FROM mactable WHERE (? - date_part('epoch', lastchk)) > ?},
-      undef, $t, $cfg->mactableage
+      $t, $cfg->mactableage
     );
 
     # status table purging
-    $dbh->do(
+    $tx->query(
       q{DELETE FROM status WHERE (? - date_part('epoch', lastchk)) > ?},
-      undef, $t, 7776000 # 90 days
+      $t, 7776000 # 90 days
     );
 
   });

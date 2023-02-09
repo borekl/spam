@@ -23,7 +23,7 @@ has porttable => ( is => 'ro', builder => 1 );
 # Load porttable from the backend database
 sub _build_porttable ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
   my %p;
 
   # ensure we have database

@@ -39,7 +39,7 @@ sub _build_boottime ($self)
 # from the host instance, which feels bit inelegant.
 sub update ($self, $snmp, $stat)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
   my @vtp_stats = $snmp->vtp_stats;
 
   my %data = (

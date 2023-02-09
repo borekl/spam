@@ -18,7 +18,7 @@ has _arpdb => ( is => 'lazy' );
 #-------------------------------------------------------------------------------
 sub _build__arpdb ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbx_handle('spam')->dbh;
+  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
   my %arptable;
 
   my $sth = $dbh->prepare('SELECT * FROM arptable');

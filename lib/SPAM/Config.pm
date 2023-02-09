@@ -17,7 +17,7 @@ use Carp;
 use Scalar::Util qw(reftype);
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
-use DBIx::Connector;
+use Mojo::Pg;
 use SPAM::MIB;
 use SPAM::Keys;
 
@@ -49,9 +49,8 @@ has keys => (
 );
 
 # database connection handles
-# This is used to cache DBI connection handles in a way that makes them
-# available in the whole application. These handles should only be used
-# through the SPAM::Db wrapper class.
+# this is used to store Mojo::Pg instances, one for each database binding; this
+# should only be accessed through get_mojopg_handle/get_dbi_handle methods
 has dbconn => (
   is => 'ro',
   default => sub { {} },
@@ -108,76 +107,42 @@ sub _build_config
 }
 
 #-----------------------------------------------------------------------------
-# Get DBIx::Connector instance for given database binding.
-sub get_dbx_handle
+# Get Mojo::Pg instance for given database binding
+sub get_mojopg_handle ($self, $dbid)
 {
-  my ($self, $dbid) = @_;
-  my $cfg;
-  my %dbi_params = (
-    AutoCommit => 1,
-    RaiseError => 1,
-    pg_enable_utf => 1,
-    PrintError => 0,
-    FetchHashKeyName => 'NAME_lc'
-  );
-
   # sanity checks
   croak qq{Database configuration section missing}
   unless exists $self->config()->{'dbconn'};
-  $cfg = $self->config()->{'dbconn'};
+  my $cfg = $self->config()->{'dbconn'};
 
   croak qq{Invalid argument in SPAM::Config::get_dbi_handle()} unless $dbid;
   croak qq{Undefined database connection id "$dbid"} unless exists $cfg->{$dbid};
   $cfg = $cfg->{$dbid};
 
   # if already connected, just return the handle
-  if(exists $self->dbconn()->{$dbid}) {
-    return $self->dbconn()->{$dbid};
+  if(exists $self->dbconn->{$dbid}) {
+    return $self->dbconn->{$dbid};
   }
 
   # otherwise try to connect to the database
-  my $dsn = 'dbi:Pg:db=' . $cfg->{'dbname'};
-  $dsn .= ';host=' . $cfg->{'dbhost'} if $cfg->{'dbhost'};
-
-  my $conn = DBIx::Connector->new(
-    $dsn,
-    $cfg->{'dbuser'},
-    $cfg->{'dbpass'},
-    \%dbi_params
-  );
-
-  die 'Failed to initialize DBIx::Connector instance' unless ref $conn;
+  my $pg = Mojo::Pg->new($cfg->{dburl});
+  $pg->password($cfg->{dbpass}) if $cfg->{dbpass};
+  $pg->options({
+    AutoCommit => 1, RaiseError => 1, PrintError => 0,
+    pg_enable_utf8 => 1, FetchHashKeyName => 'NAME_lc',
+  });
+  $pg->database_class($pg->database_class->with_roles('+TxnMethods'));
 
   # finish
-  $self->dbconn()->{$dbid} = $conn;
-  return $conn;
+  return $self->dbconn->{$dbid} = $pg;
 }
 
-
 #-----------------------------------------------------------------------------
-# Get DBI handle
+# get DBI handle, this just extracts it from the master Mojo::Pg instance
 sub get_dbi_handle
 {
   my ($self, $dbid) = @_;
-  $self->get_dbx_handle($dbid)->dbh;
-}
-
-
-#-----------------------------------------------------------------------------
-# Close a DBI handle previously opened with get_dbi_handle().
-sub close_dbi_handle
-{
-  my ($self, $dbid) = @_;
-
-  # is the handle actually open?
-  return if !exists $self->dbconn()->{$dbid};
-
-  # close the handle
-  $self->dbconn()->{$dbid}->disconnect();
-  delete $self->dbconn()->{$dbid};
-
-  # finish
-  return $self;
+  $self->get_mojopg_handle($dbid)->db->dbh;
 }
 
 
