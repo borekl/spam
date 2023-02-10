@@ -23,18 +23,18 @@ has porttable => ( is => 'ro', builder => 1 );
 # Load porttable from the backend database
 sub _build_porttable ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
-  my %p;
-
-  # ensure we have database
-  croak 'Database connection failed (spam)' unless ref $dbh;
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
+  croak 'Database connection failed (spam)' unless ref $db;
 
   # perform database query
-  my $sth = $dbh->prepare('SELECT portname, cp FROM porttable WHERE host = ?');
-  $sth->execute($self->hostname);
+  my $r = $db->select(
+    'porttable', [ 'portname', 'cp' ], { host => $self->hostname }
+  );
 
   # process the result
-  while(my ($port, $cp) = $sth->fetchrow_array) {
+  my %p;
+  while(my $row = $r->array) {
+    my ($port, $cp) = @$row;
     my $site = substr($self->hostname, 0, 3);
     $p{$port} = { cp => $cp, site => $site };
   }
@@ -49,14 +49,16 @@ sub exists ($self, $p) { exists $self->porttable->{$p} }
 
 #------------------------------------------------------------------------------
 # insert new entry into the porttable
-sub insert ($self, $dbh, %args)
+sub insert ($self, $tx, %args)
 {
   my $site = substr($args{host}, 0, 3);
-  return $dbh->do(
-    'INSERT INTO porttable (host,portname,cp,site,chg_who) VALUES (?,?,?,?,?)',
-    undef,
-    $args{host}, $args{port}, $args{cp}, $args{site} // $site, 'swcoll'
-  );
+  $tx->insert('porttable', {
+    host     => $args{host},
+    portname => $args{port},
+    cp       => $args{cp},
+    site     => $args{site} // $site,
+    chg_who  => 'swcoll'
+  });
 }
 
 1;
