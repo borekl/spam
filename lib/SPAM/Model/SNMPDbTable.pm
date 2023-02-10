@@ -35,23 +35,24 @@ has _db => ( is => 'lazy' );
 # load data from backend database
 sub _build__db ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my $ref_time = time;
-  my $table = 'snmp_' . $self->obj->name;
+  my $table = 'snmp_' . lc $self->obj->name;
   my @object_index = $self->obj->index->@*;
   my %data;
 
-  my $sth = $dbh->prepare(
-    "SELECT *, $ref_time - extract(epoch from date_trunc('second', chg_when)) AS chg_age " .
-    "FROM $table WHERE host = ?"
+  my $r = $db->select($table,
+    [
+      \'*',
+      \"$ref_time - extract(epoch from date_trunc('second', chg_when)) AS chg_age"
+    ],
+    { host => $self->host->name }
   );
-  my $r = $sth->execute($self->host->name);
-  die "Database query failed (" .  $sth->errstr() . ")\n" unless $r;
 
-  while(my $h = $sth->fetchrow_hashref) {
+  while(my $row = $r->hash) {
     hash_create_index(
-      \%data, $h,
-      map { $h->{lc($_)}; } @object_index
+      \%data, $row,
+      map { $row->{lc($_)} } @object_index
     );
   }
 
