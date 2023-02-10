@@ -208,10 +208,10 @@ sub update_ports ($self)
   $db->txn(sub ($tx) {
     foreach (@{$update_plan->{plan}}) {
       my ($act, $p) = @$_;
-      if($act eq 'd') { $self->ports_db->delete_ports($p); }
-      elsif($act eq 'i') { $self->ports_db->insert_ports($self->snmp, $p); }
-      elsif($act eq 'U') { $self->ports_db->update_ports($self->snmp, $p); }
-      elsif($act eq 'u') { $self->ports_db->touch_ports($p); }
+      if($act eq 'd') { $self->ports_db->delete_ports($tx, $p); }
+      elsif($act eq 'i') { $self->ports_db->insert_ports($tx, $self->snmp, $p); }
+      elsif($act eq 'U') { $self->ports_db->update_ports($tx, $self->snmp, $p); }
+      elsif($act eq 'u') { $self->ports_db->touch_ports($tx, $p); }
       else { croak 'Invalid action in update plan'; }
     }
   });
