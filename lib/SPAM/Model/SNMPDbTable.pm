@@ -23,7 +23,7 @@ has obj => (
   required => 1,
   isa => sub ($s) {
     unless (ref $s && $s->isa('SPAM::MIBobject')) {
-      die 'SPAM::MIBobject instance requred'
+      die 'SPAM::MIBobject instance required'
     }
   }
 );
