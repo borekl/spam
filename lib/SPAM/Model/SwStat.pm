@@ -24,14 +24,15 @@ has boottime => (
 #------------------------------------------------------------------------------
 sub _build_boottime ($self)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
-  croak 'Database connection failed' unless ref $dbh;
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
+  croak 'Database connection failed' unless ref $db;
 
-  my $qry = q{SELECT date_part('epoch', boot_time) FROM swstat WHERE host = ?};
-  my $sth = $dbh->prepare($qry);
-  my $r = $sth->execute($self->hostname);
-  my ($v) = $sth->fetchrow_array();
-  return $v;
+  my $r = $db->select('swstat',
+    [ \q{date_part('epoch', boot_time)} ],
+    { host => $self->hostname }
+  );
+
+  return $r->array->@*;
 }
 
 #------------------------------------------------------------------------------
@@ -39,7 +40,7 @@ sub _build_boottime ($self)
 # from the host instance, which feels bit inelegant.
 sub update ($self, $snmp, $stat)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spam');
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my @vtp_stats = $snmp->vtp_stats;
 
   my %data = (
@@ -58,24 +59,11 @@ sub update ($self, $snmp, $stat)
     platform => $snmp->platform
   );
 
-  my @fields = keys %data;
-  my @fields_wo_host = grep { $_ ne 'host' } @fields;
-  my @values = map { $data{$_} } @fields;
+  my %data_wo_host = %data;
+  delete $data_wo_host{host};
+  $data_wo_host{chg_when} = \'DEFAULT';
 
-  my $qry_tmpl =
-  'INSERT INTO swstat ( %s ) VALUES ( %s ) ON CONFLICT (host) DO UPDATE SET %s';
-
-  my $qry = sprintf(
-    $qry_tmpl,
-    join(',', @fields),
-    join(',', ('?') x scalar(@fields)),
-    join(',',
-       ( map { "$_ = EXCLUDED." . $_ } @fields_wo_host ),
-      'chg_when = DEFAULT'
-    )
-  );
-
-  return $dbh->do($qry, undef, @values);
+  $db->insert('swstat', \%data, { on_conflict => [ 'host' => \%data_wo_host ] });
 }
 
 1;
