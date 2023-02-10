@@ -31,6 +31,9 @@ has obj => (
 # data loaded from backend database
 has _db => ( is => 'lazy' );
 
+# debugging filehandle
+has _debug_fh => ( is => 'rw' );
+
 #-------------------------------------------------------------------------------
 # load data from backend database
 sub _build__db ($self)
@@ -60,6 +63,36 @@ sub _build__db ($self)
 }
 
 #-------------------------------------------------------------------------------
+sub _dbg ($self, $fmt=undef, @args)
+{
+  my $fh;
+
+  # do nothing if debugging not turned on
+  return unless $ENV{SPAM_DEBUG};
+
+  # open debug filehandle
+  if(!$self->_debug_fh) {
+    open($fh, '>>', "debug.save_snmp_object.$$.log");
+    printf $fh "==> START OF DEBUG // sql_save_snmp_object(%s,%s)\n",
+      $self->host->name, $self->obj->name;
+    $self->_debug_fh($fh);
+  } else {
+    $fh = $self->_debug_fh;
+  }
+
+  # close filehandle on no input
+  if(!$fmt) {
+    $self->_dbg('END OF DEBUG');
+    close($self->_debug_fh);
+    $self->_debug_fh(undef);
+    return;
+  }
+
+  # log debug message
+  printf $fh "--> $fmt\n", @args;
+}
+
+#-------------------------------------------------------------------------------
 # save current SNMP object into database
 sub save ($self)
 {
@@ -69,21 +102,10 @@ sub save ($self)
   my $cfg = SPAM::Config->instance;
   my $dbh = $cfg->get_dbi_handle('spam');
   my %stats = ( insert => 0, update => 0, delete => 0 );
-  my $err;                 # error message
-  my $debug_fh;            # debug file handle
   my $ref_time = time();   # reference 'now' point of time
   my $tx = SPAM::DbTransaction->new;
 
-  # open debug file
-  if($ENV{'SPAM_DEBUG'}) {
-    open($debug_fh, '>>', "debug.save_snmp_object.$$.log");
-    if($debug_fh) {
-      printf $debug_fh
-        "==> sql_save_snmp_object(%s,%s)\n", $host->name, $snmp_object->name;
-      printf $debug_fh
-        "--> REFERENCE TIME: %s\n", scalar(localtime($ref_time));
-    }
-  }
+  $self->_dbg('REFERENCE TIME: %s', scalar(localtime($ref_time)));
 
   try {
 
@@ -93,19 +115,17 @@ sub save ($self)
     # find the MIB object we're saving
     my $obj = $cfg->find_object($snmp_object->name);
     my @object_index = @{$snmp_object->index};
-    printf $debug_fh "--> OBJECT INDEX: %s\n", join(', ', @object_index)
-      if $debug_fh;
+    $self->_dbg('OBJECT INDEX: %s', join(', ', @object_index));
 
     # find the object in the host instance
     my $object = $host->snmp->get_object($snmp_object->name);
     die "Object $snmp_object does not exist" unless $object;
 
     # debugging output
-    if($debug_fh && $self->_db->%*) {
-      printf $debug_fh "--> LOADED %d CURRENT ROWS, DUMP FOLLOWS\n",
-        scalar(keys $self->_db->%*);
-      print $debug_fh Dumper($self->_db), "\n";
-      print $debug_fh "--> CURRENT ROWS DUMP END\n";
+    if($self->_db->%*) {
+      $self->_dbg('LOADED %d CURRENT ROWS, DUMP FOLLOWS', scalar(keys $self->_db->%*));
+      $self->_dbg(Dumper($self->_db));
+      $self->_dbg('CURRENT ROWS DUMP END');
     }
 
     # collect update plan; there are three conceptual steps:
@@ -207,11 +227,10 @@ sub save ($self)
     }
 
     # debug output
-    if($debug_fh) {
-      printf $debug_fh
-        "--> UPDATE PLAN INFO (%d rows, %d inserts, %d updates, %d deletes)\n",
-        $tx->count, @stats{'insert','update', 'delete'};
-    }
+    $self->_dbg(
+      'UPDATE PLAN INFO (%d rows, %d inserts, %d updates, %d deletes)',
+      $tx->count, @stats{'insert','update', 'delete'}
+    );
 
     # perform database transaction
     if($tx->count) {
@@ -222,12 +241,13 @@ sub save ($self)
   }
 
   catch ($err) {
-    printf $debug_fh "--> ERROR: %s", $err if $debug_fh;
+    $self->_dbg('EXCEPTION: %s', $err);
+    #die $err;
   }
 
   # finish
-  close($debug_fh) if $debug_fh;
-  return $err // \%stats;
+  $self->_dbg;
+  return \%stats;
 }
 
 1;
