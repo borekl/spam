@@ -10,6 +10,7 @@ use integer;
 use warnings;
 use strict;
 use experimental 'signatures';
+use Carp;
 use Feature::Compat::Try;
 use Mojo::JSON;
 
@@ -109,22 +110,19 @@ sub compare_ports ($port1, $port2, $mode)
 #-------------------------------------------------------------------------------
 # check if given site uses two-level connection hierarchy (switch-cp-outlet) or
 # single-level hierarchy (switch-outlet).
-sub sql_site_uses_cp
+sub sql_site_uses_cp ($site)
 {
-  my $site = lc($_[0]);
-  my $dbh = db('spam');
-  my $query = qq{SELECT site FROM out2cp GROUP BY site HAVING site = ?};
+  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
 
-  return undef unless !ref $dbh || !$site;
+  croak q{Undefined argument 'site'} unless $site;
+  croak q{Database connection failed} unless ref $db;
 
-  try {
-    my $sth = $dbh->prepare($query);
-    $sth->execute($site);
-  } catch ($err) {
-    return 0;
-  }
+  my $r = $db->select('out2cp', 'site', undef, {
+    group_by => [ 'site' ], having => { site => lc $site }
+  });
+  return 1 if $r->rows == 1;
 
-  return 1;
+  return 0;
 }
 
 #-------------------------------------------------------------------------------
