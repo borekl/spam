@@ -10,6 +10,7 @@ use experimental 'signatures';
 use Carp;
 
 use SPAM::Config;
+use SPAM::Misc qw(hash_iterator);
 
 with 'SPAM::Role::MessageCallback';
 
@@ -45,6 +46,39 @@ sub get_object($self, $object_name) {
       return $self->_d->{$mib}{$object} if $object_name eq $object;
     }
   }
+}
+
+#-------------------------------------------------------------------------------
+# invoke callback for every SNMP OID in given SNMP object; the arguments the
+# callback receives are transformed into a form suitable for sending to
+# database; that is SET and WHERE clauses that can be used directly with
+# Mojo::Pg::Database select/update/insert/delete methods (for insert simply
+# merge the two arguments)
+sub iterate_data ($self, $object_name, $cb)
+{
+  # find the actual data requested
+  my $d = $self->get_object($object_name);
+  die 'Invalid SNMP object name in SPAM::Config::iterate_data' unless ref $d;
+
+  # MIB object configuration data, this is needed to know what the indices are
+  my $obj_cfg = SPAM::Config->instance->find_object($object_name);
+
+  # commence iteration
+  hash_iterator($d, scalar($obj_cfg->index->@*), sub ($leaf, @path) {
+    # where clause links indices to their values
+    my %where_clause;
+    for my $i (0 .. $#path) {
+      $where_clause{lc $obj_cfg->index->[$i]} = $path[$i];
+    }
+    # set clause links fields to their values; values are transformed from SNMP
+    # structured values to simple values
+    my %set_clause;
+    for my $k (keys %$leaf) {
+      $set_clause{lc $k} = $leaf->{$k}{enum} // $leaf->{$k}{value} // undef;
+    }
+    # invoke callback
+    $cb->(\%where_clause, \%set_clause, @path);
+  });
 }
 
 1;
