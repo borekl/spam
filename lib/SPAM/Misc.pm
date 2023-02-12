@@ -19,7 +19,6 @@ our @ISA = qw(Exporter);
 our @EXPORT = qw(
   tty_message
   compare_ports
-  sql_sites
   sql_site_uses_cp
   multipush
   file_lineread
@@ -34,10 +33,6 @@ our @EXPORT = qw(
   remove_undefs
   js_bool
 );
-
-#=== VARIABLES =================================================================
-
-my %sites_cache;
 
 #=== FUNCTIONS =================================================================
 
@@ -109,42 +104,6 @@ sub compare_ports ($port1, $port2, $mode)
   if($comp_num == 0) { return $comp_type; }
   if(!$mode) { return $comp_num; }
   return $comp_type;
-}
-
-#-------------------------------------------------------------------------------
-# Find possible sites managed by SPAM for "Add" and "Delete" form. We do this by
-# doing "SELECT DISTINCT site" on OUT2CP table. Argument is SQL table to be
-# queried. FIXME: This is horrible mess, probably just make the available sites
-# configuration item instead of this faulty magic.
-sub sql_sites
-{
-  my $table = lc($_[0]);
-  if(exists $sites_cache{$table}) { return $sites_cache{$table}; }
-  my $dbh = db('spam');
-  my $q = "SELECT DISTINCT site FROM $table ORDER BY site ASC";
-  my @result;
-
-  return 'Database connection failed' unless ref $dbh;
-
-  try {
-    my $sth = $dbh->prepare($q);
-    $sth->execute();
-    while(my $x = $sth->fetchrow_arrayref()) {
-      push(@result, $x->[0]);
-    }
-  } catch ($err) {
-    chomp $err;
-    return 'Database query failed (spam, ' . $dbh->errstr . ')';
-  }
-
-  ### UGLY HACK ### FIXME ###
-  push(@result, 'brr');
-  push(@result, 'sto');
-  @result = sort(@result);
-  ###########################
-
-  $sites_cache{$table} = \@result;
-  return \@result;
 }
 
 #-------------------------------------------------------------------------------
