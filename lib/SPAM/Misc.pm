@@ -38,10 +38,6 @@ our @EXPORT = qw(
 #=== FUNCTIONS =================================================================
 
 #-------------------------------------------------------------------------------
-# convenience function for getting DBI handle of the backend database
-sub db { SPAM::Config->instance->get_dbi_handle($_[0]) }
-
-#-------------------------------------------------------------------------------
 # display message on a TTY, do nothing on anything else
 sub tty_message ($msg, @args)
 {
