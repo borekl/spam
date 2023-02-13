@@ -48,7 +48,8 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/Model/SNMP/PortFlags.pm', dest: '../prod/lib/SPAM/Model/SNMP/PortFlags.pm' },
          { nonull: true, src: 'lib/SPAM/Model/SNMP/TrunkVlans.pm', dest: '../prod/lib/SPAM/Model/SNMP/TrunkVlans.pm' },
          { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' },
-         { nonull: true, src: 'lib/SPAM/Model/Arptable.pm', dest: '../prod/lib/SPAM/Model/Arptable.pm' }
+         { nonull: true, src: 'lib/SPAM/Model/Arptable.pm', dest: '../prod/lib/SPAM/Model/Arptable.pm' },
+         { nonull: true, src: 'lib/SPAM/Model/SNMPDbTable.pm', dest: '../prod/lib/SPAM/Model/SNMPDbTable.pm' },
        ]
      },
      www: {
@@ -68,7 +69,8 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/SNMP.pm', dest: '../prod/lib/SPAM/SNMP.pm' },
          { nonull: true, src: 'lib/SPAM/DbTransaction.pm', dest: '../prod/lib/SPAM/DbTransaction.pm' },
          { nonull: true, src: 'lib/SPAM/Role/Switch.pm', dest: '../prod/lib/SPAM/Role/Switch.pm' },
-         { nonull: true, src: 'lib/SPAM/Role/ArpSource.pm', dest: '../prod/lib/SPAM/Role/ArpSource.pm' }
+         { nonull: true, src: 'lib/SPAM/Role/ArpSource.pm', dest: '../prod/lib/SPAM/Role/ArpSource.pm' },
+         { nonull: true, src: 'lib/SPAM/Role/MessageCallback.pm', dest: '../prod/lib/SPAM/Role/MessageCallback.pm' }
        ]
      }
    },
