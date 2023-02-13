@@ -7,10 +7,9 @@ package SPAM::Cmdline;
 use v5.10;
 use Moo;
 with 'MooX::Singleton';
+use experimental 'signatures';
 
-use Getopt::Long;
-
-#=== ATTRIBUTES ==============================================================
+use Getopt::Long qw(GetOptionsFromString);
 
 # enable debugging mode
 has debug => ( is => 'rwp' );
@@ -43,7 +42,7 @@ has hostre => ( is => 'rwp', predicate => 1 );
 has forcehost => ( is => 'rwp', predicate => 1 );
 
 # only get hostinfo, display it and quit
-has hostinfo => ( is => 'rwp', default => 0 );
+has hostinfo => ( is => 'rwp' );
 
 # number of concurrent tasks to be run
 has tasks => (
@@ -69,15 +68,11 @@ has list_hosts => ( is => 'rwp' );
 # no locking needed
 has no_lock => ( is => 'rwp' );
 
-#=== METHODS =================================================================
-
 #-----------------------------------------------------------------------------
 # initialize the object according to the command-line options given
-sub BUILD
+sub BUILD ($self, $args)
 {
-  my ($self) = @_;
-
-  if(!GetOptions(
+  my @options = (
     'host=s'     => sub { $self->_add_host(split(/,/, $_[1])) },
     'hostre=s'   => sub { $self->_set_hostre($_[1]) },
     'force-host=s' => sub {
@@ -110,10 +105,16 @@ sub BUILD
     },
     'debug'      => \$ENV{'SPAM_DEBUG'},
     'help|?'     => sub { help(); exit(0); }
-  )) {
-    exit(1);
+  );
+
+  # if invoked with 'cmdline' argument, use the value of that argument to parse
+  # options from; this is useful for tests
+  if(defined $args->{cmdline}) {
+    if(!GetOptionsFromString($args->{cmdline}, @options)) { exit(1) }
   }
 
+  # otherwise parse options from @ARGV as usual
+  if(!GetOptions(@options)) { exit(1) }
 }
 
 #-----------------------------------------------------------------------------
@@ -161,7 +162,5 @@ Options that initiate special actions and prevent normal processing:
 
 EOHD
 }
-
-#-----------------------------------------------------------------------------
 
 1;
