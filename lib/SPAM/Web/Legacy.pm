@@ -1469,8 +1469,8 @@ sub sql_add_patches ($arg, $site, $c)
   # in case of error caused by duplicate portname, perform collect update
   # summary, which will cause the conflicting entry to be displayed to the user
   if(
-    $re{errdb}{type} eq 'dupkey'
-    && $re{errdb}{constraint} eq 'porttable_pkey'
+    ($re{errdb}{type} // '') eq 'dupkey'
+    && ($re{errdb}{constraint} // '') eq 'porttable_pkey'
   ) {
     $re{search} = sql_update_summary(
       $site,
