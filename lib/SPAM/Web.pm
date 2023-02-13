@@ -34,6 +34,9 @@ sub startup ($self)
     );
   }
 
+  # compressed SVG type
+  $self->app->types->type('svgz' => 'image/svg+xml');
+
   # legacy API (v0) -- this uses URL encoded body parameters and URL parameters;
   # parameter 'r' determines what action is taken (the 'verb') and additional
   # parameters are used by the action code
