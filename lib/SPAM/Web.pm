@@ -50,7 +50,7 @@ sub startup ($self)
 
     # autorization instance
     my $auth = ONdb::Authorize->new(
-      dbh => SPAM::Config->instance->get_dbi_handle('ondbui'),
+      dbh => SPAM::Config->instance->get_mojopg_handle('ondbui')->db->dbh,
       user => $c->stash('userid'),
       tab_assign => 'assign_new',
       tab_access => 'access_new',

@@ -87,7 +87,7 @@ sub sql_select ($dbid, $query, $args, $func=undef, $aref=undef)
 
   # other init
   my %re;
-  my $dbh = SPAM::Config->instance->get_dbi_handle($dbid);
+  my $dbh = SPAM::Config->instance->get_mojopg_handle($dbid)->db->dbh;
 
   # some debugging info
   $re{query} = sql_show_query($query, @$args) if $re{debug};
@@ -1143,7 +1143,7 @@ sub sql_get_cp_by_outlet ($site, $outlet)
 sub sql_update_summary ($iste, $work_info)
 {
   # other variables
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spamui');
+  my $dbh = SPAM::Config->instance->get_mojopg_handle('spamui')->db->dbh;
   my %re;                   # return data
   my @update_summary;       # result
 
@@ -1178,7 +1178,7 @@ sub sql_update_summary ($iste, $work_info)
 sub sql_add_patches ($arg, $site, $c)
 {
   # other variables
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spamui');
+  my $dbh = SPAM::Config->instance->get_mojopg_handle('spamui')->db->dbh;
   my $r;                    # database return value
   my %re;                   # return structure (sent to client as JSON)
 
@@ -1486,7 +1486,7 @@ sub sql_add_patches ($arg, $site, $c)
 # Function to delete (individual) patches.
 sub sql_del_patch ($host, $portname, $debug)
 {
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spamui');
+  my $dbh = SPAM::Config->instance->get_mojopg_handle('spamui')->db->dbh;
 
   # variables
   my (%re, $qry, $r);
@@ -1523,7 +1523,7 @@ sub sql_del_patch ($host, $portname, $debug)
 sub sql_modwire ($host, $m, $n, $location, $debug)
 {
   # other variables
-  my $dbh = SPAM::Config->instance->get_dbi_handle('spamui');
+  my $dbh = SPAM::Config->instance->get_mojopg_handle('spamui')->db->dbh;
   my %re;                   # return data
   my $qry;                  # query
   my $r;                    # query return value

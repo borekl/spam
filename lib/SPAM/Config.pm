@@ -48,7 +48,7 @@ has keys => (
 
 # database connection handles
 # this is used to store Mojo::Pg instances, one for each database binding; this
-# should only be accessed through get_mojopg_handle/get_dbi_handle methods
+# should only be accessed through get_mojopg_handle method
 has dbconn => (
   is => 'ro',
   default => sub { {} },
@@ -111,7 +111,7 @@ sub get_mojopg_handle ($self, $dbid)
   unless exists $self->config()->{'dbconn'};
   my $cfg = $self->config()->{'dbconn'};
 
-  croak qq{Invalid argument in SPAM::Config::get_dbi_handle()} unless $dbid;
+  croak qq{Invalid argument in SPAM::Config::get_mojopg_handle()} unless $dbid;
   croak qq{Undefined database connection id "$dbid"} unless exists $cfg->{$dbid};
   $cfg = $cfg->{$dbid};
 
@@ -131,14 +131,6 @@ sub get_mojopg_handle ($self, $dbid)
 
   # finish
   return $self->dbconn->{$dbid} = $pg;
-}
-
-#-----------------------------------------------------------------------------
-# get DBI handle, this just extracts it from the master Mojo::Pg instance
-sub get_dbi_handle
-{
-  my ($self, $dbid) = @_;
-  $self->get_mojopg_handle($dbid)->db->dbh;
 }
 
 #-----------------------------------------------------------------------------
