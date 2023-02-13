@@ -33,3 +33,6 @@ request headers and authentication.
       ProxyPass "http://127.0.0.1:3000/"
       ProxyPassReverse "http://127.0.0.1:3000/"
     </Location>
+
+At this point, the code uses unreleased `Mojo::Pg::Database::Role::TxnMethods`
+module that adds `DBIx::Connector` style transaction wrapper.
