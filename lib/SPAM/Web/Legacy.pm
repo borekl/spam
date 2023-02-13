@@ -1448,7 +1448,7 @@ sub sql_add_patches ($arg, $site, $c)
   };
 
   # commit transaction
-  if($re{status} ne 'error') {
+  if(($re{status} // '') ne 'error') {
     $r = $dbh->commit();
     if(!$r) {
       $re{errdb} = pg_errmsg_parse($dbh->errstr());
