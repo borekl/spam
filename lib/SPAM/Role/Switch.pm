@@ -297,7 +297,7 @@ sub _build_port_stats ($self)
     #--- used ports
     # ports that were used within period defined by "inactivethreshold2"
     # configuration parameter
-    if($knownports) {
+    if($knownports && $self->ports_db->get_port($portname, 'age')) {
       if($self->ports_db->get_port($portname, 'age') < 2592000) {
         $stat{p_used}++;
       }
