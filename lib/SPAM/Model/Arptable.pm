@@ -1,6 +1,6 @@
 package SPAM::Model::Arptable;
 
-# code for interfacing with the 'arptable' database table; note that unlike
+# code for interfacing with the 'arptable2' database table; note that unlike
 # mactable, arptable is not sectioned by source hosts -- it is one undivided
 # entity and it needs to be updated as such
 
@@ -21,7 +21,7 @@ sub _build__arpdb ($self)
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my %arptable;
 
-  my $r = $db->select('arptable');
+  my $r = $db->select('arptable2');
   while(my $row = $r->hash) {
     $arptable{$row->{ip}} = $row;
   }
