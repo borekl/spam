@@ -458,3 +458,6 @@ date         component      description
                             that cause getting MACs from switches to last
                             very long time. The whole run of all switches
                             went from 72 min. down to less than 6 min.
+
+
+FOR FURTHER LOG OF CHANGES SEE GIT LOG
