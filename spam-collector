@@ -182,6 +182,12 @@ try {
     die "OK\n";
   }
 
+  # no polling to be done because inhibited by incompatible command-line option
+  if($cmd->inhibit_poll) {
+    tty_message("[main] Polling inhibited (%s)\n", $cmd->inhibit_poll);
+    die "OK\n";
+  }
+
   # host instance creation helper
   my $ht = sub ($h, $roles) {
     SPAM::Host->new(

@@ -68,6 +68,9 @@ has list_hosts => ( is => 'rwp' );
 # no locking needed
 has no_lock => ( is => 'rwp' );
 
+# normal polling behaviour should be inhibited
+has inhibit_poll => ( is => 'rwp' );
+
 #-----------------------------------------------------------------------------
 # initialize the object according to the command-line options given
 sub BUILD ($self, $args)
@@ -82,26 +85,35 @@ sub BUILD ($self, $args)
     'switch!'    => sub { $self->_set_switch($_[1]) },
     'arptable!'  => sub { $self->_set_arptable($_[1]) },
     'mactable!'  => sub { $self->_set_mactable($_[1]) },
-    'maint'      => sub { $self->_set_maintenance($_[1]) },
+    'maint'      => sub {
+      $self->_set_maintenance($_[1]);
+      $self->_set_inhibit_poll('--maint');
+    },
     'quick'      => sub { $self->_set_mactable(0); $self->_set_arptable(0); },
     'hostinfo',  => sub { $self->_set_hostinfo(1) },
     'arpservers' => sub {
       $self->_set_list_arpservers($_[1]);
       $self->_set_no_lock(1);
+      $self->_set_inhibit_poll('--arpservers');
     },
     'hosts'      => sub {
       $self->_set_list_hosts($_[1]);
       $self->_set_no_lock(1);
+      $self->_set_inhibit_poll('--hosts');
     },
     'tasks=i'    => sub {
       if($_[1] < 1 || $_[1] > 16) { die '--tasks must be between 1 and 16'; }
       $self->_set_tasks($_[1]);
     },
     'autoreg'    => sub { $self->_set_autoreg($_[1]) },
-    'remove=s'   => sub { $self->_set_remove_host($_[1]) },
+    'remove=s'   => sub {
+      $self->_set_remove_host($_[1]);
+      $self->_set_inhibit_poll('--remove');
+    },
     'worklist'   => sub {
       $self->_set_list_worklist($_[1]);
       $self->_set_no_lock(1);
+      $self->_set_inhibit_poll('--worklist');
     },
     'debug'      => \$ENV{'SPAM_DEBUG'},
     'help|?'     => sub { help(); exit(0); }
