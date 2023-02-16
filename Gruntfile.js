@@ -50,6 +50,8 @@ module.exports = function(grunt)
          { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' },
          { nonull: true, src: 'lib/SPAM/Model/Arptable.pm', dest: '../prod/lib/SPAM/Model/Arptable.pm' },
          { nonull: true, src: 'lib/SPAM/Model/SNMPDbTable.pm', dest: '../prod/lib/SPAM/Model/SNMPDbTable.pm' },
+         { nonull: true, src: 'migrations/1/up.sql' },
+         { nonull: true, src: 'migrations/1/down.sql' },
        ]
      },
      www: {
