@@ -89,6 +89,26 @@ try {
   die "Database binding 'spam' not defined\n"
   unless exists $cfg->config()->{dbconn}{spam};
 
+  # database schema migration
+  if(defined $cmd->migrate) {
+    my $pg = $cfg->get_mojopg_handle('spam');
+    my $migrations = Mojo::Pg::Migrations->new(pg => $pg);
+    $migrations->from_dir('migrations');
+    my ($active, $latest) = ($migrations->active, $migrations->latest);
+    my $requested = defined $cmd->migrate ? $cmd->migrate : $migrations->latest;
+    if($requested eq '') { $requested = $migrations->latest }
+    tty_message(
+      "[main] Active migration is %d, latest is %d, requested is = %s\n",
+      $active, $latest, $requested
+    );
+    if($active == $requested) {
+      tty_message("[main] No database schema migration needed\n");
+    } else {
+      $migrations->migrate($requested);
+    }
+    die "OK\n";
+  }
+
   # run maintenance when user told us to do so
   if($cmd->maintenance()) {
     tty_message("[main] Maintaining database (started)\n");

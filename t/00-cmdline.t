@@ -83,5 +83,18 @@ is($cmd, object {
   call inhibit_poll => '--worklist';
 }, 'Special action switch --worklist');
 
+# switch --migrate
+$cmd = SPAM::Cmdline->new(cmdline => '--migrate');
+is($cmd, object {
+  call migrate => '';
+  call inhibit_poll => '--migrate';
+}, 'Special action switch --migrate');
+
+$cmd = SPAM::Cmdline->new(cmdline => '--migrate=0');
+is($cmd, object {
+  call migrate => 0;
+  call inhibit_poll => '--migrate';
+}, 'Special action switch --migrate=0');
+
 # finish
 done_testing();

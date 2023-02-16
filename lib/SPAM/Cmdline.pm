@@ -10,6 +10,7 @@ with 'MooX::Singleton';
 use experimental 'signatures';
 
 use Getopt::Long qw(GetOptionsFromString);
+use Scalar::Util qw(looks_like_number);
 
 # enable debugging mode
 has debug => ( is => 'rwp' );
@@ -71,6 +72,10 @@ has no_lock => ( is => 'rwp' );
 # normal polling behaviour should be inhibited
 has inhibit_poll => ( is => 'rwp' );
 
+# migrate database schema // '' means migrate to the newest version, otherwise
+# the value is considered a version number to migrate to
+has migrate => ( is => 'rwp');
+
 #-----------------------------------------------------------------------------
 # initialize the object according to the command-line options given
 sub BUILD ($self, $args)
@@ -114,6 +119,14 @@ sub BUILD ($self, $args)
       $self->_set_list_worklist($_[1]);
       $self->_set_no_lock(1);
       $self->_set_inhibit_poll('--worklist');
+    },
+    'migrate:s'  => sub {
+      if($_[1] eq '' || (looks_like_number($_[1]) && $_[1] >= 0)) {
+        $self->_set_migrate($_[1]);
+        $self->_set_inhibit_poll('--migrate');
+      } else {
+        die '--migrate value must be either non-negative integer or not present';
+      }
     },
     'debug'      => \$ENV{'SPAM_DEBUG'},
     'help|?'     => sub { help(); exit(0); }
@@ -170,6 +183,7 @@ Options that initiate special actions and prevent normal processing:
   --arpservers    list known ARP servers and exit
   --worklist      display list of switches that would be processed and exit
   --hosts         list known hosts and exit
+  --migrate[=N]   upgrade or downgrade database schema
   --help, -?      this help
 
 EOHD
