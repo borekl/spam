@@ -135,7 +135,7 @@ sub _add_host
 sub help
 {
   print <<EOHD;
-Usage: spam.pl [OPTIONS]
+Usage: spam-collector [OPTIONS]
 
 Options that modify standard processing run:
 
