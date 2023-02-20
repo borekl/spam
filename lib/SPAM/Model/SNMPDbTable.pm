@@ -103,7 +103,7 @@ sub save ($self)
   # other variables
   my $host = $self->host;
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
-  my %stats = ( insert => 0, update => 0, delete => 0 );
+  my %stats = ( insert => 0, update => 0, delete => 0, touch => 0 );
   my $now = time;
 
   $self->_dbg(
@@ -159,7 +159,7 @@ sub save ($self)
           $tx->update($self->_dbg_db(
             'update', $table, \%update, { host => $self->host->name, %$where }
           ));
-          $stats{'update'} += $record_changed;
+          if($record_changed) { $stats{'update'}++ }  else {$stats{'touch'}++ }
           # set the age of the entry to zero, so it's not selected for deletion
           $old_value->{'chg_age'} = 0;
         }
@@ -181,8 +181,8 @@ sub save ($self)
 
     # debug output
     $self->_dbg(
-      'TRANSACTION DONE (%d inserts, %d updates, %d deletes)',
-      @stats{'insert','update', 'delete'}
+      'TRANSACTION DONE (%d inserts, %d updates, %d deletes, %d touches)',
+      @stats{'insert','update', 'delete', 'touch'}
     );
 
   }

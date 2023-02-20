@@ -125,8 +125,8 @@ sub save_snmp_data ($self)
           $self->_m('Saving %s (failed)', $obj->name);
         } else {
           $self->_m(
-            'Saving %s (finished, i=%d,u=%d,d=%d)',
-            $obj->name, @{$r}{qw(insert update delete)}
+            'Saving %s (finished, i=%d,u=%d,d=%d,t=%d)',
+            $obj->name, @{$r}{qw(insert update delete touch)}
           );
         }
       }
