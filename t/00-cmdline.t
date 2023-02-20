@@ -96,5 +96,11 @@ is($cmd, object {
   call inhibit_poll => '--migrate';
 }, 'Special action switch --migrate=0');
 
+# switch --nolock
+$cmd = SPAM::Cmdline->new(cmdline => '--nolock');
+is($cmd, object {
+  call no_lock => T();
+}, 'Special switch --nolock');
+
 # finish
 done_testing();

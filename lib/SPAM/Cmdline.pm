@@ -128,6 +128,7 @@ sub BUILD ($self, $args)
         die '--migrate value must be either non-negative integer or not present';
       }
     },
+    'nolock'     => sub { $self->_set_no_lock(1) },
     'debug'      => \$ENV{'SPAM_DEBUG'},
     'help|?'     => sub { help(); exit(0); }
   );
