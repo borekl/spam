@@ -146,10 +146,20 @@ sub save ($self)
 
         # update
         if($old_value) {
+
+          my $record_changed = 0;
+          foreach my $k (keys %$set) {
+            if(
+              defined $set->{$k} != defined $set->{$k}
+              && $set->{$k} ne $old_value->{$k}
+            ) { $record_changed = 1; last; }
+          }
+          my %update = (fresh => 't', chg_when => \'current_timestamp');
+          %update = (%update, %$set) if $record_changed;
           $tx->update($self->_dbg_db(
             'update', $table, \%update, { host => $self->host->name, %$where }
           ));
-          $stats{'update'}++;
+          $stats{'update'} += $record_changed;
           # set the age of the entry to zero, so it's not selected for deletion
           $old_value->{'chg_age'} = 0;
         }
@@ -157,7 +167,7 @@ sub save ($self)
         # insert
         else {
           $tx->insert($self->_dbg_db(
-            'insert', $table, { host => $host->name, %$set, %$where }
+            'insert', $table, { host => $host->name, %$set, %$where, fresh => 't' }
           ));
           $stats{'insert'}++;
         }
