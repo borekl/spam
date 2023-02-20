@@ -69,7 +69,7 @@ sub _dbg ($self, $fmt=undef, @args)
 sub _dbg_db($self, $op, @args)
 {
   my $fh = $self->_dbg_open;
-  return unless $fh;
+  return @args unless $fh;
 
   # generate query string and list of values from Mojo::Pg::Database method
   # arguments
