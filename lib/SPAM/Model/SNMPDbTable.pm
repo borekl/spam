@@ -32,7 +32,10 @@ has obj => (
 has _db => ( is => 'lazy' );
 
 # debugging moniker for DebugFile role
-has _debug_filename => ( is => 'ro', default => 'save_snmp_object' );
+has _debug_filename => (
+  is => 'lazy',
+  default => sub ($s) { 'save_snmp_object.' . $s->obj->name },
+);
 with 'SPAM::Role::DebugFile';
 
 #-------------------------------------------------------------------------------
