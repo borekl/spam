@@ -86,7 +86,8 @@ module.exports = function(grunt)
           { nonull: true, src: 'lib/SPAM/DbTransaction.pm', dest: '../prod/lib/SPAM/DbTransaction.pm' },
           { nonull: true, src: 'lib/SPAM/Role/Switch.pm', dest: '../prod/lib/SPAM/Role/Switch.pm' },
           { nonull: true, src: 'lib/SPAM/Role/ArpSource.pm', dest: '../prod/lib/SPAM/Role/ArpSource.pm' },
-          { nonull: true, src: 'lib/SPAM/Role/MessageCallback.pm', dest: '../prod/lib/SPAM/Role/MessageCallback.pm' }
+          { nonull: true, src: 'lib/SPAM/Role/MessageCallback.pm', dest: '../prod/lib/SPAM/Role/MessageCallback.pm' },
+          { nonull: true, src: 'lib/SPAM/Role/DebugFile.pm', dest: '../prod/lib/SPAM/Role/DebugFile.pm' },
         ]
       }
     },
