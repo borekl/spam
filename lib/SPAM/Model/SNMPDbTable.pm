@@ -32,8 +32,9 @@ has obj => (
 # data loaded from backend database
 has _db => ( is => 'lazy' );
 
-# debugging filehandle
-has _debug_fh => ( is => 'rw' );
+# debugging moniker for DebugFile role
+has _debug_filename => ( is => 'ro', default => 'save_snmp_object' );
+with 'SPAM::Role::DebugFile';
 
 #-------------------------------------------------------------------------------
 # load data from backend database
@@ -64,36 +65,6 @@ sub _build__db ($self)
 }
 
 #-------------------------------------------------------------------------------
-sub _dbg ($self, $fmt=undef, @args)
-{
-  my $fh;
-
-  # do nothing if debugging not turned on
-  return unless $ENV{SPAM_DEBUG};
-
-  # open debug filehandle
-  if(!$self->_debug_fh) {
-    open($fh, '>>', "debug.save_snmp_object.$$.log");
-    printf $fh "==> START OF DEBUG // sql_save_snmp_object(%s,%s)\n",
-      $self->host->name, $self->obj->name;
-    $self->_debug_fh($fh);
-  } else {
-    $fh = $self->_debug_fh;
-  }
-
-  # close filehandle on no input
-  if(!$fmt) {
-    $self->_dbg('END OF DEBUG');
-    close($self->_debug_fh);
-    $self->_debug_fh(undef);
-    return;
-  }
-
-  # log debug message
-  printf $fh "--> $fmt\n", @args;
-}
-
-#-------------------------------------------------------------------------------
 # internal code to drop old entries, this is configured by 'dbmaxage' key
 # in MIB object configuration
 sub _delete_old_entries ($self, $tx)
@@ -114,7 +85,9 @@ sub _delete_old_entries ($self, $tx)
       $where_clause{lc $self->obj->index->[$i]} = $path[$i];
     }
 
-    $tx->delete('snmp_' . lc $self->obj->name, \%where_clause);
+    $tx->delete($self->_dbg_db(
+      'delete', 'snmp_' . lc $self->obj->name, \%where_clause
+    ));
     $count++;
   });
 
@@ -130,7 +103,12 @@ sub save ($self)
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my %stats = ( insert => 0, update => 0, delete => 0 );
   my $now = time;
+  my $sqla = SQL::Abstract::Pg->new;
 
+  $self->_dbg(
+    'FUNCTION: sql_save_snmp_object(%s,%s)',
+    $self->host->name, $self->obj->name
+  );
   $self->_dbg('REFERENCE TIME: %s', scalar(localtime($now)));
 
   try {
@@ -157,7 +135,9 @@ sub save ($self)
 
       # clear the 'fresh' flag on all entries
       my $table = 'snmp_' . lc $self->obj->name;
-      $tx->update($table, { fresh => 'f' }, { host => $self->obj->name });
+      $tx->update($self->_dbg_db(
+        'update', $table, { fresh => 'f' }, { host => $self->obj->name }
+      ));
 
       # commence iteration
       $host->snmp->iterate_data($self->obj->name, sub ($where, $set, @idx) {
@@ -165,7 +145,9 @@ sub save ($self)
 
         # update
         if($old_value) {
-          $tx->update($table, $set, { host => $self->obj->name, %$where });
+          $tx->update($self->_dbg_db(
+            'update', $table, $set, { host => $self->obj->name, %$where }
+          ));
           $stats{'update'}++;
           # set the age of the entry to zero, so it's not selected for deletion
           $old_value->{'chg_age'} = 0;
@@ -173,7 +155,9 @@ sub save ($self)
 
         # insert
         else {
-          $tx->insert($table, { host => $host->name, %$set, %$where });
+          $tx->insert($self->_dbg_db(
+            'insert', $table, { host => $host->name, %$set, %$where }
+          ));
           $stats{'insert'}++;
         }
       });
@@ -199,7 +183,7 @@ sub save ($self)
   }
 
   # finish
-  $self->_dbg;
+  $self->_dbg_close;
   return \%stats;
 }
 
