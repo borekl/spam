@@ -11,7 +11,6 @@ use Carp;
 use Feature::Compat::Try;
 use Data::Dumper;
 use SPAM::Config;
-use SPAM::DbTransaction;
 use SPAM::Misc qw(hash_create_index hash_iterator hash_index_access);
 
 # SPAM::Host instance, this contains the data retrieved from SNMP
