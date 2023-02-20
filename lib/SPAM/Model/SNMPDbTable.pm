@@ -82,7 +82,7 @@ sub _delete_old_entries ($self, $tx)
     return unless $leaf->{chg_age} > $self->obj->dbmaxage;
 
     # where clause links indices to their values
-    my %where_clause = ( host => $self->obj->name );
+    my %where_clause = ( host => $self->host->name );
     for my $i (0 .. $#path) {
       $where_clause{lc $self->obj->index->[$i]} = $path[$i];
     }
@@ -137,7 +137,7 @@ sub save ($self)
       # clear the 'fresh' flag on all entries
       my $table = 'snmp_' . lc $self->obj->name;
       $tx->update($self->_dbg_db(
-        'update', $table, { fresh => 'f' }, { host => $self->obj->name }
+        'update', $table, { fresh => 'f' }, { host => $self->host->name }
       ));
 
       # commence iteration
@@ -147,7 +147,7 @@ sub save ($self)
         # update
         if($old_value) {
           $tx->update($self->_dbg_db(
-            'update', $table, $set, { host => $self->obj->name, %$where }
+            'update', $table, \%update, { host => $self->host->name, %$where }
           ));
           $stats{'update'}++;
           # set the age of the entry to zero, so it's not selected for deletion
