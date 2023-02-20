@@ -147,13 +147,18 @@ sub save ($self)
         # update
         if($old_value) {
 
+          # find out if the record has changed or not; the comparison is from
+          # new value's ($set) point of view; everything that's not in $set
+          # is ignored
           my $record_changed = 0;
           foreach my $k (keys %$set) {
-            if(
-              defined $set->{$k} != defined $set->{$k}
-              && $set->{$k} ne $old_value->{$k}
-            ) { $record_changed = 1; last; }
+            next if !defined $old_value->{$k} && !defined $set->{$k};
+            if(defined $old_value->{$k} != defined $set->{$k}) {
+              $record_changed = 1; last;
+            }
+            if($set->{$k} ne $old_value->{$k}) { $record_changed = 1; last; }
           }
+
           my %update = (fresh => 't', chg_when => \'current_timestamp');
           %update = (%update, %$set) if $record_changed;
           $tx->update($self->_dbg_db(

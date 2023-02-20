@@ -364,7 +364,7 @@ sub sql_get_hwinfo ($re, $host)
     'spamui',
     "SELECT * FROM snmp_entPhysicalTable s
      LEFT JOIN snmp_entAliasMappingTable USING ( host, entPhysicalIndex )
-     WHERE s.host = ?",
+     WHERE s.host = ? AND s.fresh = 't'",
      $host
   );
   if($local_re->{status} eq 'ok') {
