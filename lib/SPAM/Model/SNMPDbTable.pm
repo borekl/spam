@@ -105,7 +105,6 @@ sub save ($self)
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my %stats = ( insert => 0, update => 0, delete => 0 );
   my $now = time;
-  my $sqla = SQL::Abstract::Pg->new;
 
   $self->_dbg(
     'FUNCTION: sql_save_snmp_object(%s,%s)',
