@@ -4,8 +4,6 @@ package SPAM::Role::Switch;
 # functionality
 
 use Moo::Role;
-use strict;
-use warnings;
 use experimental 'signatures';
 
 use Carp;

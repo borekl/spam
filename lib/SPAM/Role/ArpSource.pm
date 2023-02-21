@@ -4,8 +4,6 @@ package SPAM::Role::ArpSource;
 # backend database (through SPAM::Model::Arptable class)
 
 use Moo::Role;
-use strict;
-use warnings;
 use experimental 'signatures';
 
 use Socket;
