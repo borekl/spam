@@ -18,10 +18,7 @@ use experimental 'signatures';
 our (@ISA, @EXPORT);
 
 @ISA = qw(Exporter);
-@EXPORT = qw(
-  snmp_get_arptable
-  snmp_get_object
-);
+@EXPORT = qw( snmp_get_object );
 
 #-------------------------------------------------------------------------------
 # read SNMP command's output line by line; the primary purpose of this code is
