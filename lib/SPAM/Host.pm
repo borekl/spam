@@ -166,7 +166,7 @@ sub is_rebooted ($self)
 sub _build_snmp_profile ($self)
 {
   my $cfg = SPAM::Config->instance;
-  my $snmp = $cfg->get_snmp_config($self->name);
+  my $snmp = $cfg->get_snmp_profile($self->name);
   return $snmp->{profile};
 }
 

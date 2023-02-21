@@ -200,8 +200,10 @@ sub worklist ($self, $cb=undef)
 }
 
 #-----------------------------------------------------------------------------
-# Return SNMP configuration block based on supplied hostname
-sub get_snmp_config
+# Return SNMP configuration block (refered to as 'profile') based on supplied
+# hostname and additional conditions specified in profiles. The profiles are
+# tried sequentially and the first matching profile is returned.
+sub get_snmp_profile
 {
   my ($self, $host) = @_;
   my $cfg = $self->config;
@@ -210,7 +212,7 @@ sub get_snmp_config
   return undef if
     !$cfg->{snmp}          # snmp section does not exist at all
     || !ref $cfg->{snmp}   # snmp section is scalar
-    || !@{$cfg->{snmp}};   # snmp section is empty
+    || !$cfg->{snmp}->@*;   # snmp section is empty
 
   # iterate over the snmp config entries
   foreach my $entry ($cfg->{snmp}->@*) {
@@ -224,7 +226,7 @@ sub get_snmp_config
     # if the entry has no 'hostre' field, it always matches
     return $entry if !$entry->{hostre};
 
-    foreach my $re (@{$entry->{hostre}}) {
+    foreach my $re ($entry->{hostre}->@*) {
       return $entry if $host =~ /$re/i;
     }
   }
@@ -249,7 +251,7 @@ sub get_snmp_command
   my $ctx  = $arg{context} // '';
 
   # get configuration
-  my $snmp = $self->get_snmp_config($host);
+  my $snmp = $self->get_snmp_profile($host);
   die "No valid SNMP configuration for host $host" if !$snmp;
 
   # abort on misconfiguration
