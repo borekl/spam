@@ -393,7 +393,7 @@ sub poll_switch ($self, %args)
       # this to load product MIBs that translate sysObjectID into nice textual
       # platform identifiers; note that the retrieved values will be stored
       # under the first MIB name in the array @$mib
-      push(@mib_list, @{$obj->addmib});
+      push(@mib_list, $obj->addmib->@*);
 
       # 'arptable' is only relevant for reading arptables from _routers_; here
       # we just skip it
@@ -404,15 +404,13 @@ sub poll_switch ($self, %args)
       # known VLANs; this means that vtpVlanName must be already retrieved; this
       # is required for reading MAC addresses from switch via BRIDGE-MIB
       if($obj->has_flag('vlans')) {
-        @vlans = @{$self->snmp->active_vlans};
+        @vlans = $self->snmp->active_vlans->@*;
         if(!@vlans) { @vlans = ( undef ); }
       }
 
       # 'vlan1' flag; this is similar to 'vlans', but it only iterates over
       # value of 1; these two are mutually exclusive
-      if($obj->has_flag('vlan1')) {
-        @vlans = ( 1 );
-      }
+      @vlans = ( 1 ) if $obj->has_flag('vlan1');
 
       # 'mactable' MIBs should only be read when --mactable switch is active
       if($obj->has_flag('mactable')) {
