@@ -1,4 +1,4 @@
-package SPAM::MIB;
+package SPAM::Config::MIB;
 
 # encapsulate SNMP MIB configuration
 
@@ -8,7 +8,7 @@ use integer;
 use strict;
 use experimental 'signatures';
 
-use SPAM::MIBobject;
+use SPAM::Config::MIBobject;
 
 #=== ATTRIBUTES ==============================================================
 
@@ -22,10 +22,12 @@ has name => (
 has config => (
   is => 'ro',
   required => 1,
-  isa => sub { die 'SPAM::MIB::config must be a hashref' unless ref $_[0] }
+  isa => sub {
+    die 'SPAM::Config::MIB::config must be a hashref' unless ref $_[0]
+  }
 );
 
-# list of managed objects (SPAM::MIBobject instances)
+# list of managed objects (SPAM::Config::MIBobject instances)
 has objects => (
   is => 'lazy',
   builder => '_load_objects',
@@ -60,7 +62,7 @@ sub _load_objects ($self)
       $def{$attr} = $o->{$attr} if exists $o->{$attr};
     }
 
-    push(@objects, SPAM::MIBobject->new(%def));
+    push(@objects, SPAM::Config::MIBobject->new(%def));
   }
 
   return \@objects;

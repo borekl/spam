@@ -1,4 +1,4 @@
-package SPAM::Keys;
+package SPAM::Config::Keys;
 
 # Module for handling keys/passwords used in configuration file. The main
 # purpose of this module is to move the security critical data into its own

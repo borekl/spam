@@ -63,7 +63,7 @@ sub has_role($self, $role) { scalar grep { $_ eq $role } $self->roles->@* }
 # add SNMP object
 sub add_snmp_object ($self, $mib, $vlan, $object, $data)
 {
-  # MIB can be specified both by plain name or by SPAM::MIB instance ref
+  # MIB can be specified both by plain name or by SPAM::Config::MIB instance ref
   $mib = $mib->name if ref $mib;
 
   if($vlan) {

@@ -18,8 +18,8 @@ use Scalar::Util qw(reftype);
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
 use Mojo::Pg;
-use SPAM::MIB;
-use SPAM::Keys;
+use SPAM::Config::MIB;
+use SPAM::Config::Keys;
 
 # configuration file
 has config_file => (
@@ -37,12 +37,12 @@ has _config_dir => (
 # parsed configuration
 has config => ( is => 'lazy', predicate => 1 );
 
-# keys, instance of SPAM::Keys that stores various security-critical tokens
-# such as passwords, secrets, community strings etc
+# keys, instance of SPAM::Config::Keys that stores various security-critical
+# tokens such as passwords, secrets, community strings etc
 has keys => (
   is => 'ro',
   lazy => 1,
-  default => sub ($s) { SPAM::Keys->new(keys_dir => $s->_config_dir) },
+  default => sub ($s) { SPAM::Config::Keys->new(keys_dir => $s->_config_dir) },
   predicate => 1
 );
 
@@ -64,7 +64,7 @@ has hosts => ( is => 'lazy' );
 # for mapping IPs to MACs
 has arpservers => ( is => 'lazy' );
 
-# list of MIBs (SPAM::MIB instances)
+# list of MIBs (SPAM::Config::MIB instances)
 has mibs => ( is => 'lazy' );
 
 # known ports, on following switches unpatched ports will be considered
@@ -353,7 +353,7 @@ sub entity_profile
 }
 
 #-----------------------------------------------------------------------------
-# Convert MIB configuration into SPAM::MIB instances
+# Convert MIB configuration into SPAM::Config::MIB instances
 sub _build_mibs
 {
   my $self = shift;
@@ -361,7 +361,7 @@ sub _build_mibs
   my @result;
 
   foreach my $mib (@$cfg) {
-    push(@result, SPAM::MIB->new(
+    push(@result, SPAM::Config::MIB->new(
       name => $mib->{'mib'},
       config => $mib
     ));

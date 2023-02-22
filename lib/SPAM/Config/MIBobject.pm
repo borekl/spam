@@ -1,4 +1,4 @@
-package SPAM::MIBobject;
+package SPAM::Config::MIBobject;
 
 # encapsulate SNMP MIB object configuration
 
@@ -20,7 +20,7 @@ has config => (
   is => 'ro',
   required => 1,
   isa => sub {
-    die 'SPAM::MIBobject::config must be a hashref' unless ref $_[0]
+    die 'SPAM::Config::MIBobject::config must be a hashref' unless ref $_[0]
   }
 );
 
