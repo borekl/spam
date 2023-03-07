@@ -284,11 +284,7 @@ sub _build_port_stats ($self)
       $knownports
       && $self->snmp->iftable($portname, 'ifOperStatus') == 1
       && !$self->port_to_cp->exists($portname)
-      && !(
-        exists $self->snmp->{'CISCO-CDP-MIB'}
-        && exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
-        && exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
-      )
+      && !$self->snmp->cdp_port($if)
     ) {
       $stat{p_illact}++;
     }

@@ -32,6 +32,7 @@ with 'SPAM::Model::SNMP::PortFlags';
 with 'SPAM::Model::SNMP::Boottime';
 with 'SPAM::Model::SNMP::VmMembershipTable';
 with 'SPAM::Model::SNMP::CafSessionTable';
+with 'SPAM::Model::SNMP::CdpTable';
 
 # return list of MIBs loaded in this instance
 sub mibs ($self) { keys %{$self->_d} }
