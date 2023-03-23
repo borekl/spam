@@ -23,7 +23,8 @@ has porttable => ( is => 'ro', builder => 1 );
 # Load porttable from the backend database
 sub _build_porttable ($self)
 {
-  my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
+  my $cfg = SPAM::Config->instance;
+  my $db = $cfg->get_mojopg_handle('spam')->db;
   croak 'Database connection failed (spam)' unless ref $db;
 
   # perform database query
@@ -35,7 +36,7 @@ sub _build_porttable ($self)
   my %p;
   while(my $row = $r->array) {
     my ($port, $cp) = @$row;
-    my $site = substr($self->hostname, 0, 3);
+    my $site = $cfg->site_from_hostname($self->hostname);
     $p{$port} = { cp => $cp, site => $site };
   }
 
@@ -51,7 +52,8 @@ sub exists ($self, $p) { exists $self->porttable->{$p} }
 # insert new entry into the porttable
 sub insert ($self, $tx, %args)
 {
-  my $site = substr($args{host}, 0, 3);
+  my $cfg = SPAM::Config->instance;
+  my $site = $cfg->site_from_hostname($args{host});
   $tx->insert('porttable', {
     host     => $args{host},
     portname => $args{port},

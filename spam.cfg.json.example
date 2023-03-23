@@ -70,9 +70,19 @@
   #  "somehost" : { "community" : "someCommunity" }
   #},
 
-  #--- consider a site to be another site (ugly hack)
+  #--- mapping between hostname and site code
 
-  "siteconv" : { "ric" : "rcn" },
+  "sitecode": [
+    [ "PZMSC",  "PZMSC" ],  [ "str", "PZMSC" ],
+    [ "A0SHQ",  "A0SHQ" ],  [ "sto", "A0SHQ" ],
+    [ "PHJAZ",  "PHJAZ" ],  [ "rcn", "PHJAZ" ],
+    [ "BMSCB",  "BMSCB" ],  [ "brr", "BMSCB" ],
+    [ "A3THP",  "A3THP" ],  [ "pap", "A3THP" ],
+    [ "A0SIT",  "A0SIT" ],  [ "sit", "A0SIT" ],
+    [ "BMCEJ",  "BMCEJ" ],  [ "bce", "BMCEJ" ],
+    [ "CRPRU",  "CRPRU" ],  [ "chr", "CRPRU" ],
+    [ "HKVOP",  "HKVOP" ],  [ "hkv", "HKVOP" ],
+  ],
 
   #---------------------------------------------------------------------------
   #--- SNMP settings ---------------------------------------------------------

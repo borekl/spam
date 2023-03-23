@@ -311,7 +311,7 @@ sub autoregister ($self)
   $self->_m('Running auto-registration (started)');
 
   # get site-code from hostname
-  my $site = SPAM::Config->instance->site_conv($self->name);
+  my $site = SPAM::Config->instance->site_from_hostname($self->name);
 
   # wrap the update in transaction
   $db->txn(sub ($tx) {

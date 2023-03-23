@@ -312,17 +312,18 @@ sub snmp_community
 }
 
 #-----------------------------------------------------------------------------
-# Convert hostname (e.g. 'vdcS02c') to site code (e.g. 'vin')
-sub site_conv
+sub site_from_hostname ($self, $hostname)
 {
-  my ($self, $host) = @_;
   my $cfg = $self->config;
 
-  $host =~ /^(...)/;
-  my $hc = lc($1);
-  my $site = $cfg->{'siteconv'}{$hc};
-  if(!$site) { $site = $hc; }
-  return $site;
+  if($cfg->{sitecode} ) {
+    foreach my $e ($cfg->{sitecode}->@*) {
+      my $match = $e->[0];
+      return $e->[1] if $hostname =~ /^$match/i;
+    }
+  }
+
+  die "No site mapping for host '$hostname'";
 }
 
 #-----------------------------------------------------------------------------
