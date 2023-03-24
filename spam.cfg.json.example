@@ -84,6 +84,18 @@
     [ "HKVOP",  "HKVOP" ],  [ "hkv", "HKVOP" ],
   ],
 
+  #--- site list // list of supported sites, this used to be loaded from ONdb
+  #--- but since ONdb is on the way out, we need to provide it here (at least
+  #--- until authoritative source is found)
+
+  "sites": {
+    "SITE01": "Site 01",
+    "SITE02": "Site 02",
+    "SITE03": "Site 03",
+    "SITE04": "Site 04",
+    "SITE05": "Site 05",
+  },
+
   #---------------------------------------------------------------------------
   #--- SNMP settings ---------------------------------------------------------
   #---------------------------------------------------------------------------

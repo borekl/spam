@@ -999,23 +999,6 @@ sub sql_portinfo ($site, $host, $portname)
 }
 
 #-------------------------------------------------------------------------------
-sub sql_aux_data
-{
-  my %re;
-
-  # list of sites
-  $re{sites} = sql_select(
-    'ondb',
-    'SELECT code, description FROM site ORDER BY code',
-    undef,
-    undef,
-    1
-  );
-
-  return \%re;
-}
-
-#-------------------------------------------------------------------------------
 # Value normalizer for the Add Patches form.
 sub addp_normalize ($type, $value)
 {
@@ -1643,7 +1626,29 @@ sub usecp ($c) {
 }
 
 #-------------------------------------------------------------------------------
-sub aux ($c) { $c->render(json => sql_aux_data()) }
+# return list of sites; this version of code emulates the previous version that
+# used to pull the data out of external source (ONdb)
+sub aux ($c) {
+  my $cfg = SPAM::Config->instance->config;
+  my %response = (
+    sites => {
+      status => 'ok', fields => [ 'code', 'description' ],
+      result => []
+    }
+  );
+
+  # check configuration exists
+  return $c->render(json => { sites => {
+    status => 'error', errmsg => 'Configuration error (no sites defined)'
+  }}) unless exists $cfg->{sites} && ref $cfg->{sites};
+
+  # convert hash into an array
+  foreach my $site (sort keys $cfg->{sites}->%*) {
+    push($response{sites}{result}->@*, [ $site, $cfg->{sites}{$site} ]);
+  }
+
+  $c->render(json => \%response);
+}
 
 #-------------------------------------------------------------------------------
 sub addpatch ($c) {
