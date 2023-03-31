@@ -38,10 +38,10 @@ module.exports = function(grunt)
           { nonull: true, src: 'lib/SPAM/Config.pm', dest: '../prod/lib/SPAM/Config.pm' },
           { nonull: true, src: 'lib/SPAM/Entity.pm', dest: '../prod/lib/SPAM/Entity.pm' },
           { nonull: true, src: 'lib/SPAM/EntityTree.pm', dest: '../prod/lib/SPAM/EntityTree.pm' },
-          { nonull: true, src: 'lib/SPAM/MIB.pm', dest: '../prod/lib/SPAM/MIB.pm' },
-          { nonull: true, src: 'lib/SPAM/MIBobject.pm', dest: '../prod/lib/SPAM/MIBobject.pm' },
           { nonull: true, src: 'lib/SPAM/Host.pm', dest: '../prod/lib/SPAM/Host.pm' },
-          { nonull: true, src: 'lib/SPAM/Keys.pm', dest: '../prod/lib/SPAM/Keys.pm' },
+          { nonull: true, src: 'lib/SPAM/Config/MIB.pm', dest: '../prod/lib/SPAM/Config/MIB.pm' },
+          { nonull: true, src: 'lib/SPAM/Config/MIBobject.pm', dest: '../prod/lib/SPAM/Config/MIBobject.pm' },
+          { nonull: true, src: 'lib/SPAM/Config/Keys.pm', dest: '../prod/lib/SPAM/Config/Keys.pm' },
           // SPAM::Model::
           { nonull: true, src: 'lib/SPAM/Model/PortStatus.pm', dest: '../prod/lib/SPAM/Model/PortStatus.pm' },
           { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' },
@@ -63,9 +63,12 @@ module.exports = function(grunt)
           { nonull: true, src: 'lib/SPAM/Model/SNMP/Location.pm', dest: '../prod/lib/SPAM/Model/SNMP/Location.pm' },
           { nonull: true, src: 'lib/SPAM/Model/SNMP/VmMembershipTable.pm', dest: '../prod/lib/SPAM/Model/SNMP/VmMembershipTable.pm' },
           { nonull: true, src: 'lib/SPAM/Model/SNMP/PortFlags.pm', dest: '../prod/lib/SPAM/Model/SNMP/PortFlags.pm' },
+          { nonull: true, src: 'lib/SPAM/Model/SNMP/CdpTable.pm', dest: '../prod/lib/SPAM/Model/SNMP/CdpTable.pm' },
           // migrations
           { nonull: true, src: 'migrations/1/up.sql', dest: '../prod/migrations/1/up.sql' },
           { nonull: true, src: 'migrations/1/down.sql', dest: '../prod/migrations/1/down.sql' },
+          { nonull: true, src: 'migrations/2/up.sql', dest: '../prod/migrations/2/up.sql' },
+          { nonull: true, src: 'migrations/2/down.sql', dest: '../prod/migrations/2/down.sql' },
         ]
       },
       www: {
