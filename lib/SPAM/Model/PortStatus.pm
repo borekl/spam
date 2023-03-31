@@ -14,7 +14,6 @@ use SPAM::Config;
 has hostname => (
   is => 'ro',
   required => 1,
-  coerce => sub { lc $_[0] },
 );
 
 # port status data loaded from database

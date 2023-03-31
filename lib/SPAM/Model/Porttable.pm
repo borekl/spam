@@ -14,7 +14,7 @@ use Carp;
 use SPAM::Config;
 
 # hostname of the device
-has hostname => ( required => 1, is => 'ro', coerce => sub ($h) { lc $h } );
+has hostname => ( required => 1, is => 'ro' );
 
 # contents of portable
 has porttable => ( is => 'ro', builder => 1 );

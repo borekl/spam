@@ -143,7 +143,7 @@ sub _build_hosts ($self)
   my %hosts;
   my $r = $db->select('v_switchlist');
   while (my $row = $r->hash) {
-    my $h = lc $row->{hostname};
+    my $h = $row->{hostname};
     $hosts{$h}{community} = $row->{community};
     $hosts{$h}{ip} = $row->{ip_addr};
   }

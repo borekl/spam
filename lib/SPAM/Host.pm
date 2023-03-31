@@ -20,7 +20,12 @@ with 'SPAM::Role::MessageCallback';
 has name => (
   is => 'ro',
   required => 1,
-  coerce => sub { lc $_[0] },
+);
+
+# site code, if site cannot be found the host, this will throw exception
+has site => (
+  is => 'lazy',
+  builder => sub ($s) { SPAM::Config->instance->site_from_hostname($s->name) }
 );
 
 # this copies the value of the 'name' attribute but with additional check

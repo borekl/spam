@@ -11,9 +11,7 @@ use Carp;
 use SPAM::Config;
 
 # hostname of a device the data in this instance belong to
-has hostname => (
-  is => 'ro', coerce => sub { lc $_[0] }, predicate => 1
-);
+has hostname => ( is => 'ro', predicate => 1 );
 
 # macs loaded from database
 has _macdb => ( is => 'lazy' );
