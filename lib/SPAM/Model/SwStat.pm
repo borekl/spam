@@ -43,9 +43,12 @@ sub update ($self, $snmp, $stat)
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
   my @vtp_stats = $snmp->vtp_stats;
 
+  my $location = $snmp->location;
+  $location = $location =~ s/'/''/r if $location;
+
   my %data = (
     host => $self->hostname,
-    location => $snmp->location =~ s/'/''/r,
+    location => $location,
     ports_total => $stat->{p_total},
     ports_active => $stat->{p_act},
     ports_patched => $stat->{p_patch},
