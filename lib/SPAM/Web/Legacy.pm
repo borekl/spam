@@ -216,23 +216,24 @@ sub mangle_swlist ($row)
   # mangle location
   ($row->{descr}, $row->{site}, $shop) = mangle_location($row);
 
-  # switch groups (for distributing the switches among tabs for better user
-  # access)
-  my $code = substr($row->{'host'}, 0, 3);
-  $row->{group} = 'oth';
-  if(
-    $code eq 'str' || $code eq 'rcn' || $code eq 'chr' || $code eq 'brr'
-    || $code eq 'bsc' || $code eq 'sto'
-  ) {
-    $row->{group} = $code;
-  }
-  if($code eq 'ric') {
-    $row->{group} = 'rcn';
-  }
-  if($shop) {
-    $row->{group} = 'sho';
-  }
+  # the 'site' field can be derived from SNMP location, but that might not be
+  # set properly, so we instead use configured mapping to derive site from
+  # hostname
+  try {
+    $row->{site} = SPAM::Config->instance->site_from_hostname($row->{host});
+  } catch ($e) {};
 
+  # switch groups (for distributing the switches among tabs for better user
+  # access); FIXME: this is hardcoded mess, but we're in legacy code anyway
+  my $s = $row->{site};
+  $row->{group} = 'oth';
+
+  if($shop) { $row->{group} = 'sho'; return; }
+  if($s =~ /^PZMSC/) { $row->{group} = 'str'; return; }
+  if($s =~ /^PHJAZ/) { $row->{group} = 'rcn'; return; }
+  if($s =~ /^CRPRU/) { $row->{group} = 'chr'; return; }
+  if($s =~ /^BMSCB/) { $row->{group} = 'brr'; return; }
+  if($s =~ /^A0SHQ/) { $row->{group} = 'sto'; return; }
 }
 
 #-------------------------------------------------------------------------------
