@@ -37,12 +37,8 @@ sub startup ($self)
   # compressed SVG type
   $self->app->types->type('svgz' => 'image/svg+xml');
 
-  # legacy API (v0) -- this uses URL encoded body parameters and URL parameters;
-  # parameter 'r' determines what action is taken (the 'verb') and additional
-  # parameters are used by the action code
-
   # authorization code // code shared with all requests
-  my $v0 = $self->routes->under('/api/v0/' => sub ($c) {
+  my $api = $self->routes->under('/api' => sub ($c) {
 
     # default stash content
     $c->stash(
@@ -70,6 +66,10 @@ sub startup ($self)
     1;
   });
 
+  # legacy API (v0) -- this uses URL encoded body parameters and URL parameters;
+  # parameter 'r' determines what action is taken (the 'verb') and additional
+  # parameters are used by the action code
+
   # parameter condition on verb (the 'r' parameter)
   $self->routes->add_condition(verb => sub ($rt, $c, $cap, $v) {
     ($c->req->body_params->param('r') // '') eq $v;
@@ -82,6 +82,7 @@ sub startup ($self)
 
   # legacy endpoints // these use the legacy code from the original backend
   # (spam-backend.cgi) that currently resides in the SPAM::Web::Legacy class
+  my $v0 = $api->any('/v0');
   $v0->post('/')->requires(verb => 'test')->to('legacy#test');
   $v0->post('/')->requires(verb => 'swlist')->to('legacy#swlist');
   $v0->post('/')->requires(verb => 'search')->to('legacy#search');
