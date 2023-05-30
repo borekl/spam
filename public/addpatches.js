@@ -318,10 +318,19 @@ dust.render('addpatch', {}, function(err, out) {
     if('outlet' in prefill) {
       $('input[name=addp_ou00]').val(prefill.outlet);
     }
+
+    // site from prefill -- if there are prefilled data, automatically switch
+    // the site to the site associated with the host
+    $.post(shared.backend, { r: 'usecp', site: null, host: prefill.host}, data => {
+      if(data.status == 'ok') {
+        console.log('Site: ', data.site);
+      }
+    });
+
   }
-  
+
   // callbacks for table rows
-  
+
   jq_tbody.find('tr')
     .on('add', addTableRow)
     .on('remove', removeTableRow);
@@ -344,8 +353,12 @@ dust.render('addpatch', {}, function(err, out) {
     $('div#addpatch').addClass('spinner');
     shared.populate_select_sites(idx, el, function(idx, el) {
       $('div#addpatch').removeClass('spinner');
-      if(prefill && 'site' in prefill) {
-        $(el).val(prefill.site).trigger('change');
+      if(prefill && 'host' in prefill) {
+        $.post(shared.backend, { r: 'usecp', site: null, host: prefill.host}, data => {
+          if(data.status == 'ok') {
+            $(el).val(data.site).trigger('change');
+          }
+        });
       } else {
         shared.set_value_from_storage(el);
       }
