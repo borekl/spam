@@ -1,20 +1,20 @@
 /*==========================================================================*
   SWITCH PORTS ACTIVITY MONITOR / Port Info
-  
-  The UI to display extended port information. The constructor is called 
+
+  The UI to display extended port information. The constructor is called
   with a selector that should resolve into a single table, that holds
   Port List, Search Tool or Add Patches result tables. Every TR that
   can display extended port info via this module must have class "portinfo".
-  
+
   The table must have two custom attributes:
-  
+
   "data-host"
   contains either hostname of the switch itself; or number of column
   where hostname should be taken from
-  
+
   "data-portname"
   contains number of column containing portname
-  
+
   FIXME: Removing/adding patch triggers refresh in the portlist, but
   currently this refresh happens only after the Port Info is closed; ie.
   merely opening another Port Info on another port won't refresh the table.
@@ -101,12 +101,12 @@ function portInfoDismiss(evt)
 
 function portInfoShow()
 {
-  var 
+  var
     portname = $(this).children().eq(tabinfo.portname).text(),
     hostname = tabinfo.host;
 
   //--- get hostname of the switch
-  
+
   if(Number.isInteger(hostname)) {
     hostname = $(this).children().eq(tabinfo.host).text();
   }
@@ -117,12 +117,12 @@ function portInfoShow()
 
   // create new row and detach the old one
 
-  jq_row_pi = 
+  jq_row_pi =
     $('<tr class="pi"><td colspan="'+ncols+'">'+spin+'</td></tr>')
     .insertAfter(this);
   jq_td_pi = jq_row_pi.children('td');
   jq_row_orig = $(this).detach();
-  
+
   // close the Port Info with a button
 
   function bind_close() {
@@ -179,7 +179,7 @@ function portInfoShow()
   }
 
   // expose and bind the  "Patch This" button if 'cp' does not exist
-  
+
   function bind_patch(r) {
     if(!('cp' in r.search.result)) {
       var jq_button = jq_td_pi.find('button[name="pi-patch"]');
@@ -199,7 +199,7 @@ function portInfoShow()
       });
     }
   }
-  
+
   // retrieve data from backend & render
 
   srcdata = {r: 'portinfo', host:hostname, portname: portname }

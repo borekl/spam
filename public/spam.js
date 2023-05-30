@@ -144,33 +144,33 @@ shared.dispatch = function(evt, state_in)
   if(evt_type == 'popstate') {
     state = evt.originalEvent.state;
   }
-  
+
   //--- if we are called as 'click' event handler, get the state.sel
   //--- from target element's id attribute
-  
+
   if(evt_type == 'click') {
     state = {
       sel: $(this).attr('id')
     };
   }
-  
+
   //--- allows for supplying state.sel as two-letter short code;
   //--- the mapping is defined in this file in selcodes
-  
+
   if(!evt && state.sel.length == 2) {
     state.sel = selcodes[state.sel];
   }
-  
+
   //--- debug
-  
+
   if(state == null) {
-    return; 
+    return;
   }
 
   //--- sidebar menu highlights
 
   $('div.menu#' + state.sel).trigger('spam.select');
-  
+
   //--- central dispatch
 
   switch(state.sel) {
@@ -183,7 +183,7 @@ shared.dispatch = function(evt, state_in)
       if(state.host) { selsh += '/' + state.host; }
       if(!state.host) { new modSwitchList(shared, state); }
       break;
-  
+
     case 'srctool' :
       selsh = 'sr';
       new modSearchTool(shared, state);
@@ -193,8 +193,8 @@ shared.dispatch = function(evt, state_in)
       selsh = 'ap';
       new modAddPatchesForm(shared, state);
       break;
-            
-    case 'about' : 
+
+    case 'about' :
       selsh = 'ab';
       dust.render('about', {}, function(err, out) {
         $('#content').html(out);
@@ -203,9 +203,9 @@ shared.dispatch = function(evt, state_in)
 
     default:
       alert('Invalid dispatch selector: ' + state.sel);
-        
+
   }
-  
+
   if(selsh && evt_type != 'popstate') {
     history.pushState(state, null, shared.get_base(selsh));
   }
@@ -268,7 +268,7 @@ $(document).ready(function()
 
   if(!state.sel) { state.sel = 'swlist'; }
   shared.dispatch(null, state);
-  
+
 });
 
 

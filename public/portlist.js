@@ -1,9 +1,9 @@
 /*==========================================================================*
   SWITCH PORTS ACTIVITY MONITOR / Port List
-  
+
   Function that handles loading data for, displaying and servicing the
   port list view. The port list view must contain TABLE.list element.
-  
+
   Configuration object passed to this:
 
   cfg.beRequest    ... request to be sent to the backend
@@ -80,7 +80,7 @@ this.refreshPortList = function()
 function processPortList()
 {
   var r = myCfg.beResponse;
-  
+
   if(
     'search' in r
     && r.search.status == 'ok'
@@ -107,7 +107,7 @@ function processPortList()
       });
 
       //--- bind editable to those module aux info fields
-      
+
       $('span.modwire').on('click', function() {
         var m, n, jq_td;
         jq_td = $(this).parent();
@@ -119,7 +119,7 @@ function processPortList()
           spinclass: 'spineditable',
           errclass: 'moderrmsg',
           save: function(t) {
-            var 
+            var
               deferred = $.Deferred(),
               post = {
                 r: 'modwire', location: t, m: m, n: n,
@@ -139,12 +139,12 @@ function processPortList()
                 deferred.reject('Server failure');
               }
             });
-            
+
             return deferred.promise;
           }
         });
       });
-      
+
       //--- invoke callback
 
       if($.isFunction(success)) {

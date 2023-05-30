@@ -62,7 +62,7 @@ function submitSearch(evt)
       error: 'error', norowsok: true
     },
     function(search) {
-  
+
   //--- replace form field values with normalized values supplied by the
   //--- backend, using ' as the first character in the form field inhibits
   //--- the normalization
@@ -93,10 +93,10 @@ dust.render('search', {}, function(err, out)
   $('select[name=site]').each(shared.populate_select_sites);
 
   //--- bind submit/reset buttons
-  
+
   $('button#submit').click('on', submitSearch);
   $('button#reset').click('on', resetSearch);
-  
+
 });
 
 

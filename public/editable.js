@@ -6,7 +6,7 @@
   either cancels it by losing focus or calls an callback after Enter being
   pressed. The widget is configured with the second argument to the
   constructor.
-  
+
   el: target element; this should be something that gives sensible text()
   size: INPUT's size attribute
   save: callback that performs the save; must return jQuery promise object
@@ -33,7 +33,7 @@ var
   jq_input,                 // new INPUT element
   jq_input_span;            // SPAN wrapping the INPUT
 
-  
+
 
 /*--------------------------------------------------------------------------*
   Save edited text.
@@ -44,20 +44,20 @@ function editableSave(evt)
   var promise, text, jq_spin;
 
   //--- get the INPUT value
-  
+
   text = jq_input.val();
 
   //--- put up spinner
-  
+
   jq_input_span.remove();
   jq_spin = $('<img src="assets/spin-black.svgz">');
   if('spinclass' in arg) {
     jq_spin.addClass(arg.spinclass);
   }
   jq_el_parent.append(jq_spin);
-    
+
   //--- invoke the callback
-  
+
   promise = arg.save(text);
 
   //--- success
@@ -101,7 +101,7 @@ function editableEvent(evt)
       evt.preventDefault();
       editableSave(evt);
       return;
-    } else if(evt.keyCode != 27) { 
+    } else if(evt.keyCode != 27) {
       return true;
     }
   }

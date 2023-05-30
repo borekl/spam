@@ -1,10 +1,10 @@
 /*==========================================================================*
   SWITCH PORTS ACTIVITY MONITOR / Add patches
-  
+
   The UI to facilitate adding patching into database.
  *==========================================================================*/
 
- 
+
 module.exports = addPatchesForm;
 
 function addPatchesForm(shared, state) {
@@ -26,8 +26,8 @@ var
 /*--------------------------------------------------------------------------*
   Add table row.
  *--------------------------------------------------------------------------*/
- 
-function addTableRow(evt) 
+
+function addTableRow(evt)
 {
   var jq_table_rows = jq_tbody.find('tr');
   if(jq_table_rows.length < 100) {
@@ -57,7 +57,7 @@ function removeTableRow(evt)
   }
   evt.preventDefault();
 }
-  
+
 
 /*--------------------------------------------------------------------------*
   Table renumbering.
@@ -70,9 +70,9 @@ function renumberTable(evt)
     var
       row = $(this).index(),
       row_s = row + '';
-    
+
     if(row_s.length < 2) { row_s = '0' + row_s; }
-    
+
     // iterate of TD elements in the row
     $(this).find('td').each(function() {
       var col = $(this).index(), name, jq_el;
@@ -125,10 +125,10 @@ function switchMode(evt, mode)
 
 function changeSite(evt)
 {
-  var 
+  var
     site = $(this).val(),
     set_mode;
-    
+
   set_mode = function(outlet) {
     if(outlet) {
       $('table.addpatch').trigger('addpmode', ['outlet']);
@@ -158,7 +158,7 @@ function changeSite(evt)
 
 function rowStatusMessage(evt, mesg, cl)
 {
-  var 
+  var
     target = evt.target,
     tag = $(target).prop('tagName');
 
@@ -201,7 +201,7 @@ function formReset(evt)
 /*--------------------------------------------------------------------------*
   Form submmit.
  *--------------------------------------------------------------------------*/
- 
+
 function formSubmit(evt)
 {
   //--- object to hold the POST data for the backend query
@@ -271,10 +271,10 @@ function formSubmit(evt)
         );
       }*/
     }
-    
+
     // display update summary/conflicting row(s), the callback removes the
     // standard "N matching entries found" message from DOM
-    
+
     if('search' in data && data.search.status == 'ok') {
       new modPortList(
         shared,
@@ -282,7 +282,7 @@ function formSubmit(evt)
         function() { $('div#addp_updsum p.srcsummary').remove(); }
       );
     }
-    
+
   }, 'json');
 
 }
@@ -291,15 +291,15 @@ function formSubmit(evt)
 /*--------------------------------------------------------------------------*
   Initialization.
  *--------------------------------------------------------------------------*/
- 
+
 dust.render('addpatch', {}, function(err, out) {
-  
+
   // render content
-  
+
   $('#content').html(out);
   jq_table = $('table.addpatch'),
   jq_tbody = $('table.addpatch tbody');
-  
+
   // prefill
 
   if('values' in state) {
@@ -366,13 +366,13 @@ dust.render('addpatch', {}, function(err, out) {
   });
 
   // callbacks for +/- buttons
-  
+
   jq_tbody.find('button[name^="addp_dl"]')
   .on('click', function(evt) {
     $(this).trigger('remove');
     evt.preventDefault();
   });
-  
+
   jq_tbody.find('button[name^="addp_ad"]')
   .on('click', function(evt) {
      $(this).trigger('add');
@@ -383,7 +383,7 @@ dust.render('addpatch', {}, function(err, out) {
 
   $('button[name=addp_reset]').on('click', formReset);
   $('button[name=addp_submit]').on('click', formSubmit);
-  
+
 });
 
 
