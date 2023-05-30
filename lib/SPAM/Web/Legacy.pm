@@ -1336,111 +1336,100 @@ sub sql_add_patches ($arg, $site, $c)
     }
   }
 
-  # try block start
-  try {
+  # database transaction
+  if($dbh->begin_work) {
 
-    # begin transaction
-    $r = $dbh->begin_work();
-    if(!$r) {
-      $re{status} = 'error';
-      $re{errmsg} = 'Database error';
-      $re{errwhy} = 'Failed to initiate database transaction';
-      $re{errdb}  = pg_errmsg_parse($dbh->errstr());
-      die "FAIL\n";
-    }
+    try {
 
-    # loop over form rows
-    for(
-      my ($i, $n) = (0, scalar(@{$re{result}}));
-      $i < $n;
-      $i++
-    ) {
-      my (@fields, @values);
-      my $pushdb = multipush(\@fields, \@values);
-      my $row = $re{result}[$i];
+      # loop over form rows
+      for(
+        my ($i, $n) = (0, scalar(@{$re{result}}));
+        $i < $n;
+        $i++
+      ) {
+        my (@fields, @values);
+        my $pushdb = multipush(\@fields, \@values);
+        my $row = $re{result}[$i];
 
-      $pushdb->('host',      $form->($i, 'sw', 'value'));
-      $pushdb->('portname',  $form->($i, 'pt', 'value'));
-      $pushdb->('cp',        $form->($i, 'cp', 'value'));
-      $pushdb->('site',      $site);
-      $pushdb->('chg_who',   $c->stash('userid')) if $c->stash('userid');
-      $pushdb->('chg_where', $c->stash('remoteaddr')) if $c->stash('remoteaddr');
+        $pushdb->('host',      $form->($i, 'sw', 'value'));
+        $pushdb->('portname',  $form->($i, 'pt', 'value'));
+        $pushdb->('cp',        $form->($i, 'cp', 'value'));
+        $pushdb->('site',      $site);
+        $pushdb->('chg_who',   $c->stash('userid')) if $c->stash('userid');
+        $pushdb->('chg_where', $c->stash('remoteaddr')) if $c->stash('remoteaddr');
 
-      push(@work_info, [
-        $form->($i, 'sw', 'value'),
-        $form->($i, 'pt', 'value')
-      ]);
+        push(@work_info, [
+          $form->($i, 'sw', 'value'),
+          $form->($i, 'pt', 'value')
+        ]);
 
-      my $qry = sprintf(
-        'INSERT INTO porttable ( %s ) VALUES ( %s )',
-        join(',', @fields),
-        join(',', ('?') x scalar(@fields))
-      );
+        my $qry = sprintf(
+          'INSERT INTO porttable ( %s ) VALUES ( %s )',
+          join(',', @fields),
+          join(',', ('?') x scalar(@fields))
+        );
 
-      # insert into 'porttable'
-      my $r = $dbh->do($qry, undef, @values);
-      if(!$r) {
-        $re{errwhy} = 'Failed to insert data into database';
-        $re{errdb} = pg_errmsg_parse($dbh->errstr());
-        $re{query} = sql_show_query($qry, @values);
-        $re{formrow} = $i;
+        # insert into 'porttable'
+        my $r = $dbh->do($qry, undef, @values);
+        if(!$r) {
+          $re{errwhy} = 'Failed to insert data into database';
+          $re{errdb} = pg_errmsg_parse($dbh->errstr());
+          $re{query} = sql_show_query($qry, @values);
+          $re{formrow} = $i;
 
-        # interpret the error
-        if($re{errdb}{constraint} eq 'porttable_pkey') {
-          $form->($i, 'pt', {
-            valid => JSON->false,
-            err => 'Port already in use'
-          });
+          # interpret the error
+          if($re{errdb}{constraint} eq 'porttable_pkey') {
+            $form->($i, 'pt', {
+              valid => JSON->false,
+              err => 'Port already in use'
+            });
+          }
+
+          # abort
+          die;
         }
 
-        # abort
-        die "ABORT\n";
+        # update status so that the port appears fresh (ie. not inactive), this
+        # gives the user time to actually start using the port
+        $qry = "UPDATE status
+                  SET
+                    lastchg = current_timestamp,
+                    lastchk = current_timestamp
+                  WHERE host = ? AND portname = ?";
+
+        $r = $dbh->do(
+          $qry, undef, $form->($i, 'sw', 'value'), $form->($i, 'pt', 'value')
+        );
+        if(!$r) {
+          $re{errwhy} = 'Failed to update data in the database';
+          $re{errdb} = pg_errmsg_parse($dbh->errstr());
+          $re{query} = sql_show_query($qry, @values);
+          $re{formrow} = $i;
+          die;
+        }
+
       }
 
-      # update status so that the port appears fresh (ie. not inactive), this
-      # gives the user time to actually start using the port
-      $qry = "UPDATE status
-                SET
-                  lastchg = current_timestamp,
-                  lastchk = current_timestamp
-                WHERE host = ? AND portname = ?";
-
-      $r = $dbh->do(
-        $qry, undef, $form->($i, 'sw', 'value'), $form->($i, 'pt', 'value')
-      );
-      if(!$r) {
-        $re{errwhy} = 'Failed to update data in the database';
-        $re{errdb} = pg_errmsg_parse($dbh->errstr());
-        $re{query} = sql_show_query($qry, @values);
-        $re{formrow} = $i;
-        die "ABORT\n";
+      # commit transaction
+      if(($re{status} // '') ne 'error') {
+        $r = $dbh->commit();
+        if(!$r) {
+          $re{errdb} = pg_errmsg_parse($dbh->errstr());
+          $re{errwhy} = 'Failed to commit database transaction';
+          $re{status} = 'error';
+          $re{errmsg} = 'Database error';
+        }
+        $re{status} = 'ok';
       }
 
-    }
+    # try block end
+    } catch ($e) {
 
-  # try block end
-  }
-
-  # error processing
-  catch ($e) {
-    $re{status} = 'error';
-    $re{errmsg} = 'Database error';
-    chomp($_);
-    if($_ eq 'ABORT') {
-      $dbh->rollback();
-    }
-  };
-
-  # commit transaction
-  if(($re{status} // '') ne 'error') {
-    $r = $dbh->commit();
-    if(!$r) {
-      $re{errdb} = pg_errmsg_parse($dbh->errstr());
-      $re{errwhy} = 'Failed to commit database transaction';
+      # error processing
       $re{status} = 'error';
-      $re{errmsg} = 'Database error';
-    }
-    $re{status} = 'ok';
+      $re{errmsg} = "Database transaction failed ($e)";
+      $dbh->rollback;
+    };
   }
 
   # search affected switch/ports pairs using v_search_status view and return the
