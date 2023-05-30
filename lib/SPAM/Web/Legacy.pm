@@ -1020,12 +1020,27 @@ sub addp_normalize ($type, $value)
 #-------------------------------------------------------------------------------
 # Used by Add Patches form to inquire whether given site uses outlets not.
 # Most sites don't use outlets.
-sub backend_useoutlet ($site)
-{
-  my %re = ( arg => { site => $site } );
 
-  $re{result} = sql_site_uses_cp($site);
-  $re{status} = 'ok';
+sub backend_useoutlet(%arg)
+{
+  my %re = ( arg => \%arg );
+  my $site = $arg{site} // undef;
+
+  # if 'site' is not provide, try to use 'host'
+  if(!$site && $arg{host}) {
+    $site = SPAM::Config->instance->site_from_hostname($arg{host});
+  }
+
+  # get information for site if we found one, otherwise return with error
+  if($site) {
+    $re{result} = sql_site_uses_cp($site);
+    $re{site} = $site;
+    $re{status} = 'ok';
+  } else {
+    $re{result} = undef;
+    $re{status} = 'error'
+  }
+
   return \%re;
 }
 
@@ -1057,7 +1072,7 @@ sub backend_swport ($site, $host, $port)
 
     # both HOST and PORT
     if($port) {
-      my $query = 'SELECT * FROM status WHERE substring(host for 3) = ? AND host = ? ';
+      my $query = 'SELECT * FROM status WHERE host = ? ';
       my $port_arg;
       if($port =~ /^\d[\/\d]*\d$/) {
         $query .= 'AND lower(portname) ~* ? LIMIT 1';
@@ -1067,7 +1082,7 @@ sub backend_swport ($site, $host, $port)
         $port_arg = lc($port);
       }
 
-      my $r = sql_select('spamui', $query, [ lc($site), lc($host), $port_arg ]);
+      my $r = sql_select('spamui', $query, [ lc($host), $port_arg ]);
       if(ref($r) && scalar($r->{result}->@*)) {
         $re{result}{host} = $r->{result}[0]{host};
         $re{result}{portname} = $r->{'result'}[0]{'portname'};
@@ -1082,8 +1097,8 @@ sub backend_swport ($site, $host, $port)
     if(!exists $re{result}{host}) {
       my $r = sql_select(
         'spamui',
-        'SELECT * FROM status WHERE substring(host for 3) = ? AND host = ? LIMIT 1',
-        [ lc($site), lc($host) ]
+        'SELECT * FROM status WHERE host = ? LIMIT 1',
+        [ lc($host) ]
       );
       if(ref($r) && scalar(@{$r->{result}})) {
         $re{result}{host} = $r->{result}[0]{host};
@@ -1179,7 +1194,7 @@ sub sql_add_patches ($arg, $site, $c)
 
   # are we using outlets for this site?
   $re{'useoutlet'} = do {
-    my $useoutlet = backend_useoutlet($site);
+    my $useoutlet = backend_useoutlet(site => $site);
     js_bool($useoutlet->{status} eq 'ok' && $useoutlet->{result});
   };
 
@@ -1612,7 +1627,12 @@ sub portinfo ($c) {
 
 #-------------------------------------------------------------------------------
 sub usecp ($c) {
-  $c->render(json => backend_useoutlet($c->req->body_params->param('site')));
+  $c->render(
+    json => backend_useoutlet(
+      site => $c->req->body_params->param('site'),
+      host => $c->req->body_params->param('host')
+    )
+  );
 }
 
 #-------------------------------------------------------------------------------
