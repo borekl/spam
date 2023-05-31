@@ -1020,7 +1020,6 @@ sub addp_normalize ($type, $value)
 #-------------------------------------------------------------------------------
 # Used by Add Patches form to inquire whether given site uses outlets not.
 # Most sites don't use outlets.
-
 sub backend_useoutlet(%arg)
 {
   my %re = ( arg => \%arg );
