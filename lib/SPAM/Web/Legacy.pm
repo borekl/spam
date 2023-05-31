@@ -1071,7 +1071,7 @@ sub backend_swport ($site, $host, $port)
 
     # both HOST and PORT
     if($port) {
-      my $query = 'SELECT * FROM status WHERE host = ? ';
+      my $query = 'SELECT * FROM status WHERE lower(host) = ? ';
       my $port_arg;
       if($port =~ /^\d[\/\d]*\d$/) {
         $query .= 'AND lower(portname) ~* ? LIMIT 1';
