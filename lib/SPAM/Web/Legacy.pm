@@ -233,7 +233,7 @@ sub mangle_swlist ($row)
   if($s =~ /^PHJAZ/) { $row->{group} = 'rcn'; return; }
   if($s =~ /^CRPRU/) { $row->{group} = 'chr'; return; }
   if($s =~ /^BMSCB/) { $row->{group} = 'brr'; return; }
-  if($s =~ /^A0SHQ/) { $row->{group} = 'sto'; return; }
+  if($s =~ /^A5SHQ/) { $row->{group} = 'sto'; return; }
 }
 
 #-------------------------------------------------------------------------------
