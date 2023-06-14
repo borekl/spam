@@ -311,20 +311,49 @@ sub snmp_community
   return $cfg->{'community'};
 }
 
-#-----------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+# Return site associated with supplied hostname; optionally also return
+# "front-end group", a category useful for separating groups of hosts in the web
+# application; data for both are defined in configuration (keys "sitecodes" and
+# "fegroups")
 sub site_from_hostname ($self, $hostname)
 {
   my $cfg = $self->config;
 
+  # find site code
+  my $sitecode;
   if($cfg->{sitecode} ) {
     foreach my $e ($cfg->{sitecode}->@*) {
       my $match = $e->[0];
-      return $e->[1] if $hostname =~ /^$match/i;
+      if($hostname =~ /^$match/i) {
+        $sitecode = $e->[1];
+        last;
+      }
     }
   }
 
-  die "No site mapping for host '$hostname'";
+  # find front-end group, if none can be found default value of 'oth' is used
+  my $fegroup = 'oth';
+  if(wantarray && $sitecode && $cfg->{fegroups}) {
+    foreach my $e ($cfg->{fegroups}->@*) {
+      if($sitecode eq $e->[0]) {
+        $fegroup = $e->[1];
+        last;
+      }
+    }
+  }
+
+  # raise exception when no mapping was found
+  die "No site mapping for host '$hostname'" unless $sitecode;
+
+  # return values
+  if(wantarray) {
+    return ($sitecode, $fegroup);
+  } else {
+    return $sitecode;
+  }
 }
+
 
 #-----------------------------------------------------------------------------
 # Function to get entity profiles for given entity tree node. The

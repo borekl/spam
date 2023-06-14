@@ -220,20 +220,9 @@ sub mangle_swlist ($row)
   # set properly, so we instead use configured mapping to derive site from
   # hostname
   try {
-    $row->{site} = SPAM::Config->instance->site_from_hostname($row->{host});
+    ($row->{site}, $row->{group})
+    = SPAM::Config->instance->site_from_hostname($row->{host});
   } catch ($e) {};
-
-  # switch groups (for distributing the switches among tabs for better user
-  # access); FIXME: this is hardcoded mess, but we're in legacy code anyway
-  my $s = $row->{site};
-  $row->{group} = 'oth';
-
-  if($shop) { $row->{group} = 'sho'; return; }
-  if($s =~ /^PZMSC/) { $row->{group} = 'str'; return; }
-  if($s =~ /^PHJAZ/) { $row->{group} = 'rcn'; return; }
-  if($s =~ /^CRPRU/) { $row->{group} = 'chr'; return; }
-  if($s =~ /^BMSCB/) { $row->{group} = 'brr'; return; }
-  if($s =~ /^A5SHQ/) { $row->{group} = 'sto'; return; }
 }
 
 #-------------------------------------------------------------------------------

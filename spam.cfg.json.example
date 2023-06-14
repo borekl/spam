@@ -84,6 +84,20 @@
     [ "HKVOP",  "HKVOP" ],  [ "hkv", "HKVOP" ],
   ],
 
+  #--- front-end groups, used for separating switches into different tabs in
+  #--- the web application
+
+  "fegroups": [
+    [ "PZMSC",  "str" ],
+    [ "PHJAZ",  "rcn" ],
+    [ "CRPRU",  "chr" ],
+    [ "BMSCB",  "brr" ],
+    [ "A5SHQ",  "sto" ],
+    [ "BMMAS",  "sho" ],
+    [ "BOVAN",  "sho" ],
+    [ "A9CHS",  "sho" ],
+  ],
+
   #--- site list // list of supported sites, this used to be loaded from ONdb
   #--- but since ONdb is on the way out, we need to provide it here (at least
   #--- until authoritative source is found)
