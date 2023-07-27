@@ -357,7 +357,7 @@ sub drop ($self)
   $db->txn(sub ($tx) {
     foreach my $table (@tables) {
       $tx->query(
-        "DELETE FROM $table WHERE host = ?", $self->_name_resolved
+        "DELETE FROM $table WHERE host = ?", $self->name
       );
     }
   });
