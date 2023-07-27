@@ -352,7 +352,7 @@ sub autoregister ($self)
 sub drop ($self)
 {
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
-  my @tables = (qw(status hwinfo swstat mactable modwire));
+  my @tables = (qw(status swstat mactable modwire));
 
   $db->txn(sub ($tx) {
     foreach my $table (@tables) {
