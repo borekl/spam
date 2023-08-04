@@ -137,18 +137,9 @@ try {
   }
 
   # retrieve list of arp servers
-  if($cmd->arptable || $cmd->list_arpservers) {
-    tty_message("[main] Loading list of arp servers (started)\n");
-    if($cmd->list_arpservers) {
-      my $n = 0;
-      print "\nDumping configured ARP servers:\n\n";
-      for my $k (sort { $a->[0] cmp $b->[0] } $cfg->arpservers->@*) {
-        print $k->[0], "\n";
-        $n++;
-      }
-      print "\n$n ARP servers configured\n\n";
-      die "OK\n";
-    }
+  if($cmd->list_arpservers) {
+    $cfg->list_arpservers;
+    die "OK\n";
   }
 
   # create work list of hosts that are to be polled for data

@@ -562,4 +562,22 @@ sub list_hosts ($self)
     '{>} switches configured', scalar(@hosts), '';
 }
 
+#-----------------------------------------------------------------------------
+# display list of arp sources along with some configuration fields
+sub list_arpservers ($self)
+{
+  my @hosts = sort map { $_->[0] } $self->arpservers->@*;
+  my @snmp_profiles = map { $self->get_snmp_profile($_)->{profile} } @hosts;
+  print form
+    'Dumping configured ARP servers:',
+    '',
+    'hostname          SNMP profile',
+    '----------------  -----------------',
+    '{[[[[[[[[[[[[[[}  {[[[[[[[[[[[[[[[[}',
+    \@hosts,
+    \@snmp_profiles,
+    '-----------------------------------',
+    '{} ARP sources configured', scalar(@hosts), '';
+}
+
 1;
