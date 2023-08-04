@@ -81,10 +81,6 @@ try {
   my $cfg = SPAM::Config->instance();
   tty_message("[main] Loading master config (finished)\n");
 
-  # initialize SPAM_SNMP library
-  $SPAM_SNMP::snmpget = $cfg->snmpget;
-  $SPAM_SNMP::snmpwalk = $cfg->snmpwalk;
-
   # bind to native database
   die "Database binding 'spam' not defined\n"
   unless exists $cfg->config()->{dbconn}{spam};
