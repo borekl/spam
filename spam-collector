@@ -130,13 +130,13 @@ try {
   die "Database binding 'ondb' not defined\n"
   unless exists $cfg->config()->{dbconn}{ondb};
 
-  # retrieve list of switches
+  # show list of switches
   if($cmd->list_hosts) {
     $cfg->list_hosts;
     die "OK\n";
   }
 
-  # retrieve list of arp servers
+  # show list of arp servers
   if($cmd->list_arpservers) {
     $cfg->list_arpservers;
     die "OK\n";
