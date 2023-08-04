@@ -14,6 +14,7 @@ with 'MooX::Singleton';
 use experimental 'signatures', 'postderef';
 
 use Carp;
+use Perl6::Form;
 use Scalar::Util qw(reftype);
 use JSON::MaybeXS;
 use Path::Tiny qw(path);
@@ -538,6 +539,27 @@ sub logfile ($self, $which)
   } else {
     return undef;
   }
+}
+
+#-----------------------------------------------------------------------------
+# display list of hosts along with some configuration fields
+sub list_hosts ($self)
+{
+  my @hosts = sort keys $self->hosts->%*;
+  my @sites = map { [ $self->site_from_hostname($_) ] } @hosts;
+  my @snmp_profiles = map { $self->get_snmp_profile($_)->{profile} } @hosts;
+  print form
+    'Dumping configured switches:',
+    '',
+    'hostname          site   grp  SNMP profile',
+    '----------------  -----  ---  -----------------',
+    '{[[[[[[[[[[[[[[}  {[[[}  {[}  {[[[[[[[[[[[[[[[[}',
+    \@hosts,
+    [ map { $_->[0] } @sites ],
+    [ map { $_->[1] } @sites ],
+    \@snmp_profiles,
+    '-----------------------------------------------',
+    '{>} switches configured', scalar(@hosts), '';
 }
 
 1;

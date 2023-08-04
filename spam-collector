@@ -132,13 +132,7 @@ try {
 
   # retrieve list of switches
   if($cmd->list_hosts) {
-    my $n = 0;
-    print "\nDumping configured switches:\n\n";
-    for my $k (sort keys $cfg->hosts->%*) {
-      print $k, "\n";
-      $n++;
-    }
-    print "\n$n switches configured\n\n";
+    $cfg->list_hosts;
     die "OK\n";
   }
 
