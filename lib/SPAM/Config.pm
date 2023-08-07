@@ -25,7 +25,7 @@ use SPAM::Config::Keys;
 # configuration file
 has config_file => (
   is => 'ro',
-  default => 'spam.cfg.json',
+  default => 'spam.cfg',
 );
 
 # configuration directory, this is automatically filled in from 'config_file'
@@ -92,7 +92,12 @@ sub _build_config
   # load and parse the config file
   my $file = $self->config_file();
   croak "Configuration file '$file' cannot be found or read" unless -e $file;
-  my $cfg = JSON->new->relaxed(1)->decode(path($file)->slurp());
+  my $cfg = do(path($file)->absolute);
+  unless (my $cfg = do(path($file)->absolute)) {
+    die "couldn't parse $file: $@" if $@;
+    die "couldn't do $file: $!"    unless defined $cfg;
+    die "couldn't run $file"       unless $cfg;
+  }
 
   # perform placeholder replacement
   _recurse->($cfg, sub ($s) {

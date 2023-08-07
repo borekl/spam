@@ -1,0 +1,546 @@
+{
+  # logfile
+  logfile => { web => 'spam-web.log' },
+
+  # ports without activity in this amount of seconds will be marked as inactive
+  inactivethreshold => 3600,
+
+  # ports without activity i this amount of secondss will be marked as long term
+  # inactive
+  inactivethreshold2 => 2592000,
+
+  # ports on following switches that are not patched, will be regarded as
+  # special case different from up/down/admin down.
+  knownports => [
+    'A5SHQ-SA-10', 'A5SHQ-SA-20', 'A5SHQ-SA-21', 'A5SHQ-SA-30', 'A5SHQ-SA-40',
+    'A5SHQ-SA-50'
+  ],
+
+  # define additional ARP servers (apart from those provided by ONdb database)
+  # arpserver => [
+  #   [ 'some-router', 'community-string' ]
+  # ],
+
+  # host that will be queried for VTP VLAN database
+  vlanserver => [ [ 'stoS00', '%0', 'Stodulky' ] ],
+
+  # older ARP table entries will be purged during maintenance
+  arptableage => 1209600,
+
+  # older MAC table entries will be purged during maintenance
+  mactableage => 1209600,
+
+  # define database sessions
+  dbconn => {
+    spam => {
+      dburl  => 'postgres://swcoll@172.26.16.83/spam',
+      dbpass => '%5',
+    },
+    ondb => {
+      dburl  => 'postgres://swcoll@172.26.16.83/ondb',
+      dbpass => '%5',
+    },
+    spamui => {
+      dburl  =>   'postgres://swcgi@172.26.16.83/spam',
+      dbpass => '%6',
+    },
+    ondbui => {
+      dburl  => 'postgres://swcgi@172.26.16.83/ondb',
+      dbpass => '%6',
+    }
+  },
+
+  # default community
+  community => '%0',
+
+  # per-host community/IP definition (please don't use this, communities should
+  # be set in ONdb)
+
+  # host : {
+  #   somehost => { community => 'someCommunity' }
+  # },
+
+  # get site code from hostname
+  sitecode => [
+    [ 'PZMSC',  'PZMSC' ],  [ 'str', 'PZMSC' ],
+    [ 'A5SHQ',  'A5SHQ' ],  [ 'sto', 'A5SHQ' ],
+    [ 'PHJAZ',  'PHJAZ' ],  [ 'rcn', 'PHJAZ' ],
+    [ 'BMSCB',  'BMSCB' ],  [ 'brr', 'BMSCB' ],
+    [ 'A3THP',  'A3THP' ],  [ 'pap', 'A3THP' ],
+    [ 'A0SIT',  'A0SIT' ],  [ 'sit', 'A0SIT' ],
+    [ 'BMCEJ',  'BMCEJ' ],  [ 'bce', 'BMCEJ' ],
+    [ 'CRPRU',  'CRPRU' ],  [ 'chr', 'CRPRU' ],
+    [ 'HKVOP',  'HKVOP' ],  [ 'hkv', 'HKVOP' ],
+    [ 'BMMAS',  'BMMAS' ],  [ 'brm', 'BMMAS' ],
+    [ 'BOVAN',  'BOVAN' ],  [ 'brv', 'BOVAN' ],
+    [ 'A9CHS',  'A9CHS' ],  [ 'ccm', 'A9CHS' ],
+    [ 'A5PLZ',  'A5PLZ' ],  [ 'phc', 'A5PLZ' ],
+    [ 'A10CA',  'A10CA' ],  [ 'phe', 'A10CA' ],
+    [ 'A3VIN',  'A3VIN' ],  [ 'phf', 'A3VIN' ],
+    [ 'A4CHO',  'A4CHO' ],  [ 'phh', 'A4CHO' ],
+    [ 'A2JU2',  'A2JU2' ],  [ 'phj', 'A2JU2' ],
+    [ 'A9VES',  'A9VES' ],  [ 'phl', 'A9VES' ],
+    [ 'A1PLD',  'A1PLD' ],  [ 'php', 'A1PLD' ],
+    [ 'A6LET',  'A6LET' ],  [ 'phr', 'A6LET' ],
+    [ 'A5PL2',  'A5PL2' ],  [ 'phs', 'A5PL2' ],
+    [ 'A1VCS',  'A1VCS' ],  [ 'vac', 'A1VCS' ],
+    [ 'BMVFP',  'BMVFP' ],  [ 'brp', 'BMVFP' ],
+    [ 'BRCMD',  'BRCMD' ],  [ 'krc', 'BRCMD' ],
+    [ 'BMU05',  'BRBHE' ],  [ 'brb', 'BRBHE' ],
+    [ 'CBRDF',  'CBRDF' ],  [ 'cbr', 'CBRDF' ],
+    [ 'MOU1C',  'MOU1C' ],  [ 'meh', 'MOU1C' ],
+    [ 'OSUJS',  'OSUJS' ],  [ 'ova', 'OSUJS' ],
+    [ 'OSU02',  'OSU02' ],  [ 'ovn', 'OSU02' ],
+    [ 'A0U02',  'A0U02' ],  [ 'ttc', 'A0U02' ],
+    [ 'ULVFX',  'ULVFX' ],  [ 'unc', 'ULVFX' ],
+    [ 'A4UPC',  'A4UPC' ],  [ 'zav', 'A4UPC' ],
+    [ 'LIU04',  'LIU04' ],  [ 'lbs', 'LIU04' ],
+  ],
+
+  # front-end groups, used for separating switches into different tabs in the
+  # web application
+  fegroups => [
+    [ 'PZMSC',  'str' ],
+    [ 'PHJAZ',  'rcn' ],
+    [ 'CRPRU',  'chr' ],
+    [ 'BMSCB',  'brr' ],
+    [ 'A5SHQ',  'sto' ],
+    [ 'BMMAS',  'sho' ],
+    [ 'BOVAN',  'sho' ],
+    [ 'A9CHS',  'sho' ],
+    [ 'A5PLZ',  'sho' ],
+    [ 'A10CA',  'sho' ],
+    [ 'A3VIN',  'sho' ],
+    [ 'A4CHO',  'sho' ],
+    [ 'A2JU2',  'sho' ],
+    [ 'A9VES',  'sho' ],
+    [ 'A1PLD',  'sho' ],
+    [ 'A6LET',  'sho' ],
+    [ 'A5PL2',  'sho' ],
+    [ 'A1VCS',  'sho' ],
+  ],
+
+  # site list // list of supported sites, this used to be loaded from ONdb but
+  # since ONdb is on the way out, we need to provide it here (at least until
+  # authoritative source is found)
+  sites => {
+     PZMSC => 'PZMSC site description',
+     A0SHQ => 'A0SHQ site description',
+     PHJAZ => 'PHJAZ site description',
+     BMSCB => 'BMSCB site description',
+     A3THP => 'A3THP site description',
+     A0SIT => 'A0SIT site description',
+     BMCEJ => 'BMCEJ site description',
+     CRPRU => 'CRPRU site description',
+     HKVOP => 'HKVOP site description',
+     BMMAS => 'BMMAS site description',
+     BOVAN => 'BOVAN site description',
+     A9CHS => 'A9CHS site description',
+     A5PLZ => 'A5PLZ site description',
+     A10CA => 'A10CA site description',
+     A3VIN => 'A3VIN site description',
+     A4CHO => 'A4CHO site description',
+     A2JU2 => 'A2JU2 site description',
+     A9VES => 'A9VES site description',
+     A1PLD => 'A1PLD site description',
+     A6LET => 'A6LET site description',
+     A5PL2 => 'A5PL2 site description',
+     A1VCS => 'A1VCS site description',
+     BMVFP => 'BMVFP site description',
+     BRCMD => 'BRCMD site description',
+     BMU05 => 'BMU05 site description',
+     CBRDF => 'CBRDF site description',
+     MOU1C => 'MOU1C site description',
+     OSU02 => 'OSU02 site description',
+     A0U02 => 'A0U02 site description',
+     ULVFX => 'ULVFX site description',
+     A4UPC => 'A4UPC site description',
+     OSUJS => 'OSUJS site description',
+     LIU04 => 'LIU04 site description',
+  },
+
+  # SNMP profile settings // SNMP profiles are matched using hostnames, first
+  # matching profile is used; command-line option --hosts can be used to see
+  # what profile is assigned to what host
+  snmp => [
+
+    {
+      profile => 'NetIT SNMPv3 DES',
+      hostre => [ '^brrs0[12]$', '^chrs13c$' ],
+      context => { prefix => 'vlan-' },
+      snmpwalk => {
+        exec => '/usr/bin/snmpbulkwalk',
+        options => q[-Lf /dev/null -Pd -OX -m +%m -v 3 -l AuthPriv -a SHA -x DES -u netitsnmp -A '%3' -X '%4' -n '%x' %h %r]
+      }
+    },
+
+    {
+      profile =>  'NetIT SNMPv3 AES',
+      excludehost => [ 'rcns08' ],
+      hostre => [
+        '^PZMSC', '^PHJAZ', '^BMSCB', '^A5SHQ', '^CRPRU',
+        '^BMMAS', '^BOVAN', '^A9CHS', '^A5PLZ', '^A10CA', '^A3VIN',
+        '^A4CHO', '^A1PLD', '^A6LET', '^A5PL2', '^A1VCS', '^HKVOP',
+        '^A3THP', '^OSUJS', '^BMCEJ',
+        # legacy codes
+        '^sto', '^str', '^rcn', '^brr', '^chr', '^cbr', '^ova', '^bce',
+        '^hkv', '^pap', '^tst', '^ttc', '^zav',
+      ],
+      context => { prefix => 'vlan-' },
+      snmpwalk => {
+        exec => '/usr/bin/snmpbulkwalk',
+        options => q[-Lf /dev/null -Pd -OX -m +%m -v 3 -l AuthPriv -a SHA -x AES -u netitsnmp -A '%3' -X '%4' -n '%x' %h %r]
+      }
+    },
+
+    {
+      profile =>  'exUPC SNMPv3',
+      hostre => [ '^zav', '^brb', '^lbs', '^mec', '^meh', '^ovn', '^ttc' ],
+      context => { prefix => 'vlan-' },
+      snmpwalk => {
+        exec => '/usr/bin/snmpbulkwalk',
+        options => q[-Lf /dev/null -Pd -OX -m +%m -v 3 -l AuthPriv -a SHA -x AES -u netitsnmp -A '%1' -X '%2' -n '%x' %h %r],
+      },
+    },
+
+    {
+      profile =>  'NetIT SNMPv2c',
+      snmpwalk => {
+        exec => '/usr/bin/snmpbulkwalk',
+        options => '-Lf /dev/null -Pd -OX -m +%m -c %c%X %h %r',
+      },
+    },
+
+  ],
+
+  # MIB types definition // Purpose of this is to tag certain SNMP table columns
+  # for transformation inside SPAM. These transformations are needed for saving
+  # some information to backend database.
+  'mib-types' => {
+    cafSessionClientAddress => 'inet4',
+  },
+
+  # define MIBs and platforms that support them; the MIBs are read in the order
+  # specified here; IMPORTANT: some of the MIBs require other MIBs to be already
+  # read (list of VLANs must be already available for reading from BRIDGE-MIB,
+  # "system" stuff must be the first thing that is read); following keys are
+  # used:
+  #
+  # "mib" : MIB name
+  # "objects" : defines SNMP objects that are to be retrieved, they are
+  #   defined with following keys:
+  #
+  # "table"    : SNMP table to be retrieved
+  # "scalar"   : SNMP scalar to be retrieved
+  # "index"    : SNMP table's index or indices
+  # "columns"  : (optional) SNMP table columns to be selectively retrieved,
+  #              if none are defined, retrieve all present columns
+  # "addmib"   : additional MIBs to load when reading this object
+  # "include"  : (optional) regex that must match platform string
+  # "exclude"  : (optional) regex that must not match platform string
+  # "dbmaxage" : delete old entries after this time (in seconds); if not
+  #              defined old entries are never deleted; if 0 old entries
+  #              are delete immediately after they disappear from SNMP
+  # "flags"    : (optional) list of additinal tags, see spam.pl:poll_host()
+  #             for recognized flags
+  mibs => [
+
+    { # this section is required and must be the first one
+      mib => 'SNMPv2-MIB',
+      objects => [
+        {
+          scalar  => 'sysObjectID',
+          flags => [ 'switch' ],
+          addmib  => [
+            'CISCO-PRODUCTS-MIB',
+            'CISCO-ENTITY-VENDORTYPE-OID-MIB'
+          ]
+        },
+        { scalar => 'sysUpTimeInstance', flags => [ 'switch' ] },
+        { scalar => 'sysLocation', flags => [ 'switch' ] }
+      ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'IF-MIB',
+      objects => [
+        {
+          table   => 'ifTable',
+          index   => 'ifIndex',
+          columns => [
+            'ifType', 'ifSpeed', 'ifAdminStatus', 'ifOperStatus',
+            'ifInUcastPkts', 'ifOutUcastPkts'
+          ],
+          flags   => [ 'switch' ]
+         },
+         {
+          table   => 'ifXTable',
+          index   => 'ifIndex',
+          columns => [ 'ifAlias', 'ifName', 'ifHighSpeed' ],
+          flags   => [ 'switch' ]
+        }
+      ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'CISCO-STACK-MIB',
+      objects => [ {
+        table   => 'portTable',
+        index   => [ 'portModuleIndex', 'portIndex' ],
+        columns => [ 'portDuplex', 'portIfIndex' ],
+        exclude => '(VirtualSwitch|cevChassisN5kC5548UP)',
+        flags   => [ 'switch' ]
+      } ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'CISCO-VTP-MIB',
+      objects => [
+        {
+          table   => 'vtpVlanTable',
+          index   => [ 'managementDomainIndex', 'vtpVlanIndex' ],
+          columns => 'vtpVlanName',
+          flags=> [ 'switch' ]
+        },
+        {
+          table   => 'vlanTrunkPortTable',
+          index   => 'vlanTrunkPortIfIndex',
+          columns => [
+            'vlanTrunkPortDynamicStatus',
+            'vlanTrunkPortEncapsulationOperType',
+            'vlanTrunkPortVlansEnabled',
+            'vlanTrunkPortVlansEnabled2k',
+            'vlanTrunkPortVlansEnabled3k',
+            'vlanTrunkPortVlansEnabled4k',
+          ],
+          flags   => [ 'switch' ]
+        },
+        {
+          table   => 'managementDomainTable',
+          index   => 'managementDomainIndex ',
+          columns => [ 'managementDomainName', 'managementDomainLocalMode' ],
+          flags   => [ 'switch' ]
+        }
+      ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'IEEE8021-PAE-MIB',
+      objects => [ {
+        table   => 'dot1xAuthConfigTable',
+        index   => 'dot1xPaePortNumber',
+        columns => [
+          'dot1xAuthAuthControlledPortControl',
+          'dot1xAuthAuthControlledPortStatus'
+        ],
+        exclude => 'cevChassisN5kC5548UP',
+        flags   => [ 'switch' ]
+      } ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'CISCO-AUTH-FRAMEWORK-MIB',
+      objects => [
+        {
+          table   => 'cafSessionTable',
+          index   => [ 'ifIndex', 'cafSessionId' ],
+          columns => [
+            'cafSessionAuthVlan',
+            'cafSessionClientAddress',
+            'cafSessionAuthUserName',
+            'cafSessionVlanGroupName',
+          ],
+          exclude => '(VirtualSwitch|catalyst355048|cevChassisN5kC5548UP)',
+          dbmaxage => 86400,
+          flags   => [ 'switch', 'save' ]
+        },
+        {
+          table   => 'cafSessionMethodsInfoTable',
+          index   => [ 'ifIndex', 'cafSessionId', 'cafSessionMethod' ],
+          columns => [ 'cafSessionMethodState' ],
+          exclude => '(VirtualSwitch|catalyst355048|cevChassisN5kC5548UP)',
+          flags   => [ 'switch' ]
+        }
+      ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'CISCO-CDP-MIB',
+      objects => [ {
+        table   => 'cdpCacheTable',
+        index   => [ 'cdpCacheIfIndex', 'cdpCacheDeviceIndex' ],
+        columns => [
+          'cdpCachePlatform',
+          'cdpCacheDeviceId',
+          'cdpCacheSysName',
+          'cdpCacheDevicePort'
+        ],
+        dbmaxage => 0,
+        flags   => [ 'save', 'switch' ]
+      } ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'POWER-ETHERNET-MIB',
+      objects => [ {
+        table   => 'pethPsePortTable',
+        index   => [ 'pethPsePortGroupIndex', 'pethPsePortIndex' ],
+        columns => 'pethPsePortDetectionStatus',
+        exclude => '(VirtualSwitch|catalyst355048|catalyst2960|cevChassisN5kC5548UP)',
+        flags   => [ 'switch' ]
+      } ],
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'CISCO-VLAN-MEMBERSHIP-MIB',
+      objects => [ {
+        table   => 'vmMembershipTable',
+        index   => 'ifIndex',
+        columns => 'vmVlan',
+        flags   => [ 'switch' ]
+      } ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'BRIDGE-MIB',
+      objects => [
+        {
+          scalar  => 'dot1dStpRootPort'
+        },
+        {
+          table   => 'dot1dBasePortTable',
+          index   => 'dot1dBasePort',
+          columns => 'dot1dBasePortIfIndex',
+          exclude => '^(cisco2811)$',
+          flags   => [ 'vlans', 'switch' ]
+        },
+        {
+          table   => 'dot1dTpFdbTable',
+          index   => 'dot1dTpFdbAddress',
+          columns => [ 'dot1dTpFdbPort', 'dot1dTpFdbStatus' ],
+          exclude => '^(cisco2811)$',
+          flags   => [ 'vlans', 'mactable', 'switch' ]
+        }
+      ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'CISCO-STP-EXTENSIONS-MIB',
+      objects => [ {
+        table   => 'stpxFastStartPortTable',
+        index   => 'stpxFastStartPortIndex',
+        columns => 'stpxFastStartPortMode',
+        exclude => 'cevChassisN5kC5548UP',
+        flags   => [ 'switch' ]
+      } ]
+    },
+
+    #------------------------------------------------------------------------
+
+    {
+      mib => 'ENTITY-MIB',
+      objects => [
+        {
+          table   => 'entPhysicalTable',
+          index   => 'entPhysicalIndex',
+          columns => [
+            'entPhysicalDescr', 'entPhysicalContainedIn', 'entPhysicalClass',
+            'entPhysicalParentRelPos', 'entPhysicalName',
+            'entPhysicalHardwareRev', 'entPhysicalFirmwareRev',
+            'entPhysicalSoftwareRev', 'entPhysicalSerialNum',
+            'entPhysicalModelName'
+          ],
+          flags   => [ 'save' ],
+        },
+        {
+          table   => 'entAliasMappingTable',
+          index   => [ 'entPhysicalIndex', 'entAliasLogicalIndexOrZero' ],
+          columns => [ 'entAliasMappingIdentifier' ],
+          flags   => [ 'save', 'switch' ],
+        },
+      ]
+    },
+
+    #------------------------------------------------------------------------
+    # this is used to read ARP tables from routers; FIXME: this object is
+    # marked as "deprecated" by Cisco; we should probably reimplement this
+    # with whatever is proper way of reading this info
+    {
+      mib => 'IP-MIB',
+      objects => [ {
+        table   => 'ipNetToMediaTable',
+        index   => [ 'ipNetToMediaIfIndex', 'ipNetToMediaNetAddress' ],
+        columns => [ 'ipNetToMediaPhysAddress', 'ipNetToMediaType' ],
+        flags   => [ 'arptable' ]
+      } ]
+    },
+
+  ],
+
+  # entity mapping profiles; entity information from ENTITY-MIB is way too
+  # irregular to allow for generic processing, so we need to define additional
+  # processing rules
+  'entity-profiles' => {
+
+    # The keys in entity-profiles.models are values of entPhysicalModelName for
+    # respective chassis entries
+    models => {
+
+      # Catalyst C9410R reports supervisor in slot 5 as being slot 11, so we do
+      # slot mapping from 11 to 5
+      C9410R => { slot_map => { '11' => 5 } },
+
+      # Catalyst 3850 stacks return chassis members starting from zero where we
+      # need them starting from one; also the tree structure does follow the
+      # usual chassis-container-module structure, so we are discovering
+      # linecards by regex-matching their entPhysicalName and getting slot
+      # numbers by another regex match
+      'WS-C3850-48T' => {
+        modules_by_name => '(Fixed|FRU Uplink) Module \\d+$',
+        card_slot_no => '(Fixed|FRU Uplink) Module (?<slotno>\\d+)$',
+        chassis_map => { '0' => 1, '1' => 2 },
+      },
+
+      # Nexus C3548P is returning ports that do not physically exist in the
+      # system, so we need to filter the results
+      'N3K-C3548P-10GX' => {
+        port_filter => {
+          filter_by => 'entPhysicalName',
+          regex => '^Linecard-\\d Port-(?<portno>\\d+)$',
+          range => [ 1, 48 ],
+        },
+      },
+
+      # C9400 supervisor used in Cat9400-series; it does not present ports
+      # without transceiver modules, so it's necessary to also list containers
+      # selected by this config
+      'C9400-SUP-1' => {
+        'port_containers' => {
+          regex => '^(Te|Fo).* Container$'
+        },
+      },
+
+    },
+
+  }
+}
