@@ -12,12 +12,14 @@ requires '_d';
 # return cdpCacheTable entry if it exists, otherwise undef
 sub cdp_port ($self, $if)
 {
+  my $s = $self->_d;
+
   if(
-    exists $self->snmp->{'CISCO-CDP-MIB'}
-    && exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
-    && exists $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
+    exists $s->{'CISCO-CDP-MIB'}
+    && exists $s->{'CISCO-CDP-MIB'}{'cdpCacheTable'}
+    && exists $s->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if}
   ) {
-    return $self->snmp->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
+    return $s->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
   } else {
     return undef;
   }
