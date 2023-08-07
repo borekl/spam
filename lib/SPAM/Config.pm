@@ -16,7 +16,6 @@ use experimental 'signatures', 'postderef';
 use Carp;
 use Perl6::Form;
 use Scalar::Util qw(reftype);
-use JSON::MaybeXS;
 use Path::Tiny qw(path);
 use Mojo::Pg;
 use SPAM::Config::MIB;
@@ -93,7 +92,7 @@ sub _build_config
   my $file = $self->config_file();
   croak "Configuration file '$file' cannot be found or read" unless -e $file;
   my $cfg = do(path($file)->absolute);
-  unless (my $cfg = do(path($file)->absolute)) {
+  unless ($cfg) {
     die "couldn't parse $file: $@" if $@;
     die "couldn't do $file: $!"    unless defined $cfg;
     die "couldn't run $file"       unless $cfg;
