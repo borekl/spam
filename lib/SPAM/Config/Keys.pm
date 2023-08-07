@@ -5,7 +5,7 @@ package SPAM::Config::Keys;
 # file (or maybe something else later).
 #
 # Upon instantiation, a JSON file is read and parsed (by default
-# 'authkeys.json'). It contains something like:
+# 'authkeys.cfg'). It contains something like:
 #
 # {
 #   "0": "pa$$word0",
@@ -31,7 +31,7 @@ use Path::Tiny qw(path);
 
 has keys_file => (
   is => 'ro',
-  default => 'authkeys.json',
+  default => 'authkeys.cfg',
 );
 
 has keys_dir => ( is => 'ro' );

@@ -5,7 +5,7 @@ use Path::Tiny;
 
 use SPAM::Config::Keys;
 
-my $keys_file = 'authkeys.json.example';
+my $keys_file = 'authkeys.cfg.example';
 
 # instance creation
 my $cfg;

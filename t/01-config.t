@@ -6,7 +6,7 @@ use Path::Tiny;
 
 use SPAM::Config;
 
-my $config_file = 'spam.cfg.json.example';
+my $config_file = 'spam.cfg.example';
 my $cfg;
 
 # instance creation
