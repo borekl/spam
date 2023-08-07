@@ -25,7 +25,6 @@ use Moo;
 use experimental 'signatures';
 
 use Carp;
-use JSON::MaybeXS;
 use Path::Tiny qw(path);
 
 #=== ATTRIBUTES ==============================================================
@@ -56,7 +55,14 @@ sub _build__keys ($self)
   }
 
   croak "Key file '$file' cannot be found or read" unless -e $file;
-  return JSON->new->relaxed(1)->decode(path($file)->slurp());
+  my $auth = do(path($file)->absolute);
+  unless ($auth) {
+    die "couldn't parse $file: $@" if $@;
+    die "couldn't do $file: $!"    unless defined $auth;
+    die "couldn't run $file"       unless $auth;
+  }
+
+  return $auth;
 }
 
 #-----------------------------------------------------------------------------
