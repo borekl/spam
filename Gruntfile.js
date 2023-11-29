@@ -42,6 +42,7 @@ module.exports = function(grunt)
           { nonull: true, src: 'lib/SPAM/Config/MIB.pm', dest: '../prod/lib/SPAM/Config/MIB.pm' },
           { nonull: true, src: 'lib/SPAM/Config/MIBobject.pm', dest: '../prod/lib/SPAM/Config/MIBobject.pm' },
           { nonull: true, src: 'lib/SPAM/Config/Keys.pm', dest: '../prod/lib/SPAM/Config/Keys.pm' },
+          { nonull: true, src: 'lib/SPAM/WorkList.pm', dest: '../prod/lib/SPAM/WorkList.pm' },
           // SPAM::Model::
           { nonull: true, src: 'lib/SPAM/Model/PortStatus.pm', dest: '../prod/lib/SPAM/Model/PortStatus.pm' },
           { nonull: true, src: 'lib/SPAM/Model/Porttable.pm', dest: '../prod/lib/SPAM/Model/Porttable.pm' },
