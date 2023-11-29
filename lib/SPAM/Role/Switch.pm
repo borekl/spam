@@ -221,8 +221,13 @@ sub update_ports ($self)
 # Update mactable in the backend database according to the new data from SNMP
 sub update_mactable ($self)
 {
+  my $count = 0;
+
   # do nothing when MAC table is not loaded
-  return undef unless $self->snmp->has_ifindex_to_dot1d;
+  unless($self->snmp->ifindex_to_dot1d) {
+    $self->_m('Updating mactable (skipped, no ifindex to dot1d)');
+    return undef;
+  }
 
   # get database handle
   my $db = SPAM::Config->instance->get_mojopg_handle('spam')->db;
@@ -242,11 +247,12 @@ sub update_mactable ($self)
     $self->mactable_db->reset_active_mac($tx);
     $self->snmp->iterate_macs(sub (%arg) {
       $self->mactable_db->insert_or_update($tx, %arg);
+      $count++;
     });
   });
 
   # finish
-  $self->_m("Updating mactable (finished)");
+  $self->_m('Updating mactable (finished, updated %d macs)', $count);
   return undef;
 }
 

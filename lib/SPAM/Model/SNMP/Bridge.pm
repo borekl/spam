@@ -9,7 +9,7 @@ use Carp;
 requires '_d';
 
 # ifIndex to BRIDGE-MIB index
-has ifindex_to_dot1d => ( is => 'lazy', predicate => 1 );
+has ifindex_to_dot1d => ( is => 'lazy' );
 
 # dot1d to ifIndex
 has dot1d_to_ifindex => ( is => 'lazy', predicate => 1 );
