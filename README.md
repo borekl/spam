@@ -9,6 +9,8 @@ it also has some support to keep track of what is wired where.
 SPAM is written in perl (collector) and JavaScript with dust templating
 library (web application).
 
+*SPAM is an internal application, so it is not very well documented.*
+
 # Note
 
 Following two headers need to be set in this way, so that the backend knows
