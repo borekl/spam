@@ -111,6 +111,11 @@ sub _build_config
 # Get Mojo::Pg instance for given database binding
 sub get_mojopg_handle ($self, $dbid)
 {
+  # if already connected, just return the handle
+  if(exists $self->dbconn->{$dbid}) {
+    return $self->dbconn->{$dbid};
+  }
+
   # sanity checks
   croak qq{Database configuration section missing}
   unless exists $self->config()->{'dbconn'};
@@ -119,11 +124,6 @@ sub get_mojopg_handle ($self, $dbid)
   croak qq{Invalid argument in SPAM::Config::get_mojopg_handle()} unless $dbid;
   croak qq{Undefined database connection id "$dbid"} unless exists $cfg->{$dbid};
   $cfg = $cfg->{$dbid};
-
-  # if already connected, just return the handle
-  if(exists $self->dbconn->{$dbid}) {
-    return $self->dbconn->{$dbid};
-  }
 
   # otherwise try to connect to the database
   my $pg = Mojo::Pg->new($cfg->{dburl});
