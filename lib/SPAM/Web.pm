@@ -11,9 +11,7 @@ use SPAM::Config;
 
 sub startup ($self)
 {
-  my $cfg = SPAM::Config->instance(
-    config_file => $self->home->child('spam.cfg.json')
-  );
+  my $cfg = SPAM::Config->instance;
 
   # ensure config is loaded // if we find config is not loaded, the application
   # becomes completely inoperable and all requests return error
