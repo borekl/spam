@@ -132,7 +132,7 @@ sub get_mojopg_handle ($self, $dbid)
     AutoCommit => 1, RaiseError => 1, PrintError => 0,
     pg_enable_utf8 => 1, FetchHashKeyName => 'NAME_lc',
   });
-  $pg->database_class($pg->database_class->with_roles('+TxnMethods'));
+  $pg->database_class($pg->database_class->with_roles('+TxnMethod'));
 
   # finish
   return $self->dbconn->{$dbid} = $pg;
