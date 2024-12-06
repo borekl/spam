@@ -159,6 +159,23 @@
      LIU04 => 'LIU04 site description',
   },
 
+  # list of ARP servers, ie. routers we retrieve ARP tables from; this used
+  # to be in ONdb
+  arpservers => [
+    'A10CA-RE-00',
+    'A1PLD-RE-00',
+    'A1VCS-RE-00',
+  ],
+
+  # list of switches we monitor, this used to be pulled from ONdb
+  hosts => [
+    [ 'A10CA-SA-00', '172.23.20.2' ],
+    [ 'A1PLD-SA-00', '172.23.20.210' ],
+    [ 'A1VCS-SA-00', '172.23.20.98' ],
+    [ 'A1VCS-SA-01', '172.23.20.99' ],
+    [ 'A3THP-SA-00', '172.20.248.85' ],
+  ]
+
   # SNMP profile settings // SNMP profiles are matched using hostnames, first
   # matching profile is used; command-line option --hosts can be used to see
   # what profile is assigned to what host

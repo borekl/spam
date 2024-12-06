@@ -142,15 +142,11 @@ sub get_mojopg_handle ($self, $dbid)
 # load list of hosts (switches) from backend database
 sub _build_hosts ($self)
 {
-  my $db = $self->get_mojopg_handle('ondb')->db;
-  die 'Database connection failed (ondb)' unless ref $db;
-
   my %hosts;
-  my $r = $db->select('v_switchlist');
-  while (my $row = $r->hash) {
-    my $h = $row->{hostname};
-    $hosts{$h}{community} = $row->{community};
-    $hosts{$h}{ip} = $row->{ip_addr};
+  foreach my $host ($self->config->{hosts}->@*) {
+    my $h = $host->[0];
+    $hosts{$h}{community} = undef;
+    $hosts{$h}{ip} = $host->[1];
   }
 
   return \%hosts;
@@ -160,16 +156,12 @@ sub _build_hosts ($self)
 # load list of routers from backend database
 sub _build_arpservers ($self)
 {
-  my $db = $self->get_mojopg_handle('ondb')->db;
-  die 'Database connection failed (ondb)' unless ref $db;
-
-  # the v_arpservers view returns tuples (hostname, community)
   my @arpservers;
-  my $r = $db->select('v_arpservers');
-  while(my $row = $r->array) {
-    my ($s, $cmty) = @$row;
-    push(@arpservers, [lc $s, $cmty])
-      unless scalar(grep { $_->[0] eq $s } @arpservers);
+
+  foreach my $arpserver ($self->config->{arpservers}->@*) {
+    unless(scalar(grep { $_ eq lc $arpserver } @arpservers)) {
+      push(@arpservers, [ lc $arpserver, undef ]);
+    }
   }
 
   return \@arpservers;
