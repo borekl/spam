@@ -322,17 +322,15 @@ sub autoregister ($self)
   # wrap the update in transaction
   $db->txn(sub ($tx) {
 
-    # iterate over all ports; FIXME: this is iterating ports loaded from the
-    # database, not ports actually seen on the host -- this needs to be changed
-    # to be correct; the workaround for now is to not run --autoreg on every
-    # spam run or just hope the races won't occur
-    $self->ports_db->iterate_ports(sub ($portname, $port) {
-      my $descr = $port->{descr};
+    # new, hopefully correct code that compares current patching indicated in
+    # porttable.cp with data obtained via SNMP and parsed out of ifAlias
+    foreach my $portname ($self->snmp->ports) {
+      my $descr = $self->snmp->iftable($portname, 'ifAlias');
       my $cp_descr;
       if($descr && $descr =~ /^.*?;(.+?);.*?;.*?;.*?;.*$/) {
         $cp_descr = $1;
-        return undef if $cp_descr eq 'x';
-        return undef if $cp_descr =~ /^(fa\d|gi\d|te\d)/i;
+        next if $cp_descr eq 'x';
+        next if $cp_descr =~ /^(eth\d|fa\d|gi\d|te\d)/i;
         $cp_descr = substr($cp_descr, 0, 10);
         if(!$self->port_to_cp->exists($portname)) {
           $self->port_to_cp->insert($tx,
@@ -344,9 +342,8 @@ sub autoregister ($self)
           $count++;
         }
       }
-      # continue iterating
-      return undef;
-    });
+    }
+
   });
 
   $self->_m('Registered %d ports', $count);
