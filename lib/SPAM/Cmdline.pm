@@ -95,7 +95,10 @@ sub BUILD ($self, $args)
       $self->_set_inhibit_poll('--maint');
     },
     'quick'      => sub { $self->_set_mactable(0); $self->_set_arptable(0); },
-    'hostinfo',  => sub { $self->_set_hostinfo(1) },
+    'hostinfo',  => sub {
+      $self->_set_hostinfo(1);
+      $self->_set_no_lock(1);
+    },
     'arpservers' => sub {
       $self->_set_list_arpservers($_[1]);
       $self->_set_no_lock(1);
