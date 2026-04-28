@@ -808,7 +808,7 @@ sub sql_search ($par)
   }
 
   # SQL WHERE conditions
-  for my $k (qw(site outcp host portname mac ip username inact vlan vlans)) {
+  for my $k (qw(site outcp host portname mac ip username inact vlan vlans descr)) {
     if(exists $par->{$k} && $par->{$k}) {
       if($k eq 'outcp') {
         search_outcp(\@cond, \@args, $par->{$k});
@@ -828,6 +828,10 @@ sub sql_search ($par)
       } elsif($k eq 'vlans') {
         push(@cond, '(flags & 8+16+32)::boolean', 'get_bit(vlans, ?)::boolean');
         push(@args, $par->{$k});
+      } elsif($k eq 'descr') {
+        search_common_string(
+          \@cond, \@args, $par->{$k}, 'descr'
+        );
       } else {
         push(@cond, sprintf('%s = ?', $k));
         push(@args, $par->{$k});
@@ -1595,7 +1599,7 @@ sub swlist ($c) {
 sub search ($c) {
   my %par;
   for my $k (
-    qw(site outcp host portname mac ip sortby mode username inact vlan vlans)
+    qw(site outcp host portname mac ip sortby mode username inact vlan vlans descr)
   ) {
     $par{$k} = $c->req->body_params->param($k)
   }
