@@ -90,7 +90,7 @@ sub sql_select ($dbid, $query, $args, $func=undef, $aref=undef)
   my $dbh = SPAM::Config->instance->get_mojopg_handle($dbid)->db->dbh;
 
   # some debugging info
-  $re{query} = sql_show_query($query, @$args) if $re{debug};
+  $re{query} = sql_show_query($query, @$args);
 
   try { #>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
