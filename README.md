@@ -35,3 +35,36 @@ request headers and authentication.
       ProxyPass "http://127.0.0.1:3000/"
       ProxyPassReverse "http://127.0.0.1:3000/"
     </Location>
+
+# Development
+
+Run the backend with morbo development web server (it automatically reloads
+app files). The default is to run on localhost on port 3000.
+
+    morbo -m development  ./spam-web
+
+For testing from command-line, be sure to provide user name (via X-Remote-User
+header), you'll get an error if you don't. Also arguments must be passed as form
+fields, ie. with Content-Typer: x-www-form-urlencoded. For example, with httpie
+you can do something like this:
+
+   http -f http://127.0.0.1:3000/api/v0/ \
+     X-Remote-User:johndoe \
+     r=search host=SWITCH01 mode=portlist
+
+When the backend is contacted without any arguments, simple JSON-formatted
+status message should be returned:
+
+    $ http http://127.0.0.1:3000/api/v0/ X-Remote-User:johndoe
+    
+    HTTP/1.1 200 OK
+    Content-Length: 48
+    Content-Type: application/json;charset=UTF-8
+    Date: Tue, 28 Apr 2026 13:50:45 GMT
+    Server: Mojolicious (Perl)
+    
+    {
+        "debug": true,
+        "status": "ok",
+        "userid": "johndoe"
+    }
