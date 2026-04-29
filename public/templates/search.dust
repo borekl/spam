@@ -53,6 +53,11 @@
 </tr>
 
 <tr>
+<td>Description:</td>
+<td><input type="text" name="descr" size="24" maxlength="256"></td>
+</tr>
+
+<tr>
 <td>&nbsp</td>
 </tr>
 
