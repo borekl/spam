@@ -426,12 +426,21 @@
 
     {
       mib => 'CISCO-VLAN-MEMBERSHIP-MIB',
-      objects => [ {
-        table   => 'vmMembershipTable',
-        index   => 'ifIndex',
-        columns => 'vmVlan',
-        flags   => [ 'switch' ]
-      } ]
+      objects => [
+        {
+          table   => 'vmMembershipTable',
+          index   => 'ifIndex',
+          columns => 'vmVlan',
+          flags   => [ 'switch' ]
+        },
+        {
+          table   => 'vmVoiceVlanTable',
+          index   => 'ifIndex',
+          columns => 'vmVoiceVlanId',
+          flags   => [ 'switch' ]
+
+        }
+      ]
     },
 
     #------------------------------------------------------------------------

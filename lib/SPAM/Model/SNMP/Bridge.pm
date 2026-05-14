@@ -27,10 +27,7 @@ sub _build_ifindex_to_dot1d ($self)
     && exists $s->{'CISCO-VTP-MIB'}{'vtpVlanTable'}
     && exists $s->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{1}
   ) {
-    my @vlans
-    = keys %{
-      $s->{'CISCO-VTP-MIB'}{'vtpVlanTable'}{'1'}
-    };
+    my @vlans = $self->active_vlans->@*;
     for my $vlan (@vlans) {
       if(
         exists $s->{'BRIDGE-MIB'}{$vlan}
@@ -80,7 +77,7 @@ sub stp_root_port ($self)
 sub iterate_macs ($self, $cb)
 {
   my $s = $self->_d->{'BRIDGE-MIB'};
-  my @vlans = grep(/^\d+$/, keys %$s);
+  my @vlans = $self->active_vlans->@*;
 
   my $normalize = sub {
     join(':', map { length($_) == 2 ? $_ : '0' . $_; } split(/:/, shift));

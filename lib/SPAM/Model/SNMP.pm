@@ -27,6 +27,7 @@ with 'SPAM::Model::SNMP::EntityTree';
 with 'SPAM::Model::SNMP::PortTable';
 with 'SPAM::Model::SNMP::Bridge';
 with 'SPAM::Model::SNMP::TrunkVlans';
+with 'SPAM::Model::SNMP::VoiceVlans';
 with 'SPAM::Model::SNMP::ActiveVlans';
 with 'SPAM::Model::SNMP::PortFlags';
 with 'SPAM::Model::SNMP::Boottime';
