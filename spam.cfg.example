@@ -402,7 +402,8 @@
           'cdpCachePlatform',
           'cdpCacheDeviceId',
           'cdpCacheSysName',
-          'cdpCacheDevicePort'
+          'cdpCacheDevicePort',
+          'cdpCacheCapabilities'
         ],
         dbmaxage => 0,
         flags   => [ 'save', 'switch' ]

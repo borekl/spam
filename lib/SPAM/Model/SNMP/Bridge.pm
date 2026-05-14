@@ -109,8 +109,11 @@ sub iterate_macs ($self, $cb)
       # don't consider MAC on ports we are not tracking
       next unless exists $self->ifindex_to_port->{$if};
 
-      # don't consider MACs on ports that receive CDP
-      next if exists $self->_d->{'CISCO-CDP-MIB'}{'cdpCacheTable'}{$if};
+      # don't consider MACs on ports that receive CDP except when the device is
+      # a phone
+      next if
+        $self->cdp_port($if)
+        && !$self->cdp_single_device_is($if, 'phone');
 
       # normalize MAC (FIXME: do we need this?)
       my $mac_n = $normalize->($mac);
